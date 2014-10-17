@@ -110,6 +110,7 @@ PyObject* SketchObjectPy::addGeometry(PyObject *args)
                  geo->getTypeId() == Part::GeomEllipse::getClassTypeId() ||
                  geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId() ||
                  geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId() ||
+                 geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId() ||
                  geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
             ret = this->getSketchObjectPtr()->addGeometry(geo,isConstruction);
         }
@@ -161,6 +162,7 @@ PyObject* SketchObjectPy::addGeometry(PyObject *args)
                          geo->getTypeId() == Part::GeomEllipse::getClassTypeId() ||
                          geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId() ||
                          geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId() ||
+                         geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId() ||
                          geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                     geoList.push_back(geo);
                 }

@@ -43,6 +43,8 @@
 #include <Mod/Part/App/ArcOfEllipsePy.h>
 #include <Mod/Part/App/CirclePy.h>
 #include <Mod/Part/App/EllipsePy.h>
+#include <Mod/Part/App/HyperbolaPy.h>
+#include <Mod/Part/App/ArcOfHyperbolaPy.h>
 #include <Mod/Part/App/LinePy.h>
 
 #include <TopoDS.hxx>
@@ -81,6 +83,7 @@ void Sketch::clear(void)
     Circles.clear();
     Ellipses.clear();
     ArcsOfEllipse.clear();
+    ArcsOfHyperbola.clear();
 
     // deleting the doubles allocated with new
     for (std::vector<double*>::iterator it = Parameters.begin(); it != Parameters.end(); ++it)
@@ -162,6 +165,8 @@ const char* nameByType(Sketch::GeoType type)
         return "ellipse";
     case Sketch::ArcOfEllipse:
         return "arcofellipse";
+    case Sketch::ArcOfHyperbola:
+        return "arcofhyperbola";
     case Sketch::None:
     default:
         return "unknown";
@@ -196,6 +201,10 @@ int Sketch::addGeometry(const Part::Geometry *geo, bool fixed)
         const GeomArcOfEllipse *aoe = dynamic_cast<const GeomArcOfEllipse*>(geo);
         // create the definition struct for that geom
         return addArcOfEllipse(*aoe, fixed);
+    } else if (geo->getTypeId() == GeomArcOfHyperbola::getClassTypeId()) { // add an arc of hyperbola
+        const GeomArcOfHyperbola *aoh = dynamic_cast<const GeomArcOfHyperbola*>(geo);
+        // create the definition struct for that geom
+        return addArcOfHyperbola(*aoh, fixed);
     } else {
         throw Base::TypeError("Sketch::addGeometry(): Unknown or unsupported type added to a sketch");
     }
@@ -368,8 +377,6 @@ int Sketch::addArc(const Part::GeomArcOfCircle &circleSegment, bool fixed)
     return Geoms.size()-1;
 }
 
-
-
 int Sketch::addArcOfEllipse(const Part::GeomArcOfEllipse &ellipseSegment, bool fixed)
 {
     std::vector<double *> &params = fixed ? FixParameters : Parameters;
@@ -426,8 +433,7 @@ int Sketch::addArcOfEllipse(const Part::GeomArcOfEllipse &ellipseSegment, bool f
     
     //Points.push_back(f1);
     
-
-       // add the radius parameters
+    // add the radius parameters
     params.push_back(new double(radmin));
     double *rmin = params[params.size()-1];
     params.push_back(new double(startAngle));
@@ -435,8 +441,6 @@ int Sketch::addArcOfEllipse(const Part::GeomArcOfEllipse &ellipseSegment, bool f
     params.push_back(new double(endAngle));
     double *a2 = params[params.size()-1];
     
-    
-
     // set the arc for later constraints
     GCS::ArcOfEllipse a;
     a.start      = p1;
@@ -456,6 +460,63 @@ int Sketch::addArcOfEllipse(const Part::GeomArcOfEllipse &ellipseSegment, bool f
     // arcs require an ArcRules constraint for the end points
     if (!fixed)
         GCSsys.addConstraintArcOfEllipseRules(a);
+
+    // return the position of the newly added geometry
+    return Geoms.size()-1;
+}
+
+int Sketch::addArcOfHyperbola(const Part::GeomArcOfHyperbola &hyperbolaSegment, bool fixed)
+{
+    std::vector<double *> &params = fixed ? FixParameters : Parameters;
+
+    // create our own copy
+    GeomArcOfHyperbola *aoh = static_cast<GeomArcOfHyperbola*>(hyperbolaSegment.clone());
+    // create the definition struct for that geom
+    GeoDef def;
+    def.geo  = aoh;
+    def.type = ArcOfHyperbola;
+
+    Base::Vector3d center   = aoh->getCenter();
+    Base::Vector3d startPnt = aoh->getStartPoint();
+    Base::Vector3d endPnt   = aoh->getEndPoint();
+    double radmaj         = aoh->getMajorRadius();
+    double radmin         = aoh->getMinorRadius();
+    double phi            = aoh->getAngleXU();
+    
+    double dist_C_F = sqrt(radmaj*radmaj+radmin*radmin);
+    // solver parameters
+    Base::Vector3d focus1 = center+dist_C_F*Vector3d(cos(phi), sin(phi),0); //+x
+    
+    double startAngle, endAngle;
+    aoh->getRange(startAngle, endAngle);
+
+    // add the radius parameters
+    params.push_back(new double(radmaj));
+    double *rmaj = params[params.size()-1];
+    params.push_back(new double(startAngle));
+    double *a1 = params[params.size()-1];
+    params.push_back(new double(endAngle));
+    double *a2 = params[params.size()-1];
+    
+    // set the arc for later constraints
+    GCS::ArcOfHyperbola a;
+    a.start      = p1;
+    a.end        = p2;
+    a.center     = p3;
+    a.focus1X   = f1X;
+    a.focus1Y   = f1Y;
+    a.radmaj     = rmaj;
+    a.startAngle = a1;
+    a.endAngle   = a2;
+    def.index = ArcsOfHyperbola.size();
+    ArcsOfHyperbola.push_back(a);
+
+    // store complete set
+    Geoms.push_back(def);
+
+    // arcs require an ArcRules constraint for the end points
+    /*if (!fixed)
+        GCSsys.addConstraintArcOfHyperbolaRules(a);*/
 
     // return the position of the newly added geometry
     return Geoms.size()-1;
@@ -597,8 +658,10 @@ Py::Tuple Sketch::getPyGeometry(void) const
         } else if (it->type == ArcOfEllipse) {
             GeomArcOfEllipse *ellipse = dynamic_cast<GeomArcOfEllipse*>(it->geo->clone());
             tuple[i] = Py::asObject(new ArcOfEllipsePy(ellipse));
-        } 
-        else {
+        } else if (it->type == ArcOfHyperbola) {
+            GeomArcOfHyperbola *aoh = dynamic_cast<GeomArcOfHyperbola*>(it->geo->clone());
+            tuple[i] = Py::asObject(new ArcOfHyperbolaPy(aoh));
+        } else {
             // not implemented type in the sketch!
         }
     }
@@ -2059,6 +2122,30 @@ bool Sketch::updateGeometry()
                     ellipse->setMajorRadius(radmaj);
                 }
                 ellipse->setMajorAxisDir(fd);
+            } else if (it->type == ArcOfHyperbola) {
+                GCS::ArcOfHyperbola &myArc = ArcsOfHyperbola[it->index];
+
+                GeomArcOfHyperbola *aoh = dynamic_cast<GeomArcOfHyperbola*>(it->geo);
+                
+                Base::Vector3d center = Vector3d(*Points[it->midPointId].x, *Points[it->midPointId].y, 0.0);
+                Base::Vector3d f1 = Vector3d(*myArc.focus1X, *myArc.focus1Y, 0.0);
+                double radmaj = *myArc.radmaj;
+                
+                Base::Vector3d fd=f1-center;
+                double radmin = sqrt(fd*fd-radmaj*radmaj);
+                                
+                double phi = atan2(fd.y,fd.x);
+                
+                aoh->setCenter(center);
+                if ( radmaj >= aoh->getMinorRadius() ){
+                    aoh->setMajorRadius(radmaj);
+                    aoh->setMinorRadius(radmin);
+                }  else {
+                    aoh->setMinorRadius(radmin);
+                    aoh->setMajorRadius(radmaj);
+                }
+                aoh->setAngleXU(phi);
+                aoh->setRange(*myArc.startAngle, *myArc.endAngle);
             }
         } catch (Base::Exception e) {
             Base::Console().Error("Updating geometry: Error build geometry(%d): %s\n",
@@ -2325,6 +2412,7 @@ int Sketch::initMove(int geoId, PointPos pos, bool fine)
             p0.y = &MoveParameters[1];
             *p0.x = *center.x;
             *p0.y = *center.y;
+
             GCSsys.addConstraintP2PCoincident(p0,center,-1);
         }
     } else if (Geoms[geoId].type == ArcOfEllipse) {
@@ -2338,6 +2426,7 @@ int Sketch::initMove(int geoId, PointPos pos, bool fine)
             *p0.x = *center.x;
             *p0.y = *center.y;
             GCSsys.addConstraintP2PCoincident(p0,center,-1);
+
         } else if (pos == start || pos == end) {
             
             MoveParameters.resize(4); // x,y,cx,cy
@@ -2348,15 +2437,54 @@ int Sketch::initMove(int geoId, PointPos pos, bool fine)
                 p0.y = &MoveParameters[1];
                 *p0.x = *p.x;
                 *p0.y = *p.y;
+
                 GCSsys.addConstraintP2PCoincident(p0,p,-1);
+
             } 
             p1.x = &MoveParameters[2];
             p1.y = &MoveParameters[3];
             *p1.x = *center.x;
             *p1.y = *center.y;
+
             int i=GCSsys.addConstraintP2PCoincident(p1,center,-1);
             GCSsys.rescaleConstraint(i-1, 0.01);
             GCSsys.rescaleConstraint(i, 0.01);
+	}
+
+    } else if (Geoms[geoId].type == ArcOfHyperbola) {
+        
+        GCS::Point &center = Points[Geoms[geoId].midPointId];
+        GCS::Point p0,p1;
+        if (pos == mid || pos == none) {
+            MoveParameters.resize(2); // cx,cy
+            p0.x = &MoveParameters[0];
+            p0.y = &MoveParameters[1];
+            *p0.x = *center.x;
+            *p0.y = *center.y;
+
+            //GCSsys.addConstraintP2PCoincident(p0,center,-1);
+        } else if (pos == start || pos == end) {
+            
+            MoveParameters.resize(4); // x,y,cx,cy
+            if (pos == start || pos == end) {
+                GCS::Point &p = (pos == start) ? Points[Geoms[geoId].startPointId]
+                                            : Points[Geoms[geoId].endPointId];;
+                p0.x = &MoveParameters[0];
+                p0.y = &MoveParameters[1];
+                *p0.x = *p.x;
+                *p0.y = *p.y;
+
+                //GCSsys.addConstraintP2PCoincident(p0,p,-1);
+            } 
+            p1.x = &MoveParameters[2];
+            p1.y = &MoveParameters[3];
+            *p1.x = *center.x;
+            *p1.y = *center.y;
+
+            //int i=GCSsys.addConstraintP2PCoincident(p1,center,-1);
+            //GCSsys.rescaleConstraint(i-1, 0.01);
+            //GCSsys.rescaleConstraint(i, 0.01);
+
         }
     } else if (Geoms[geoId].type == Arc) {
         GCS::Point &center = Points[Geoms[geoId].midPointId];
@@ -2455,7 +2583,12 @@ int Sketch::movePoint(int geoId, PointPos pos, Base::Vector3d toPoint, bool rela
             MoveParameters[0] = toPoint.x;
             MoveParameters[1] = toPoint.y;
         }
-    }
+    } else if (Geoms[geoId].type == ArcOfHyperbola) {
+        if (pos == start || pos == end || pos == mid || pos == none) {
+            MoveParameters[0] = toPoint.x;
+            MoveParameters[1] = toPoint.y;
+        }
+    }    
 
     return solve();
 }
