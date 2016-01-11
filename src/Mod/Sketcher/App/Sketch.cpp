@@ -490,6 +490,35 @@ int Sketch::addArcOfHyperbola(const Part::GeomArcOfHyperbola &hyperbolaSegment, 
     double startAngle, endAngle;
     aoh->getRange(startAngle, endAngle);
 
+    GCS::Point p1, p2, p3;
+    
+    params.push_back(new double(startPnt.x));
+    params.push_back(new double(startPnt.y));
+    p1.x = params[params.size()-2];
+    p1.y = params[params.size()-1];
+    
+    params.push_back(new double(endPnt.x));
+    params.push_back(new double(endPnt.y));
+    p2.x = params[params.size()-2];
+    p2.y = params[params.size()-1];
+    
+    params.push_back(new double(center.x));
+    params.push_back(new double(center.y));
+    p3.x = params[params.size()-2];
+    p3.y = params[params.size()-1];
+    
+    params.push_back(new double(focus1.x));
+    params.push_back(new double(focus1.y));
+    double *f1X = params[params.size()-2];
+    double *f1Y = params[params.size()-1];
+    
+    def.startPointId = Points.size();
+    Points.push_back(p1);
+    def.endPointId = Points.size();
+    Points.push_back(p2);
+    def.midPointId = Points.size();
+    Points.push_back(p3);    
+    
     // add the radius parameters
     params.push_back(new double(radmaj));
     double *rmaj = params[params.size()-1];
@@ -503,8 +532,8 @@ int Sketch::addArcOfHyperbola(const Part::GeomArcOfHyperbola &hyperbolaSegment, 
     a.start      = p1;
     a.end        = p2;
     a.center     = p3;
-    a.focus1X   = f1X;
-    a.focus1Y   = f1Y;
+    a.focus.x    = f1X;
+    a.focus.y    = f1Y;
     a.radmaj     = rmaj;
     a.startAngle = a1;
     a.endAngle   = a2;
@@ -2128,7 +2157,7 @@ bool Sketch::updateGeometry()
                 GeomArcOfHyperbola *aoh = dynamic_cast<GeomArcOfHyperbola*>(it->geo);
                 
                 Base::Vector3d center = Vector3d(*Points[it->midPointId].x, *Points[it->midPointId].y, 0.0);
-                Base::Vector3d f1 = Vector3d(*myArc.focus1X, *myArc.focus1Y, 0.0);
+                Base::Vector3d f1 = Vector3d(*myArc.focus.x, *myArc.focus.y, 0.0);
                 double radmaj = *myArc.radmaj;
                 
                 Base::Vector3d fd=f1-center;

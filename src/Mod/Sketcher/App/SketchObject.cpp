@@ -3598,8 +3598,7 @@ const std::map<int, Sketcher::PointPos> SketchObject::getAllCoincidentPoints(int
 
             if ((*geoId1iterator).second == PosId) // and posId matches
                 return (*it);                  
-=======
->>>>>>> d12cab8... Sketcher: New Feature: Hyperbola/ArcOfHyperbola
+
         }
     }
     
