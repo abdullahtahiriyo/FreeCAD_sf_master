@@ -387,6 +387,7 @@ public:
 
     bool isCarbonCopyAllowed(App::Document *pDoc, App::DocumentObject *pObj, bool & xinv, bool & yinv, eReasonList* rsn = 0) const;
 
+
     bool isPerformingInternalTransaction() const {return internaltransaction;};
 public:
     // Analyser functions
@@ -421,6 +422,9 @@ public:
 public: // geometry extension functionalities for single element sketch object user convenience
     int setGeometryId(int GeoId, long id);
     int getGeometryId(int GeoId, long &id) const;
+
+    virtual DocumentObject *getSubObject(const char *subname, PyObject **pyObj=0,
+            Base::Matrix4D *mat=0, bool transform=true, int depth=0) const override;
 
 protected:
     /// get called by the container when a property has changed
@@ -494,6 +498,10 @@ private:
 };
 
 typedef App::FeaturePythonT<SketchObject> SketchObjectPython;
+
+const std::string &editPrefix();
+std::vector<std::string> checkSubNames(const std::vector<std::string> &);
+const char *checkSubName(const char *);
 
 } //namespace Sketcher
 
