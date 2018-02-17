@@ -123,6 +123,7 @@ PyMOD_INIT_FUNC(SketcherGui)
 
     // init objects
     SketcherGui::ViewProviderSketch         ::init();
+    SketcherGui::ViewProviderSketchExport   ::init();
     SketcherGui::ViewProviderPython         ::init();
     SketcherGui::ViewProviderCustom         ::init();
     SketcherGui::ViewProviderCustomPython   ::init();

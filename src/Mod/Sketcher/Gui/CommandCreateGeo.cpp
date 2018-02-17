@@ -5861,10 +5861,16 @@ public:
     virtual bool onSelectionChanged(const Gui::SelectionChanges& msg)
     {
         if (msg.Type == Gui::SelectionChanges::AddSelection) {
-            App::DocumentObject* obj = sketchgui->getObject()->getDocument()->getObject(msg.pObjectName);
+            auto sels = Gui::Selection().getSelection(0,2,true);
+            if(sels.empty())
+                return false;
+            auto &sel = sels[0];
+            App::DocumentObject* obj = sel.pObject;
             if (obj == NULL)
                 throw Base::ValueError("Sketcher: External geometry: Invalid object in selection");
-            std::string subName(msg.pSubName);
+            const char *dot = strrchr(sel.SubName,'.');
+            std::string subName(dot?dot+1:sel.SubName);
+
             if (obj->getTypeId().isDerivedFrom(App::Plane::getClassTypeId()) ||
                 obj->getTypeId().isDerivedFrom(Part::Datum::getClassTypeId()) ||
                 (subName.size() > 4 && subName.substr(0,4) == "Edge") ||
@@ -5872,8 +5878,10 @@ public:
                 (subName.size() > 4 && subName.substr(0,4) == "Face")) {
                 try {
                     Gui::Command::openCommand("Add external geometry");
+
                     Gui::cmdAppObjectArgs(sketchgui->getObject(), "addExternal(\"%s\",\"%s\")",
-                              msg.pObjectName, msg.pSubName);
+                              msg.pObjectName, Data::ComplexGeoData::newElementName(sel.SubName).c_str());
+
                     Gui::Command::commitCommand();
 
                     // adding external geometry does not require a solve() per se (the DoF is the same),

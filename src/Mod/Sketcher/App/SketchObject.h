@@ -36,6 +36,8 @@
 
 #include "Analyse.h"
 
+#include <App/Document.h>
+
 #include "Sketch.h"
 
 #include "SketchGeometryExtension.h"
@@ -65,6 +67,8 @@ public:
     Part    ::PropertyGeometryList   Geometry;
     Sketcher::PropertyConstraintList Constraints;
     App     ::PropertyLinkSubList    ExternalGeometry;
+    App     ::PropertyLinkList       Exports;
+    App     ::PropertyInteger        LastGeoID;
     /** @name methods override Feature */
     //@{
     short mustExecute() const override;
@@ -426,7 +430,17 @@ public: // geometry extension functionalities for single element sketch object u
     virtual DocumentObject *getSubObject(const char *subname, PyObject **pyObj=0,
             Base::Matrix4D *mat=0, bool transform=true, int depth=0) const override;
 
+    std::vector<std::string> checkSubNames(const std::vector<std::string> &) const;
+    std::string checkSubName(const char *) const;
+    bool geoIdFromShapeType(const char *shapetype, int &geoId, PointPos &posId) const;
+    std::string convertSubName(const char *) const;
+    std::string convertSubName(const std::string &subname) const
+        { return convertSubName(subname.c_str()); }
+    std::vector<std::pair<Base::Vector3d,std::string> > getPointRefs(const char *subname);
+
+    void generateExternalId(const char *key); // I am not needed, please remove me.
 protected:
+
     /// get called by the container when a property has changed
     virtual void onChanged(const App::Property* /*prop*/) override;
     virtual void onDocumentRestored() override;
@@ -495,13 +509,42 @@ private:
     bool internaltransaction;
 
     bool managedoperation; // indicates whether changes to properties are the deed of SketchObject or not (for input validation)
+
+    //mutable std::vector<App::Document::StringID> externalGeoKeys;
+    mutable std::map<long,std::pair<long,long> > externalGeoMap;
+    mutable std::map<long,long> geoMap;
+    mutable bool geoCached;
+
 };
 
 typedef App::FeaturePythonT<SketchObject> SketchObjectPython;
 
-const std::string &editPrefix();
-std::vector<std::string> checkSubNames(const std::vector<std::string> &);
-const char *checkSubName(const char *);
+// ---------------------------------------------------------
+
+class SketcherExport SketchExport: public Part::Part2DObject {
+    PROPERTY_HEADER(Sketcher::SketchObject);
+
+public:
+    SketchExport();
+    ~SketchExport();
+
+    App::PropertyStringList Refs;
+    App::PropertyString Base;
+
+    App::DocumentObjectExecReturn *execute(void);
+    virtual void onChanged(const App::Property* /*prop*/);
+    const char* getViewProviderName(void) const {
+        return "SketcherGui::ViewProviderSketchExport";
+    }
+
+    bool update();
+
+    App::DocumentObject *getBase() const;
+    std::set<std::string> getRefs() const;
+    const char *getElementName(const char *element) const;
+
+    virtual short mustExecute(void) const override;
+};
 
 } //namespace Sketcher
 
