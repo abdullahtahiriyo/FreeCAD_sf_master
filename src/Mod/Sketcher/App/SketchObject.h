@@ -207,6 +207,7 @@ public:
     int movePoint(int GeoId, PointPos PosId, const Base::Vector3d& toPoint, bool relative=false, bool updateGeoBeforeMoving=false);
     /// retrieves the coordinates of a point
     Base::Vector3d getPoint(int GeoId, PointPos PosId) const;
+    static Base::Vector3d getPoint(const Part::Geometry *geo, PointPos PosId);
 
     /// toggle geometry to draft line
     int toggleConstruction(int GeoId);
@@ -438,8 +439,12 @@ public: // geometry extension functionalities for single element sketch object u
         { return convertSubName(subname.c_str()); }
     std::vector<std::pair<Base::Vector3d,std::string> > getPointRefs(const char *subname);
 
-    void generateExternalId(const char *key); // I am not needed, please remove me.
+    void setGeoHistoryLevel(int level);
+    int getGeoHistoryLevel() const {return geoHistoryLevel;}
+
 protected:
+
+    void generateExternalId(const char *);
 
     /// get called by the container when a property has changed
     virtual void onChanged(const App::Property* /*prop*/) override;
@@ -459,8 +464,6 @@ protected:
      */
     std::vector<Part::Geometry *> supportedGeometry(const std::vector<Part::Geometry *> &geoList) const;
 
-    void generateId(Part::Geometry *geo);
-
     // refactoring functions
     // check whether constraint may be changed driving status
     int testDrivingChange(int ConstrId, bool isdriving);
@@ -470,6 +473,9 @@ protected:
     bool validateSketchExtensions(void);
 
     void initSketchExtensions(void);
+
+    void updateGeoHistory();
+    void generateId(Part::Geometry *geo);
 
 private:
     /// Flag to allow external geometry from other bodies than the one this sketch belongs to
@@ -510,11 +516,16 @@ private:
 
     bool managedoperation; // indicates whether changes to properties are the deed of SketchObject or not (for input validation)
 
-    //mutable std::vector<App::Document::StringID> externalGeoKeys;
-    mutable std::map<long,std::pair<long,long> > externalGeoMap;
-    mutable std::map<long,long> geoMap;
-    mutable bool geoCached;
+    //std::vector<App::Document::StringID> externalGeoKeys;
+    std::map<long,std::pair<long,long> > externalGeoMap;
+    std::map<long,long> geoMap;
 
+    int geoHistoryLevel;
+    std::vector<long> geoIdHistory;
+    long geoLastId;
+
+    class GeoHistory;
+    std::unique_ptr<GeoHistory> geoHistory;
 };
 
 typedef App::FeaturePythonT<SketchObject> SketchObjectPython;
