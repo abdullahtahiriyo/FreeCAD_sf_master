@@ -434,16 +434,24 @@ public: // geometry extension functionalities for single element sketch object u
     std::vector<std::string> checkSubNames(const std::vector<std::string> &) const;
     std::string checkSubName(const char *) const;
     bool geoIdFromShapeType(const char *shapetype, int &geoId, PointPos &posId) const;
-    std::string convertSubName(const char *) const;
-    std::string convertSubName(const std::string &subname) const
-        { return convertSubName(subname.c_str()); }
-    std::vector<std::pair<Base::Vector3d,std::string> > getPointRefs(const char *subname);
+
+    std::string convertSubName(const char *, bool postfix=true) const;
+    std::string convertSubName(const std::string &subname, bool postfix=true) const
+        { return convertSubName(subname.c_str(),postfix); }
+
+    Part::TopoShape getEdge(const Part::Geometry *geo, const char *name) const;
+
 
     void setGeoHistoryLevel(int level);
     int getGeoHistoryLevel() const {return geoHistoryLevel;}
 
+    static const char *isExternalReference(const char *ref);
+
+    virtual std::pair<std::string,std::string> getElementName(
+            const char *name, ElementNameType type) const override;
 protected:
 
+    void buildShape();
     void generateExternalId(const char *);
 
     /// get called by the container when a property has changed
@@ -516,7 +524,7 @@ private:
 
     bool managedoperation; // indicates whether changes to properties are the deed of SketchObject or not (for input validation)
 
-    //std::vector<App::Document::StringID> externalGeoKeys;
+    //std::vector<App::StringIDRef> externalGeoKeys;
     std::map<long,std::pair<long,long> > externalGeoMap;
     std::map<long,long> geoMap;
 
@@ -541,6 +549,7 @@ public:
 
     App::PropertyStringList Refs;
     App::PropertyString Base;
+    App::PropertyBool SyncPlacement;
 
     App::DocumentObjectExecReturn *execute(void);
     virtual void onChanged(const App::Property* /*prop*/);
@@ -552,9 +561,11 @@ public:
 
     App::DocumentObject *getBase() const;
     std::set<std::string> getRefs() const;
-    const char *getElementName(const char *element) const;
 
     virtual short mustExecute(void) const override;
+
+protected:
+    virtual void onDocumentRestored() override;
 };
 
 } //namespace Sketcher

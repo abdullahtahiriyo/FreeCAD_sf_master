@@ -5880,7 +5880,7 @@ public:
                     Gui::Command::openCommand("Add external geometry");
 
                     Gui::cmdAppObjectArgs(sketchgui->getObject(), "addExternal(\"%s\",\"%s\")",
-                              msg.pObjectName, Data::ComplexGeoData::newElementName(sel.SubName).c_str());
+                              sel.FeatName, sel.SubName);
 
                     Gui::Command::commitCommand();
 
