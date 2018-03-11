@@ -98,6 +98,7 @@
 #include <Mod/Part/App/DatumFeature.h>
 #include <Mod/Part/App/BodyBase.h>
 #include <Mod/Part/App/PartPyCXX.h>
+//#include <Mod/Part/App/TopoShapeOpCode.h>
 
 #include "GeometryFacade.h"
 
@@ -108,6 +109,10 @@
 
 #undef DEBUG
 //#define DEBUG
+
+// TEMP CODE CHANGE LOOK AT TopoShapeOpColde.h
+#define TOPOP_SKETCH "0"
+#define TOPOP_SKETCH_EXPORT "32"
 
 namespace Part {
     PartExport std::list<TopoDS_Edge> sort_Edges2(double tol3d, std::list<TopoDS_Edge>& edges,
@@ -254,8 +259,6 @@ App::DocumentObjectExecReturn *SketchObject::execute(void)
     return App::DocumentObject::StdReturn;
 }
 
-#define WIRE_OP "S"
-
 void SketchObject::buildShape() {
 
     // Shape.setValue(solvedSketch.toShape());
@@ -273,9 +276,9 @@ void SketchObject::buildShape() {
     Part::TopoShape wires;
     wires.Tag = getID();
     if(shapes.size()==1)
-        wires.makEWires(shapes[0],WIRE_OP);
+        wires.makEWires(shapes[0],TOPOP_SKETCH);
     //else if(shapes.size())
-    //    wires.makEWires(Part::TopoShape(getID()).makECompound(shapes,false),WIRE_OP);
+    //    wires.makEWires(Part::TopoShape(getID()).makECompound(shapes,false),TOPOP_SKETCH);
     Shape.setValue(wires);
 }
 
@@ -8150,7 +8153,7 @@ App::DocumentObject *SketchObject::getSubObject(
 {
     const char *mapped = Data::ComplexGeoData::isMappedElement(subname);
 
-    if(!subname || (mapped && boost::starts_with(mapped,WIRE_OP))) {
+    if(!subname || (mapped && boost::starts_with(mapped,TOPOP_SKETCH))) {
         return Part2DObject::getSubObject(subname,pyObj,pmat,transform,depth);
     }
     if(!mapped) {
@@ -8244,7 +8247,7 @@ std::pair<std::string,std::string> SketchObject::getElementName(
         return ret;
     }
 
-    if(boost::starts_with(mapped,WIRE_OP))
+    if(boost::starts_with(mapped,TOPOP_SKETCH))
         return Part2DObject::getElementName(name,type);
 
     ret.second = checkSubName(name);
@@ -8529,8 +8532,6 @@ std::set<std::string> SketchExport::getRefs() const {
     return refSet;
 }
 
-#define EXPORT_OP "SE"
-
 bool SketchExport::update() {
     auto base = getBase();
     if(!base) return false;
@@ -8581,9 +8582,10 @@ bool SketchExport::update() {
     Part::TopoShape wires;
     wires.Tag = getID();
     if(shapes.size()==1)
-        wires.makEWires(shapes[0],EXPORT_OP);
+        wires.makEWires(shapes[0],TOPOP_SKETCH_EXPORT);
     //else if(shapes.size())
-    //    wires.makEWires(Part::TopoShape(getID()).makECompound(shapes,false),EXPORT_OP);
+    //    wires.makEWires(Part::TopoShape(getID()).makECompound(shapes,false),TOPOP_SKETCH_EXPORT);
+
     Shape.setValue(wires);
     return true;
 }
@@ -8598,7 +8600,7 @@ short SketchExport::mustExecute(void) const {
 
 void SketchExport::onDocumentRestored() {
     auto sketch = dynamic_cast<SketchObject*>(getBase());
-    if(sketch && getDocument()->testStatus(App::Document::Status::Importing)) {
+    if(sketch && sketch->ExternalGeometry.referenceChanged()) {
         // When importing the hashed external reference may change, we first
         // convert the reference back to old style, and later in update() to
         // convert it back to new style.
