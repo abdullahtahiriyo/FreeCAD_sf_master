@@ -810,15 +810,25 @@ int SketchObject::deleteAllGeometry()
 int SketchObject::toggleConstruction(int GeoId)
 {
     const std::vector< Part::Geometry * > &vals = getInternalGeometry();
-
     if (-GeoId > static_cast<int>(ExternalGeo.getSize()) || 
         GeoId >= int(vals.size()) || 
         GeoId == Sketcher::GeoEnum::HAxis || 
         GeoId == Sketcher::GeoEnum::VAxis)
         return -1;
 
-    if (GeoId < 0) { 
+    if (GeoId < 0) { // external geometry
 
+        const std::vector< Part::Geometry * > &evals = this->ExternalGeo.getValues();
+
+        std::vector< Part::Geometry * > newVals(evals);
+
+        Part::Geometry *geoNew = newVals[-GeoId-1]->clone();
+        geoNew->Construction = !geoNew->Construction;
+        newVals[-GeoId-1] = geoNew;
+
+        this->ExternalGeo.setValues(newVals);
+
+        solverNeedsUpdate=true;
  
         return 0;
     }
