@@ -58,6 +58,7 @@ public:
     Part    ::PropertyGeometryList   Geometry;
     Sketcher::PropertyConstraintList Constraints;
     App     ::PropertyLinkSubList    ExternalGeometry;
+    Part    ::PropertyGeometryList   ExternalGeo;
     /** @name methods override Feature */
     //@{
     /// recalculate the Feature (if no recompute is needed see also solve() and solverNeedsUpdate boolean)
@@ -136,11 +137,11 @@ public:
     /// returns a list of all internal geometries
     const std::vector<Part::Geometry *> &getInternalGeometry(void) const { return Geometry.getValues(); }
     /// returns a list of projected external geometries
-    const std::vector<Part::Geometry *> &getExternalGeometry(void) const { return ExternalGeo; }
+    const std::vector<Part::Geometry *> &getExternalGeometry(void) const { return ExternalGeo.getValues(); }
     /// rebuilds external geometry (projection onto the sketch plane)
     void rebuildExternalGeometry(void);
     /// returns the number of external Geometry entities
-    int getExternalGeometryCount(void) const { return ExternalGeo.size(); }
+    int getExternalGeometryCount(void) const { return ExternalGeo.getSize(); }
 
     /// retrieves a vector containing both normal and external Geometry (including the sketch axes)
     std::vector<Part::Geometry*> getCompleteGeometry(void) const;
@@ -298,7 +299,9 @@ public:
     /// Checks if support is valid
     bool evaluateSupport(void);
     /// validate External Links (remove invalid external links)
-    void validateExternalLinks(void);
+    /// returns true if invalid links were removed
+    /// removing invalid links triggers a rebuild of external geometry
+    bool validateExternalLinks(void);
     
     /// gets DoF of last solver execution
     inline int getLastDoF() const {return lastDoF;}
@@ -367,6 +370,21 @@ protected:
      \retval list - the supported geometry list
      */
     std::vector<Part::Geometry *> supportedGeometry(const std::vector<Part::Geometry *> &geoList) const;
+    
+    // returns true if the sketcher was written with an older freecad version not supporting ExternalGeo property
+    //              OR if the ExternalGeo and ExternalGeometry properties are out of sync
+    inline bool isLegacyExternalGeometry(){return (ExternalGeometry.getSize() != (ExternalGeo.getSize()-2) && 
+                                                  !(ExternalGeometry.getSize() == 0 && ExternalGeo.getSize() == 2));};
+
+    void AddLinksToArray( std::vector<DocumentObject*> &Objects, std::vector<std::string> &SubElements, std::vector< Part::Geometry * > &newVals);
+
+    void AddLinkToArray( DocumentObject* &Object, std::string &SubElement, std::vector< Part::Geometry * > &newVals);
+
+    // Adds a link to the ExternalGeometry property and the corresponding element to ExternalGeo property
+    int addLinkToExternalGeometry(DocumentObject* Object, std::string & SubElement);
+
+    int addLinksToExternalGeometry( std::vector<DocumentObject*> &Objects, 
+                                                  std::vector<std::string> &SubElements);
 
 private:
     /// Flag to allow external geometry from other bodies than the one this sketch belongs to
@@ -374,8 +392,6 @@ private:
 
     /// Flag to allow carbon copy from misaligned geometry
     bool allowUnaligned;
-
-    std::vector<Part::Geometry *> ExternalGeo;
 
     std::vector<int> VertexId2GeoId;
     std::vector<PointPos> VertexId2PosId;
