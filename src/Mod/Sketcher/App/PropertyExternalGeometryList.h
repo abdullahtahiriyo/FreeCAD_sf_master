@@ -1,0 +1,61 @@
+/***************************************************************************
+ *   Copyright (c) 2018 Abdullah Tahiri <abdullah.tahiri.yo@gmail.com>     *
+ *                                                                         *
+ *   This file is part of the FreeCAD CAx development system.              *
+ *                                                                         *
+ *   This library is free software; you can redistribute it and/or         *
+ *   modify it under the terms of the GNU Library General Public           *
+ *   License as published by the Free Software Foundation; either          *
+ *   version 2 of the License, or (at your option) any later version.      *
+ *                                                                         *
+ *   This library  is distributed in the hope that it will be useful,      *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   GNU Library General Public License for more details.                  *
+ *                                                                         *
+ *   You should have received a copy of the GNU Library General Public     *
+ *   License along with this library; see the file COPYING.LIB. If not,    *
+ *   write to the Free Software Foundation, Inc., 59 Temple Place,         *
+ *   Suite 330, Boston, MA  02111-1307, USA                                *
+ *                                                                         *
+ ***************************************************************************/
+
+
+#ifndef APP_PropertyExternalGeometryList_H
+#define APP_PropertyExternalGeometryList_H
+
+#include <App/PropertyLinks.h>
+
+
+namespace Base {
+class Writer;
+}
+
+namespace Sketcher
+{
+
+    class AppExport PropertyExternalGeometryList: public App::PropertyLinkSubList
+    {
+        TYPESYSTEM_HEADER();
+
+    public:
+        /**
+         * A constructor.
+         * A more elaborate description of the constructor.
+         */
+        PropertyExternalGeometryList();
+
+        /**
+         * A destructor.
+         * A more elaborate description of the destructor.
+         */
+        virtual ~PropertyExternalGeometryList();
+
+    private:
+        std::vector<bool>     _lboolList;
+};
+
+} // namespace Sketcher
+
+
+#endif // APP_PropertyExternalGeometryList_H
