@@ -4580,50 +4580,11 @@ int SketchObject::carbonCopy(App::DocumentObject * pObj, bool construction)
 
 int SketchObject::addExternal(App::DocumentObject *Obj, const char* SubName)
 {
-    // so far only externals to the support of the sketch and datum features
-    if (!isExternalAllowed(Obj->getDocument(), Obj))
-       return -1;
+    assert(ExternalGeometry.getSize() == int(ExternalGeo.size()-2));
 
-    // get the actual lists of the externals
-    std::vector<DocumentObject*> Objects     = ExternalGeometry.getValues();
-    std::vector<std::string>     SubElements = ExternalGeometry.getSubValues();
+    std::string str(SubName);
 
-    const std::vector<DocumentObject*> originalObjects = Objects;
-    const std::vector<std::string>     originalSubElements = SubElements;
-
-    if (Objects.size() != SubElements.size()) {
-        assert(0 /*counts of objects and subelements in external geometry links do not match*/);
-        Base::Console().Error("Internal error: counts of objects and subelements in external geometry links do not match\n");
-        return -1;
-    }
-
-    for (size_t i = 0  ;  i < Objects.size()  ;  ++i){
-        if (Objects[i] == Obj   &&   std::string(SubName) == SubElements[i]){
-            Base::Console().Error("Link to %s already exists in this sketch.\n",SubName);
-            return -1;
-        }
-    }
-
-    // add the new ones
-    Objects.push_back(Obj);
-    SubElements.push_back(std::string(SubName));
-
-    // set the Link list.
-    ExternalGeometry.setValues(Objects,SubElements);
-    try {
-        rebuildExternalGeometry();
-    }
-    catch (const Base::Exception& e) {
-        Base::Console().Error("%s\n", e.what());
-        // revert to original values
-        ExternalGeometry.setValues(originalObjects,originalSubElements);
-        return -1;
-    }
-
-    solverNeedsUpdate=true;
-    Constraints.acceptGeometry(getCompleteGeometry());
-    rebuildVertexIndex();
-    return ExternalGeometry.getValues().size()-1;
+    return addLinkToExternalGeometry(Obj,str);
 }
 
 int SketchObject::delExternal(int ExtGeoId)
@@ -5248,6 +5209,74 @@ void SketchObject::AddLinksToArray( std::vector<DocumentObject*> &Objects,
                 break;
         }
     }
+}
+
+int SketchObject::addLinksToExternalGeometry( std::vector<DocumentObject*> &objects, 
+                                              std::vector<std::string> &subElements)
+{
+    // get the actual lists of the externals
+    std::vector<DocumentObject*> Objects     = ExternalGeometry.getValues();
+    std::vector<std::string>     SubElements = ExternalGeometry.getSubValues();
+
+    if (Objects.size() != SubElements.size()) {
+        assert(0 /*counts of objects and subelements in external geometry links do not match*/);
+        Base::Console().Error("Internal error: counts of objects and subelements in external geometry links do not match\n");
+        return -1;
+    }
+
+    for(size_t j = 0  ;  j < objects.size()  ;  ++j) {
+        if (!isExternalAllowed(objects[j]->getDocument(), objects[j]))
+            return -1;
+
+        for (size_t i = 0  ;  i < Objects.size()  ;  ++i){
+            if (Objects[i] == objects[j]   &&   subElements[j] == SubElements[i]){
+                Base::Console().Error("Link to %s already exists in this sketch.\n",subElements[j]);
+                return -1;
+            }
+        }
+    }
+
+    const std::vector<DocumentObject*> originalObjects = Objects;
+    const std::vector<std::string>     originalSubElements = SubElements;
+
+    // add the new link
+    Objects.insert(Objects.end(), objects.begin(), objects.end());
+    SubElements.insert(SubElements.end(), subElements.begin(), subElements.end());
+
+    ExternalGeometry.setValues(Objects,SubElements);
+
+    // add the new element
+
+    std::vector< Part::Geometry * > newVals(0);
+
+    try {
+        AddLinksToArray(objects, subElements, newVals);
+    }
+    catch (const Base::Exception& e) {
+        Base::Console().Error("%s\n", e.what());
+        // revert to original values
+        ExternalGeometry.setValues(originalObjects,originalSubElements);
+        return -1;
+    }
+
+    ExternalGeo.insert(ExternalGeo.end(),newVals.begin(),newVals.end());
+
+    solverNeedsUpdate=true;
+    Constraints.acceptGeometry(getCompleteGeometry());
+    rebuildVertexIndex();
+
+    return ExternalGeometry.getValues().size()-1;
+}
+
+int SketchObject::addLinkToExternalGeometry(DocumentObject* Object, std::string & SubElement)
+{
+    std::vector<DocumentObject*> objects(0);
+    std::vector<std::string>     subElements(0);
+
+    objects.push_back(Object);
+    subElements.push_back(SubElement);
+
+    return addLinksToExternalGeometry(objects, subElements);
 }
 
 void SketchObject::rebuildExternalGeometry(void)

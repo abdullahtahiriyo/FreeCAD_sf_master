@@ -385,6 +385,10 @@ protected:
      */
     void AddLinkToArray( DocumentObject* &Object, std::string &SubElement, std::vector< Part::Geometry * > &newVals);
 
+    int addLinkToExternalGeometry(DocumentObject* Object, std::string & SubElement);
+
+    int addLinksToExternalGeometry( std::vector<DocumentObject*> &Objects, std::vector<std::string> &SubElements);
+
 private:
     /// Flag to allow external geometry from other bodies than the one this sketch belongs to
     bool allowOtherBody;
