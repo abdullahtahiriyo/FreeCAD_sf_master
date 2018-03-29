@@ -61,6 +61,7 @@
 #endif
 
 #include <boost/bind.hpp>
+#include <boost/dynamic_bitset.hpp>
 
 #include <App/Document.h>
 #include <App/FeaturePythonPyImp.h>
@@ -95,9 +96,12 @@ PROPERTY_SOURCE(Sketcher::SketchObject, Part::Part2DObject)
 
 SketchObject::SketchObject()
 {
-    ADD_PROPERTY_TYPE(Geometry,        (0)  ,"Sketch",(App::PropertyType)(App::Prop_None),"Sketch geometry");
-    ADD_PROPERTY_TYPE(Constraints,     (0)  ,"Sketch",(App::PropertyType)(App::Prop_None),"Sketch constraints");
-    ADD_PROPERTY_TYPE(ExternalGeometry,(0,0),"Sketch",(App::PropertyType)(App::Prop_None),"Sketch external geometry");
+    ADD_PROPERTY_TYPE(Geometry,        (0)      ,"Sketch",(App::PropertyType)(App::Prop_None),"Sketch geometry");
+    ADD_PROPERTY_TYPE(Constraints,     (0)      ,"Sketch",(App::PropertyType)(App::Prop_None),"Sketch constraints");
+    ADD_PROPERTY_TYPE(ExternalGeometry,(0,0)    ,"Sketch",(App::PropertyType)(App::Prop_None),"Sketch external geometry");
+    ADD_PROPERTY_TYPE(ExternalDefining,(false)  ,"Sketch",(App::PropertyType)(App::Prop_None),"Sketch external geometry defining");
+
+    ExternalDefining.setSize(0); // unexpectedly size defaults to 1.
 
     allowOtherBody = true;
     allowUnaligned = true;
@@ -114,15 +118,15 @@ SketchObject::SketchObject()
     ExternalGeo.push_back(HLine);
     ExternalGeo.push_back(VLine);
     rebuildVertexIndex();
-    
+
     lastDoF=0;
     lastHasConflict=false;
     lastHasRedundancies=false;
     lastSolverStatus=0;
     lastSolveTime=0;
-    
+
     solverNeedsUpdate=false;
-    
+
     noRecomputes=false;
 
     ExpressionEngine.setValidator(boost::bind(&Sketcher::SketchObject::validateExpression, this, _1, _2));
@@ -4869,7 +4873,7 @@ bool SketchObject::validateExternalLinks(void)
                     if (copiedConstr->Third < GeoId &&
                         copiedConstr->Third != Constraint::GeoUndef)
                         copiedConstr->Third += 1;
-                    
+
                     newConstraints.push_back(copiedConstr);
                 }
             }
@@ -5876,9 +5880,26 @@ void SketchObject::onDocumentRestored()
 {
     try {
         if(!validateExternalLinks()) {
-            rebuildExternalGeometry();
+
+            rebuildExternalGeometry(); // dynamically building ExternalGeo Array on restored, or it has already been done in validateExternalLinks.
+
             Constraints.acceptGeometry(getCompleteGeometry());
         }
+
+        if( ExternalDefining.getSize()>0 ) {
+            if( ExternalDefining.getSize() == ExternalGeometry.getSize() ) {
+                // update external geometry construction state.
+                boost::dynamic_bitset<> bvals = ExternalDefining.getValues();
+
+                for (size_t i=2; i < ExternalGeo.size();i++) // omit V and H axes
+                    ExternalGeo[i]->Construction = bvals[i-2];
+            }
+            else {
+                Base::Console().Error("Defining External geometry property size is different from external geometry size.\n\n");
+                Base::Console().Error("The defining state of external geometry of this sketch will be lost.\n");
+            }
+        }
+
         // this may happen when saving a sketch directly in edit mode
         // but never performed a recompute before
         if (Shape.getValue().IsNull() && hasConflicts() == 0) {
