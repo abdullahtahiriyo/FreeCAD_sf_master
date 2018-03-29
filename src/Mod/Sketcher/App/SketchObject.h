@@ -370,6 +370,21 @@ protected:
      */
     std::vector<Part::Geometry *> supportedGeometry(const std::vector<Part::Geometry *> &geoList) const;
 
+    /*!
+     \brief Add the geometry objects corresponding to the objects and subelements of the links to the newVals array
+     \param Objects - objects defining the external links
+     \param SubElements - subelements of the objects defining the external links
+     \outparam newVals - external geometry object
+     */
+    void AddLinksToArray( std::vector<DocumentObject*> &Objects, std::vector<std::string> &SubElements, std::vector< Part::Geometry * > &newVals);
+    /*!
+     \brief Add the geometry object corresponding to the object and subelement of the link to the newVals array
+     \param Object - objects defining the external links
+     \param SubElement - subelements of the objects defining the external links
+     \outparam newVals - external geometry object
+     */
+    void AddLinkToArray( DocumentObject* &Object, std::string &SubElement, std::vector< Part::Geometry * > &newVals);
+
 private:
     /// Flag to allow external geometry from other bodies than the one this sketch belongs to
     bool allowOtherBody;

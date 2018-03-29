@@ -4896,12 +4896,23 @@ bool SketchObject::validateExternalLinks(void)
     return rebuild;
 }
 
-void SketchObject::rebuildExternalGeometry(void)
+void SketchObject::AddLinkToArray( DocumentObject* &Object, 
+                                   std::string &SubElement,
+                                   std::vector< Part::Geometry * > &newVals)
 {
-    // get the actual lists of the externals
-    std::vector<DocumentObject*> Objects     = ExternalGeometry.getValues();
-    std::vector<std::string>     SubElements = ExternalGeometry.getSubValues();
+    std::vector<DocumentObject*> objects(0);
+    std::vector<std::string>     subElements(0);
 
+    objects.push_back(Object);
+    subElements.push_back(SubElement);
+
+    AddLinksToArray(objects, subElements, newVals);
+}
+
+void SketchObject::AddLinksToArray( std::vector<DocumentObject*> &Objects, 
+                                    std::vector<std::string> &SubElements,
+                                    std::vector< Part::Geometry * > &newVals)
+{
     Base::Placement Plm = Placement.getValue();
     Base::Vector3d Pos = Plm.getPosition();
     Base::Rotation Rot = Plm.getRotation();
@@ -4916,10 +4927,10 @@ void SketchObject::rebuildExternalGeometry(void)
     mov.SetValues(invMat[0][0],invMat[0][1],invMat[0][2],invMat[0][3],
                   invMat[1][0],invMat[1][1],invMat[1][2],invMat[1][3],
                   invMat[2][0],invMat[2][1],invMat[2][2],invMat[2][3]
-#if OCC_VERSION_HEX < 0x060800
+                  #if OCC_VERSION_HEX < 0x060800
                   , 0.00001, 0.00001
-#endif
-                  ); //precision was removed in OCCT CR0025194
+                  #endif
+    ); //precision was removed in OCCT CR0025194
 
     gp_Ax3 sketchAx3(gp_Pnt(Pos.x,Pos.y,Pos.z),
                      gp_Dir(dN.x,dN.y,dN.z),
@@ -4930,20 +4941,9 @@ void SketchObject::rebuildExternalGeometry(void)
     BRepBuilderAPI_MakeFace mkFace(sketchPlane);
     TopoDS_Shape aProjFace = mkFace.Shape();
 
-    for (std::vector<Part::Geometry *>::iterator it=ExternalGeo.begin(); it != ExternalGeo.end(); ++it)
-        if (*it) delete *it;
-    ExternalGeo.clear();
-    Part::GeomLineSegment *HLine = new Part::GeomLineSegment();
-    Part::GeomLineSegment *VLine = new Part::GeomLineSegment();
-    HLine->setPoints(Base::Vector3d(0,0,0),Base::Vector3d(1,0,0));
-    VLine->setPoints(Base::Vector3d(0,0,0),Base::Vector3d(0,1,0));
-    HLine->Construction = true;
-    VLine->Construction = true;
-    ExternalGeo.push_back(HLine);
-    ExternalGeo.push_back(VLine);
     for (int i=0; i < int(Objects.size()); i++) {
         const App::DocumentObject *Obj=Objects[i];
-        const std::string SubElement=SubElements[i];        
+        const std::string SubElement=SubElements[i];
 
         TopoDS_Shape refSubShape;
 
@@ -4957,7 +4957,6 @@ void SketchObject::rebuildExternalGeometry(void)
                 refSubShape = refShape.getSubShape(SubElement.c_str());
             }
             catch (Standard_Failure& e) {
-        
                 throw Base::Exception(e.GetMessageString());
             }
         } else  if (Obj->getTypeId().isDerivedFrom(App::Plane::getClassTypeId())) {
@@ -4980,7 +4979,7 @@ void SketchObject::rebuildExternalGeometry(void)
 
         switch (refSubShape.ShapeType())
         {
-        case TopAbs_FACE:
+            case TopAbs_FACE:
             {
                 const TopoDS_Face& face = TopoDS::Face(refSubShape);
                 BRepAdaptor_Surface surface(face);
@@ -4998,7 +4997,7 @@ void SketchObject::rebuildExternalGeometry(void)
                             const TopoDS_Edge& edge = TopoDS::Edge(builder.Shape());
                             BRepAdaptor_Curve curve(edge);
                             if (curve.GetType() == GeomAbs_Line) {
-                                ExternalGeo.push_back(projectLine(curve, gPlane, invPlm));
+                                newVals.push_back(projectLine(curve, gPlane, invPlm));
                             }
                         }
 
@@ -5010,12 +5009,12 @@ void SketchObject::rebuildExternalGeometry(void)
                 }
             }
             break;
-        case TopAbs_EDGE:
+            case TopAbs_EDGE:
             {
                 const TopoDS_Edge& edge = TopoDS::Edge(refSubShape);
                 BRepAdaptor_Curve curve(edge);
                 if (curve.GetType() == GeomAbs_Line) {
-                    ExternalGeo.push_back(projectLine(curve, gPlane, invPlm));
+                    newVals.push_back(projectLine(curve, gPlane, invPlm));
                 }
                 else if (curve.GetType() == GeomAbs_Circle) {
                     gp_Dir vec1 = sketchPlane.Axis().Direction();
@@ -5038,16 +5037,16 @@ void SketchObject::rebuildExternalGeometry(void)
                             gCircle->setCenter(Base::Vector3d(cnt.X(),cnt.Y(),cnt.Z()));
 
                             gCircle->Construction = true;
-                            ExternalGeo.push_back(gCircle);
+                            newVals.push_back(gCircle);
                         }
                         else {
                             Part::GeomArcOfCircle* gArc = new Part::GeomArcOfCircle();
                             Handle(Geom_Curve) hCircle = new Geom_Circle(circle);
                             Handle(Geom_TrimmedCurve) tCurve = new Geom_TrimmedCurve(hCircle, curve.FirstParameter(),
-                                                                                    curve.LastParameter());
+                                                                                     curve.LastParameter());
                             gArc->setHandle(tCurve);
                             gArc->Construction = true;
-                            ExternalGeo.push_back(gArc);
+                            newVals.push_back(gArc);
                         }
                     }
                     else {
@@ -5078,13 +5077,13 @@ void SketchObject::rebuildExternalGeometry(void)
                                         Base::Vector3d p = (p1 + p2) / 2;
                                         Part::GeomPoint* point = new Part::GeomPoint(p);
                                         point->Construction = true;
-                                        ExternalGeo.push_back(point);
+                                        newVals.push_back(point);
                                     }
                                     else {
                                         Part::GeomLineSegment* line = new Part::GeomLineSegment();
                                         line->setPoints(p1,p2);
                                         line->Construction = true;
-                                        ExternalGeo.push_back(line);
+                                        newVals.push_back(line);
                                     }
                                 }
                                 else if (projCurve.GetType() == GeomAbs_Circle) {
@@ -5099,16 +5098,16 @@ void SketchObject::rebuildExternalGeometry(void)
                                         circle->setCenter(Base::Vector3d(p.X(),p.Y(),p.Z()));
 
                                         circle->Construction = true;
-                                        ExternalGeo.push_back(circle);
+                                        newVals.push_back(circle);
                                     }
                                     else {
                                         Part::GeomArcOfCircle* arc = new Part::GeomArcOfCircle();
                                         Handle(Geom_Curve) curve = new Geom_Circle(c);
                                         Handle(Geom_TrimmedCurve) tCurve = new Geom_TrimmedCurve(curve, projCurve.FirstParameter(),
-                                                                                                projCurve.LastParameter());
+                                                                                                 projCurve.LastParameter());
                                         arc->setHandle(tCurve);
                                         arc->Construction = true;
-                                        ExternalGeo.push_back(arc);
+                                        newVals.push_back(arc);
                                     }
                                 } else if (projCurve.GetType() == GeomAbs_BSplineCurve) {
                                     // Unfortunately, a normal projection of a circle can also give a Bspline
@@ -5130,18 +5129,18 @@ void SketchObject::rebuildExternalGeometry(void)
                                         circle->setCenter(Base::Vector3d(center.X(), center.Y(), center.Z()));
 
                                         circle->Construction = true;
-                                        ExternalGeo.push_back(circle);
+                                        newVals.push_back(circle);
                                     } else {
                                         Part::GeomBSplineCurve* bspline = new Part::GeomBSplineCurve(projCurve.BSpline());
                                         bspline->Construction = true;
-                                        ExternalGeo.push_back(bspline);
+                                        newVals.push_back(bspline);
                                     }
                                 } else if (projCurve.GetType() == GeomAbs_Hyperbola) {
                                     gp_Hypr e = projCurve.Hyperbola();
                                     gp_Pnt p = e.Location();
                                     gp_Pnt P1 = projCurve.Value(projCurve.FirstParameter());
                                     gp_Pnt P2 = projCurve.Value(projCurve.LastParameter());
-                                    
+
                                     gp_Dir normal = e.Axis().Direction();
                                     gp_Dir xdir = e.XAxis().Direction();
                                     gp_Ax2 xdirref(p, normal);
@@ -5153,23 +5152,23 @@ void SketchObject::rebuildExternalGeometry(void)
                                         hyperbola->setCenter(Base::Vector3d(p.X(),p.Y(),p.Z()));
                                         hyperbola->setAngleXU(-xdir.AngleWithRef(xdirref.XDirection(),normal));
                                         hyperbola->Construction = true;
-                                        ExternalGeo.push_back(hyperbola);
+                                        newVals.push_back(hyperbola);
                                     }
                                     else {
                                         Part::GeomArcOfHyperbola* aoh = new Part::GeomArcOfHyperbola();
                                         Handle(Geom_Curve) curve = new Geom_Hyperbola(e);
                                         Handle(Geom_TrimmedCurve) tCurve = new Geom_TrimmedCurve(curve, projCurve.FirstParameter(),
-                                                                                                projCurve.LastParameter());
+                                                                                                 projCurve.LastParameter());
                                         aoh->setHandle(tCurve);
                                         aoh->Construction = true;
-                                        ExternalGeo.push_back(aoh);
+                                        newVals.push_back(aoh);
                                     }
                                 } else if (projCurve.GetType() == GeomAbs_Parabola) {
                                     gp_Parab e = projCurve.Parabola();
                                     gp_Pnt p = e.Location();
                                     gp_Pnt P1 = projCurve.Value(projCurve.FirstParameter());
                                     gp_Pnt P2 = projCurve.Value(projCurve.LastParameter());
-                                    
+
                                     gp_Dir normal = e.Axis().Direction();
                                     gp_Dir xdir = e.XAxis().Direction();
                                     gp_Ax2 xdirref(p, normal);
@@ -5180,16 +5179,16 @@ void SketchObject::rebuildExternalGeometry(void)
                                         parabola->setCenter(Base::Vector3d(p.X(),p.Y(),p.Z()));
                                         parabola->setAngleXU(-xdir.AngleWithRef(xdirref.XDirection(),normal));
                                         parabola->Construction = true;
-                                        ExternalGeo.push_back(parabola);
+                                        newVals.push_back(parabola);
                                     }
                                     else {
                                         Part::GeomArcOfParabola* aop = new Part::GeomArcOfParabola();
                                         Handle(Geom_Curve) curve = new Geom_Parabola(e);
                                         Handle(Geom_TrimmedCurve) tCurve = new Geom_TrimmedCurve(curve, projCurve.FirstParameter(),
-                                                                                                projCurve.LastParameter());
+                                                                                                 projCurve.LastParameter());
                                         aop->setHandle(tCurve);
                                         aop->Construction = true;
-                                        ExternalGeo.push_back(aop);
+                                        newVals.push_back(aop);
                                     }
                                 }
                                 else if (projCurve.GetType() == GeomAbs_Ellipse) {
@@ -5197,7 +5196,7 @@ void SketchObject::rebuildExternalGeometry(void)
                                     gp_Pnt p = e.Location();
                                     gp_Pnt P1 = projCurve.Value(projCurve.FirstParameter());
                                     gp_Pnt P2 = projCurve.Value(projCurve.LastParameter());
-                                    
+
                                     //gp_Dir normal = e.Axis().Direction();
                                     gp_Dir normal = gp_Dir(0,0,1);
                                     gp_Ax2 xdirref(p, normal);
@@ -5207,18 +5206,18 @@ void SketchObject::rebuildExternalGeometry(void)
                                         Handle(Geom_Ellipse) curve = new Geom_Ellipse(e);
                                         ellipse->setHandle(curve);
                                         ellipse->Construction = true;
-                                        ExternalGeo.push_back(ellipse);
+                                        newVals.push_back(ellipse);
                                     }
                                     else {
                                         Part::GeomArcOfEllipse* aoe = new Part::GeomArcOfEllipse();
                                         Handle(Geom_Curve) curve = new Geom_Ellipse(e);
                                         Handle(Geom_TrimmedCurve) tCurve = new Geom_TrimmedCurve(curve, projCurve.FirstParameter(),
-                                                                                                projCurve.LastParameter());
+                                                                                                 projCurve.LastParameter());
                                         aoe->setHandle(tCurve);
                                         aoe->Construction = true;
-                                        ExternalGeo.push_back(aoe);
+                                        newVals.push_back(aoe);
                                     }
-                                }                                
+                                }
                                 else {
                                     throw Base::Exception("Not yet supported geometry for external geometry");
                                 }
@@ -5226,13 +5225,12 @@ void SketchObject::rebuildExternalGeometry(void)
                         }
                     }
                     catch (Standard_Failure& e) {
-                
                         throw Base::Exception(e.GetMessageString());
                     }
                 }
             }
             break;
-        case TopAbs_VERTEX:
+            case TopAbs_VERTEX:
             {
                 gp_Pnt P = BRep_Tool::Pnt(TopoDS::Vertex(refSubShape));
                 GeomAPI_ProjectPointOnSurf proj(P,gPlane);
@@ -5242,17 +5240,41 @@ void SketchObject::rebuildExternalGeometry(void)
 
                 Part::GeomPoint* point = new Part::GeomPoint(p);
                 point->Construction = true;
-                ExternalGeo.push_back(point);
+                newVals.push_back(point);
             }
             break;
-        default:
-            throw Base::Exception("Unknown type of geometry");
-            break;
+            default:
+                throw Base::Exception("Unknown type of geometry");
+                break;
         }
     }
+}
+
+void SketchObject::rebuildExternalGeometry(void)
+{
+    // get the actual lists of the externals
+    std::vector<DocumentObject*> Objects     = ExternalGeometry.getValues();
+    std::vector<std::string>     SubElements = ExternalGeometry.getSubValues();
+
+    for (std::vector<Part::Geometry *>::iterator it=ExternalGeo.begin(); it != ExternalGeo.end(); ++it)
+        if (*it) delete *it;
+
+    ExternalGeo.clear();
+
+    Part::GeomLineSegment *HLine = new Part::GeomLineSegment();
+    Part::GeomLineSegment *VLine = new Part::GeomLineSegment();
+    HLine->setPoints(Base::Vector3d(0,0,0),Base::Vector3d(1,0,0));
+    VLine->setPoints(Base::Vector3d(0,0,0),Base::Vector3d(0,1,0));
+    HLine->Construction = true;
+    VLine->Construction = true;
+    ExternalGeo.push_back(HLine);
+    ExternalGeo.push_back(VLine);
+
+    AddLinksToArray(Objects, SubElements, ExternalGeo);
 
     rebuildVertexIndex();
 }
+
 
 std::vector<Part::Geometry*> SketchObject::getCompleteGeometry(void) const
 {
