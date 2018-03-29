@@ -32,6 +32,7 @@
 #include <Mod/Part/App/Part2DObject.h>
 #include <Mod/Part/App/PropertyGeometryList.h>
 #include <Mod/Sketcher/App/PropertyConstraintList.h>
+#include <Mod/Sketcher/App/PropertyExternalGeometryList.h>
 
 #include "Sketch.h"
 
@@ -57,7 +58,7 @@ public:
     /// Property
     Part    ::PropertyGeometryList   Geometry;
     Sketcher::PropertyConstraintList Constraints;
-    App     ::PropertyLinkSubList    ExternalGeometry;
+    Sketcher::PropertyExternalGeometryList    ExternalGeometry;
     /** @name methods override Feature */
     //@{
     /// recalculate the Feature (if no recompute is needed see also solve() and solverNeedsUpdate boolean)
