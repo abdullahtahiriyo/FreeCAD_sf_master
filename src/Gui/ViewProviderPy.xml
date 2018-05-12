@@ -60,6 +60,21 @@
 				<UserDocu>Show a list of all display modes</UserDocu>
 			</Documentation>
 		</Methode>
+        <Methode Name="isClipPlaneActive">
+            <Documentation>
+                <UserDocu>Indicates whether the ViewProvider Clipping Plane is activated or not</UserDocu>
+            </Documentation>
+        </Methode>
+        <Methode Name="enableClipPlane">
+            <Documentation>
+                <UserDocu>Activates the ViewProvider Clipping Plane</UserDocu>
+            </Documentation>
+        </Methode>
+        <Methode Name="disableClipPlane">
+            <Documentation>
+                <UserDocu>Deactivates the ViewProvider Clipping Plane</UserDocu>
+            </Documentation>
+        </Methode>
 		<Methode Name="toString">
 			<Documentation>
 				<UserDocu>Return a string representation of the Inventor node</UserDocu>
@@ -113,6 +128,12 @@
         <UserDocu>Represents the whole ViewProvider as an Inventor string.</UserDocu>
       </Documentation>
       <Parameter Name="IV" Type="String" />
+    </Attribute>
+    <Attribute Name="ClipPlane" ReadOnly="false">
+        <Documentation>
+            <UserDocu>The Plane for the ViewProvider Clipping Plane functionality.</UserDocu>
+        </Documentation>
+        <Parameter Name="ClipPlane" Type="Object" />
     </Attribute>
   </PythonExport>
 </GenerateModel>

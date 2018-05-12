@@ -36,11 +36,13 @@
 
 class SbVec2s;
 class SbVec3f;
+class SbPlane;
 class SoNode;
 class SoPath;
 class SoSeparator;
 class SoEvent;
 class SoSwitch;
+class SoClipPlane;
 class SoTransform;
 class SbMatrix;
 class SoEventCallback;
@@ -339,6 +341,13 @@ public:
     void setDefaultMode(int);
     //@}
     
+public:
+    void setClipPlane(SbPlane plane);
+    SoClipPlane * getClipPlane() const;
+    void enableClipPlane();
+    void disableClipPlane();
+    bool isClipPlaneActive() const;
+    
 protected:
     /** Helper method to check that the node is valid, i.e. it must not cause
      * and infinite recursion.
@@ -367,6 +376,7 @@ protected:
     SoSwitch    *pcModeSwitch;
     /// The root separator for annotations
     SoSeparator *pcAnnotation;
+    SoClipPlane   *pcClipPlane;
     ViewProviderPy* pyViewObject;
     std::string overrideMode;
     std::bitset<32> StatusBits;

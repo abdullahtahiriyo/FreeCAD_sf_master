@@ -28,10 +28,12 @@
 # include <QDataStream>
 #endif
 
+#include <Inventor/SbPlane.h>
 #include <Inventor/SoDB.h>
 #include <Inventor/actions/SoWriteAction.h>
 #include <Inventor/nodes/SoCone.h>
 #include <Inventor/nodes/SoSeparator.h>
+#include <Inventor/nodes/SoClipPlane.h>
 
 #include "ViewProvider.h"
 #include "WidgetFactory.h"
@@ -169,6 +171,35 @@ PyObject* ViewProviderPy::addDisplayMode(PyObject * args)
         getViewProviderPtr()->addDisplayMaskMode(node,mode);
         Py_Return;
     } PY_CATCH;
+}
+
+PyObject*  ViewProviderPy::enableClipPlane(PyObject *args)
+{
+    if (!PyArg_ParseTuple(args, ""))     // convert args: Python->C 
+        return NULL;                       // NULL triggers exception 
+        PY_TRY {
+            getViewProviderPtr()->enableClipPlane();
+            Py_Return;
+        } PY_CATCH;
+}
+
+PyObject*  ViewProviderPy::disableClipPlane(PyObject *args)
+{
+    if (!PyArg_ParseTuple(args, ""))     // convert args: Python->C 
+        return NULL;                       // NULL triggers exception 
+        PY_TRY {
+            getViewProviderPtr()->disableClipPlane();
+            Py_Return;
+        } PY_CATCH;
+}
+
+PyObject*  ViewProviderPy::isClipPlaneActive(PyObject *args)
+{
+    if (!PyArg_ParseTuple(args, ""))     // convert args: Python->C 
+        return NULL;                       // NULL triggers exception 
+        PY_TRY {
+            return Py_BuildValue("O", (getViewProviderPtr()->isClipPlaneActive() ? Py_True : Py_False));
+        } PY_CATCH;
 }
 
 PyObject*  ViewProviderPy::listDisplayModes(PyObject *args)
@@ -328,9 +359,45 @@ Py::Object ViewProviderPy::getRootNode(void) const
     }
 }
 
-void  ViewProviderPy::setRootNode(Py::Object)
+void  ViewProviderPy::setRootNode(Py::Object) 
 {
 
+}
+
+Py::Object ViewProviderPy::getClipPlane(void) const
+{
+    try {
+        SoClipPlane * plane = getViewProviderPtr()->getClipPlane();
+ 
+        PyObject* Ptr = Base::Interpreter().createSWIGPointerObj("pivy.coin","SoClipPlane *", plane, 1);
+        plane->ref();
+        return Py::Object(Ptr, true);
+    }
+    catch (const Base::Exception& e) {
+        throw Py::RuntimeError(e.what());
+    }
+}
+
+void  ViewProviderPy::setClipPlane(Py::Object value) 
+{
+    void* ptr = 0;
+    try {
+        Base::Interpreter().convertSWIGPointerObj("pivy.coin","SoClipPlane *", value.ptr(), &ptr, 0);
+    }
+    catch (const Base::Exception& e) {
+        throw Py::TypeError(e.what());
+        return;
+    }
+
+    try {
+        SoClipPlane* clipplane = reinterpret_cast<SoClipPlane*>(ptr);
+        getViewProviderPtr()->setClipPlane(clipplane->plane.getValue());
+        return;
+    }
+    catch (const Base::Exception& e) {
+        throw Py::TypeError(e.what());
+        return;
+    }
 }
 
 static char * buffer;

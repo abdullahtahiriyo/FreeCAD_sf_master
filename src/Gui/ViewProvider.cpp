@@ -26,11 +26,13 @@
 #ifndef _PreComp_
 # include <QPixmap>
 # include <QTimer>
+# include <Inventor/SbPlane.h>
 # include <Inventor/SoPickedPoint.h>
 # include <Inventor/nodes/SoSeparator.h>
 # include <Inventor/nodes/SoSwitch.h>
 # include <Inventor/nodes/SoTransform.h>
 # include <Inventor/nodes/SoCamera.h>
+# include <Inventor/nodes/SoClipPlane.h>
 # include <Inventor/events/SoMouseButtonEvent.h>
 # include <Inventor/events/SoLocation2Event.h>
 # include <Inventor/actions/SoGetMatrixAction.h>
@@ -83,6 +85,10 @@ ViewProvider::ViewProvider()
     pcModeSwitch->ref();
     pcTransform  = new SoTransform();
     pcTransform->ref();
+    pcClipPlane  = new SoClipPlane();
+    pcClipPlane->on = false;
+    pcClipPlane->ref();
+    pcRoot->addChild(pcClipPlane);
     pcRoot->addChild(pcTransform);
     pcRoot->addChild(pcModeSwitch);
     sPixmap = "px";
@@ -99,6 +105,7 @@ ViewProvider::~ViewProvider()
     pcRoot->unref();
     pcTransform->unref();
     pcModeSwitch->unref();
+    pcClipPlane->unref();
     if (pcAnnotation)
         pcAnnotation->unref();
 }
@@ -412,6 +419,31 @@ void ViewProvider::setModeSwitch()
 void ViewProvider::setDefaultMode(int val)
 {
     _iActualMode = val;
+}
+
+void ViewProvider::setClipPlane(SbPlane plane)
+{
+    pcClipPlane->plane.setValue(plane);
+}
+
+SoClipPlane * ViewProvider::getClipPlane() const
+{
+    return pcClipPlane;
+}
+
+void ViewProvider::enableClipPlane()
+{
+    pcClipPlane->on = true;
+}
+
+void ViewProvider::disableClipPlane()
+{
+    pcClipPlane->on = false;
+}
+
+bool ViewProvider::isClipPlaneActive() const
+{
+    return pcClipPlane->on.getValue();
 }
 
 void ViewProvider::onChanged(const App::Property* prop)
