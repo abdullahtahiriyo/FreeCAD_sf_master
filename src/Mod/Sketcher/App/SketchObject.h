@@ -31,6 +31,7 @@
 #include <Mod/Part/App/Part2DObject.h>
 #include <Mod/Part/App/PropertyGeometryList.h>
 #include <Mod/Sketcher/App/PropertyConstraintList.h>
+#include <Mod/Sketcher/App/PropertyLayerList.h>
 
 #include <Mod/Sketcher/App/SketchAnalysis.h>
 
@@ -65,6 +66,7 @@ public:
     Part    ::PropertyGeometryList   Geometry;
     Sketcher::PropertyConstraintList Constraints;
     App     ::PropertyLinkSubList    ExternalGeometry;
+    Sketcher::PropertyLayerList      Layers;
     /** @name methods override Feature */
     //@{
     short mustExecute() const override;
