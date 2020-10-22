@@ -23,5 +23,13 @@
         </Documentation>
         <Parameter Name="Id" Type="Long"/>
     </Attribute>
+    <Attribute Name="LayerId" ReadOnly="false">
+        <Documentation>
+            <UserDocu>
+                returns the LayerId of the SketchGeometryExtension.
+            </UserDocu>
+        </Documentation>
+        <Parameter Name="LayerId" Type="Long"/>
+    </Attribute>
   </PythonExport>
 </GenerateModel>
