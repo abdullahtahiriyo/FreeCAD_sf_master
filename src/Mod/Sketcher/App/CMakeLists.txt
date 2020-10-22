@@ -40,11 +40,14 @@ generate_from_xml(SketchGeometryExtensionPy)
 generate_from_xml(ExternalGeometryExtensionPy)
 generate_from_xml(ConstraintPy)
 generate_from_xml(SketchPy)
+generate_from_xml(LayerPy)
 
 
 SET(Properties_SRCS
     PropertyConstraintList.cpp
     PropertyConstraintList.h
+    PropertyLayerList.cpp
+    PropertyLayerList.h
 )
 SOURCE_GROUP("Properties" FILES ${Properties_SRCS})
 
@@ -69,6 +72,10 @@ SET(Datatypes_SRCS
     Constraint.h
     Sketch.cpp
     Sketch.h
+    GeometryFacade.cpp
+    GeometryFacade.h
+    Layer.h
+    Layer.cpp
 )
 SOURCE_GROUP("Datatypes" FILES ${Datatypes_SRCS})
 
@@ -85,6 +92,8 @@ SET(Python_SRCS
     ConstraintPy.xml
     SketchPy.xml
     SketchPyImp.cpp
+    LayerPy.xml
+    LayerPyImp.cpp
 )
 SOURCE_GROUP("Python" FILES ${Python_SRCS})
 
