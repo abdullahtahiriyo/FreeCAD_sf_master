@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<GenerateModel xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="generateMetaModel_Module.xsd">
+  <PythonExport
+    Father="PersistencePy"
+    Name="LayerPy"
+    Twin="Layer"
+    TwinPointer="Layer"
+    Include="Mod/Sketcher/App/Layer.h"
+    Namespace="Sketcher"
+    FatherInclude="Base/PersistencePy.h"
+    FatherNamespace="Base"
+    Constructor="true"
+    Delete="true">
+
+    <Documentation>
+      <Author Licence="LGPL" Name="Abdullah Tahiri" EMail="abdullah.tahiri.yo@gmail.com" />
+      <UserDocu>With this object you can handle Layers</UserDocu>
+    </Documentation>
+    <Attribute Name="Id" ReadOnly="false">
+      <Documentation>
+        <UserDocu>Layer Index</UserDocu>
+      </Documentation>
+      <Parameter Name="First" Type="Long"/>
+    </Attribute>
+    <Attribute Name="Name" ReadOnly="false">
+      <Documentation>
+        <UserDocu>Name of the Layer</UserDocu>
+      </Documentation>
+      <Parameter Name="Name" Type="String"/>
+    </Attribute>
+  </PythonExport>
+</GenerateModel>
