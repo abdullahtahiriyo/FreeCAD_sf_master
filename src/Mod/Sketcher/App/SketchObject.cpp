@@ -7268,6 +7268,9 @@ void SketchObject::onUndoRedoFinished()
 void SketchObject::onDocumentRestored()
 {
     try {
+        if(!validateSketchExtensions())
+            initSketchExtensions();
+
         validateExternalLinks();
         rebuildExternalGeometry();
         Constraints.acceptGeometry(getCompleteGeometry());
@@ -7287,6 +7290,8 @@ void SketchObject::onDocumentRestored()
 void SketchObject::restoreFinished()
 {
     try {
+        if(!validateSketchExtensions())
+            initSketchExtensions();
         validateExternalLinks();
         rebuildExternalGeometry();
         Constraints.acceptGeometry(getCompleteGeometry());
@@ -7300,6 +7305,61 @@ void SketchObject::restoreFinished()
     catch (...) {
     }
 }
+
+bool SketchObject::validateSketchExtensions(void)
+{
+    auto vals = getInternalGeometry();
+
+    bool result = true;
+    bool anyset = false;
+
+    for(auto g : vals) {
+        if(!g->hasExtension(SketchGeometryExtension::getClassTypeId()))
+            result = false;
+        else
+            anyset = true;
+    }
+
+    if(!anyset) {
+        Base::Console().Warning("The geometry of sketch %s has no sketcher extension! It may be created with an older version of FreeCAD or geometry property was set manually. If not, please, report it to the forum.\n",this->getFullName().c_str());
+    }
+    else if(!result) {
+        Base::Console().Warning("Some of the geometries of sketch %s have no sketcher extension! Geometry property was set manually. If not, please, report it to the forum.\n",this->getFullName().c_str());
+    }
+
+    return result;
+}
+
+void SketchObject::initSketchExtensions(void)
+{
+    Base::StateLocker lock(managedoperation, true); // no need to check input data validity as this is an sketchobject managed operation.
+
+    const std::vector< Part::Geometry * > &vals = getInternalGeometry();
+
+    std::vector< Part::Geometry * > newVals(vals);
+
+    // deep copy
+    for(size_t i=0; i<newVals.size(); i++) {
+        newVals[i] = newVals[i]->clone();
+
+        if(!newVals[i]->hasExtension(SketchGeometryExtension::getClassTypeId())) {
+
+            newVals[i]->setExtension(std::make_unique<SketchGeometryExtension>());
+
+            long id = std::static_pointer_cast<const SketchGeometryExtension>(newVals[i]->getExtension(SketchGeometryExtension::getClassTypeId()).lock())->getId();
+
+            Base::Console().Warning("Initialised sketcher extension for GeoId: %d with Id=%d\n",i,id);
+        }
+    }
+
+    // There is not actual internal transaction going on here, however neither the geometry indices nor the vertices need to be updated
+    // so this is a convenient way of preventing it.
+    {
+        Base::StateLocker lock(internaltransaction, true);
+        this->Geometry.setValues(std::move(newVals));
+    }
+}
+
 
 void SketchObject::getGeoVertexIndex(int VertexId, int &GeoId, PointPos &PosId) const
 {
