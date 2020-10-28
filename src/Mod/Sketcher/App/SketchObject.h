@@ -448,6 +448,10 @@ protected:
 
     virtual void onUndoRedoFinished() override;
 
+    bool validateSketchExtensions(void);
+
+    void initSketchExtensions(void);
+
 private:
     /// Flag to allow external geometry from other bodies than the one this sketch belongs to
     bool allowOtherBody;
