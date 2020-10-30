@@ -441,6 +441,7 @@ protected:
      */
     std::vector<Part::Geometry *> supportedGeometry(const std::vector<Part::Geometry *> &geoList) const;
 
+    void generateId(Part::Geometry *geo);
 
     // refactoring functions
     // check whether constraint may be changed driving status
