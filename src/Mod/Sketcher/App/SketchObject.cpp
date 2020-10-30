@@ -311,6 +311,20 @@ int SketchObject::solve(bool updateGeoAfterSolving/*=true*/)
     return err;
 }
 
+void SketchObject::generateId(Part::Geometry *geo) {
+
+    auto gf = GeometryFacade::getFacade(geo); // creates underlying extension if not present
+
+    // At this point generateId creates correlative Ids for geometry. This Id is currently unused and originally intended
+    // to help the implementation of Realthunder's Geometry::Id based functionality
+    // A custom Id may be assigned as this:
+    // gf.setId(long id)
+
+    FC_LOG("generate id " << gf->getId());
+
+}
+
+
 int SketchObject::setDatum(int ConstrId, double Datum)
 {
     Base::StateLocker lock(managedoperation, true); // no need to check input data validity as this is an sketchobject managed operation.
@@ -892,6 +906,7 @@ int SketchObject::addGeometry(const std::vector<Part::Geometry *> &geoList, bool
 
     for( auto & v : geoList) {
         Part::Geometry* copy = v->copy();
+         generateId(copy);
 
         if(construction && copy->getTypeId() != Part::GeomPoint::getClassTypeId()) {
             copy->setConstruction(construction);
@@ -920,6 +935,7 @@ int SketchObject::addGeometry(const Part::Geometry *geo, bool construction/*=fal
         newVals.push_back(v->clone());
 
     Part::Geometry *geoNew = geo->copy();
+    generateId(geoNew);
 
     if(geoNew->getTypeId() != Part::GeomPoint::getClassTypeId())
         geoNew->setConstruction(construction);
@@ -2270,6 +2286,7 @@ int SketchObject::trim(int GeoId, const Base::Vector3d& point)
 
             // Create a new arc to substitute Circle in geometry list and set parameters
             Part::GeomArcOfCircle *geoNew = new Part::GeomArcOfCircle();
+            generateId(geoNew);
             geoNew->setCenter(center);
             geoNew->setRadius(circle->getRadius());
             geoNew->setRange(theta1, theta2,/*emulateCCW=*/true);
@@ -2383,6 +2400,7 @@ int SketchObject::trim(int GeoId, const Base::Vector3d& point)
 
             // Create a new arc to substitute Circle in geometry list and set parameters
             Part::GeomArcOfEllipse *geoNew = new Part::GeomArcOfEllipse();
+            generateId(geoNew);
             geoNew->setCenter(center);
             geoNew->setMajorRadius(ellipse->getMajorRadius());
             geoNew->setMinorRadius(ellipse->getMinorRadius());
@@ -3220,6 +3238,7 @@ int SketchObject::addSymmetric(const std::vector<int> &geoIdList, int refGeoId, 
         for (std::vector<int>::const_iterator it = geoIdList.begin(); it != geoIdList.end(); ++it) {
             const Part::Geometry *geo = getGeometry(*it);
             Part::Geometry *geosym = geo->copy();
+            generateId(geosym);
 
             // Handle Geometry
             if(geosym->getTypeId() == Part::GeomLineSegment::getClassTypeId()){
@@ -3480,6 +3499,7 @@ int SketchObject::addSymmetric(const std::vector<int> &geoIdList, int refGeoId, 
         for (std::vector<int>::const_iterator it = geoIdList.begin(); it != geoIdList.end(); ++it) {
             const Part::Geometry *geo = getGeometry(*it);
             Part::Geometry *geosym = geo->copy();
+            generateId(geosym);
 
             // Handle Geometry
             if(geosym->getTypeId() == Part::GeomLineSegment::getClassTypeId()){
@@ -3820,8 +3840,10 @@ int SketchObject::addCopy(const std::vector<int> &geoIdList, const Base::Vector3
                 Part::Geometry *geocopy;
 
                 // We have already cloned all geometry and constraints, we only need a copy if not moving
-                if(!moveonly)
+                if(!moveonly) {
                     geocopy = geo->copy(); // make a copy of the pointer for undo even if moving
+                    generateId(geocopy);
+                }
                 else
                     geocopy = newgeoVals[*it];
 
@@ -4029,6 +4051,7 @@ int SketchObject::addCopy(const std::vector<int> &geoIdList, const Base::Vector3
                     constrline->setPoints(sp,ep);
                     constrline->setConstruction(true);
 
+                    generateId(constrline);
                     newgeoVals.push_back(constrline);
 
                     Constraint *constNew;
@@ -5126,10 +5149,12 @@ bool SketchObject::convertToNURBS(int GeoId)
 
         if (GeoId < 0) { // external geometry
             newVals.push_back(bspline);
+            generateId(bspline);
         }
         else { // normal geometry
 
             newVals[GeoId] = bspline;
+            GeometryFacade::copyId(geo, bspline);
 
             const std::vector< Sketcher::Constraint * > &cvals = Constraints.getValues();
 
@@ -5192,7 +5217,10 @@ bool SketchObject::increaseBSplineDegree(int GeoId, int degreeincrement /*= 1*/)
 
     std::vector< Part::Geometry * > newVals(vals);
 
-    newVals[GeoId] = bspline.release();
+    Part::GeomBSplineCurve * gbsc = bspline.release();
+    GeometryFacade::copyId(geo, gbsc);
+
+    newVals[GeoId] = gbsc;
 
     // AcceptGeometry called from onChanged
     Geometry.setValues(newVals);
@@ -5247,7 +5275,9 @@ bool SketchObject::decreaseBSplineDegree(int GeoId, int degreedecrement /*= 1*/)
     Geometry.setValues(newVals);
 #else
     delGeometry(GeoId);
-    int newId = addGeometry(bspline.release());
+    Part::GeomBSplineCurve * bsplineptr = bspline.release();
+    GeometryFacade::copyId(geo, bsplineptr);
+    int newId = addGeometry(bsplineptr);
     exposeInternalGeometry(newId);
 #endif
 
@@ -5399,6 +5429,7 @@ bool SketchObject::modifyBSplineKnotMultiplicity(int GeoId, int knotIndex, int m
 
         if((int)i == GeoId) {
             newVals[i] = bspline;
+            GeometryFacade::copyId(geo, bspline);
         }
         else {
             newVals[i] = newVals[i]->clone();
@@ -5535,6 +5566,7 @@ int SketchObject::carbonCopy(App::DocumentObject * pObj, bool construction)
 
     for (std::vector<Part::Geometry *>::const_iterator it=svals.begin(); it != svals.end(); ++it){
         Part::Geometry *geoNew = (*it)->copy();
+        generateId(geoNew);
         if(construction && geoNew->getTypeId() != Part::GeomPoint::getClassTypeId()) {
             geoNew->setConstruction(true);
         }
