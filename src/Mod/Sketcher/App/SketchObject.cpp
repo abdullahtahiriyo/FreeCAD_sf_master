@@ -7234,6 +7234,61 @@ void SketchObject::Restore(XMLReader &reader)
     Part::Part2DObject::Restore(reader);
 }
 
+std::vector<std::string> SketchObject::getSpecialHandlingPropertyNames() const
+{
+    return std::vector<std::string>{"Geometry"};
+}
+
+void SketchObject::handleSpecialProperty(Base::XMLReader &reader, const char * TypeName, const char *PropName)
+{
+    Base::Type type = Base::Type::fromName(TypeName);
+
+    if (Geometry.getClassTypeId() == type && strcmp(PropName, "Geometry") == 0) {
+        // read my element
+        reader.clearPartialRestoreObject();
+        reader.readElement("GeometryList");
+        // get the value of my attribute
+        int count = reader.getAttributeAsInteger("count");
+        std::vector<Part::Geometry*> values;
+        values.reserve(count);
+        for (int i = 0; i < count; i++) {
+            reader.readElement("Geometry");
+            const char* TypeName = reader.getAttribute("type");
+            Part::Geometry *newG = (Part::Geometry *)Base::Type::fromName(TypeName).createInstance();
+
+            // We need to create or modify the extension after a potential extension is restored
+            bool hasId = reader.hasAttribute("id");
+            long id = 0;
+            if(hasId)
+                id = reader.getAttributeAsInteger("id");
+
+            newG->Restore(reader);
+
+            auto newGF = GeometryFacade::getFacade(newG);
+
+            if(hasId)
+                newGF->setId(id);
+
+            if(reader.testStatus(Base::XMLReader::ReaderStatus::PartialRestoreInObject)) {
+                Base::Console().Error("Geometry \"%s\" within a PropertyGeometryList was subject to a partial restore.\n",reader.localName());
+                // order is relevant, push the best try by the Geometry class
+                values.push_back(newG);
+                reader.clearPartialRestoreObject();
+            }
+            else {
+                values.push_back(newG);
+            }
+
+            reader.readEndElement("Geometry");
+        }
+
+        reader.readEndElement("GeometryList");
+
+        // assignment
+        Geometry.setValues(std::move(values));
+    }
+}
+
 void SketchObject::onChanged(const App::Property* prop)
 {
     if (isRestoring() && prop == &Geometry) {

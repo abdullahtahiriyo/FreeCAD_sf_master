@@ -430,6 +430,9 @@ protected:
     virtual void onDocumentRestored() override;
     virtual void restoreFinished() override;
 
+    virtual std::vector<std::string> getSpecialHandlingPropertyNames() const override;
+    virtual void handleSpecialProperty(Base::XMLReader &reader, const char * TypeName, const char *PropName) override;
+
     virtual void setExpression(const App::ObjectIdentifier &path, boost::shared_ptr<App::Expression> expr) override;
 
     std::string validateExpression(const App::ObjectIdentifier &path, boost::shared_ptr<const App::Expression> expr);
