@@ -7279,7 +7279,7 @@ void SketchObject::handleSpecialProperty(Base::XMLReader &reader, const char * T
 
             if(legacybpslineknot) {
                 newGF->setConstruction(false);
-                newGF->setInternalGeometry(SketchGeometry::BSplineKnotPoint);
+                newGF->setInternalType(InternalType::BSplineKnotPoint);
             }
 
             if(reader.testStatus(Base::XMLReader::ReaderStatus::PartialRestoreInObject)) {

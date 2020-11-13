@@ -30,8 +30,8 @@
 namespace Sketcher
 {
 
-    namespace SketchGeometry {
-        enum InternalGeometry {
+    namespace InternalType {
+        enum InternalType {
             None                    = 0,
             EllipseMajorDiameter    = 1,
             EllipseMinorDiameter    = 2,
@@ -55,8 +55,8 @@ public:
     virtual long getId() const = 0;
     virtual void setId(long id) = 0;
 
-    virtual SketchGeometry::InternalGeometry getInternalGeometry() const = 0;
-    virtual void setInternalGeometry(SketchGeometry::InternalGeometry type) = 0;
+    virtual InternalType::InternalType getInternalType() const = 0;
+    virtual void setInternalType(InternalType::InternalType type) = 0;
 };
 
 class SketcherExport SketchGeometryExtension : public Part::GeometryExtension, private ISketchGeometryExtension
@@ -80,15 +80,17 @@ public:
     virtual long getId() const override {return Id;}
     virtual void setId(long id) override {Id = id;}
 
-    virtual SketchGeometry::InternalGeometry getInternalGeometry() const override {return InternalGeometryType;}
-    virtual void setInternalGeometry(SketchGeometry::InternalGeometry type) override {InternalGeometryType = type;}
+    virtual InternalType::InternalType getInternalType() const override {return InternalGeometryType;}
+    virtual void setInternalType(InternalType::InternalType type) override {InternalGeometryType = type;}
+
+    constexpr static std::array<const char *,InternalType::NumInternalGeometryType> internaltype2str {{ "None", "EllipseMajorDiameter", "EllipseMinorDiameter","EllipseFocus1", "EllipseFocus2", "HyperbolaMajor", "HyperbolaMinor", "HyperbolaFocus", "ParabolaFocus", "BSplineControlPoint", "BSplineKnotPoint" }};
 
 private:
     SketchGeometryExtension(const SketchGeometryExtension&) = default;
 
 private:
     long                                Id;
-    SketchGeometry::InternalGeometry    InternalGeometryType;
+    InternalType::InternalType    InternalGeometryType;
 
 private:
     static std::atomic<long> _GeometryID;

@@ -58,6 +58,8 @@
 #include "Sketch.h"
 #include "Constraint.h"
 
+#include "GeometryFacade.h"
+
 using namespace Sketcher;
 using namespace Base;
 using namespace Part;
@@ -320,8 +322,9 @@ int Sketch::addGeometry(const Part::Geometry *geo, bool fixed)
 {
     if (geo->getTypeId() == GeomPoint::getClassTypeId()) { // add a point
         const GeomPoint *point = static_cast<const GeomPoint*>(geo);
+        auto pointf = GeometryFacade::getFacade(point);
         // create the definition struct for that geom
-        if( point->getConstruction() == false ) {
+        if( pointf->getInternalType() == InternalType::BSplineKnotPoint ) {
             return addPoint(*point, fixed);
         }
         else {
@@ -2898,8 +2901,9 @@ bool Sketch::updateGeometry()
         try {
             if (it->type == Point) {
                 GeomPoint *point = static_cast<GeomPoint*>(it->geo);
+                auto pointf = GeometryFacade::getFacade(point);
 
-                if(!point->getConstruction()) {
+                if(!(pointf->getInternalType() == InternalType::BSplineKnotPoint)) {
                     point->setPoint(Vector3d(*Points[it->startPointId].x,
                                          *Points[it->startPointId].y,
                                          0.0)
@@ -3051,7 +3055,9 @@ bool Sketch::updateGeometry()
                         if (Geoms[*it5].type == Point) {
                             GeomPoint *point = static_cast<GeomPoint*>(Geoms[*it5].geo);
 
-                            if(point->getConstruction()) {
+                            auto pointf = GeometryFacade::getFacade(point);
+
+                            if(pointf->getInternalType() == InternalType::BSplineKnotPoint) {
                                 point->setPoint(bsp->pointAtParameter(knots[index]));
                             }
                         }
