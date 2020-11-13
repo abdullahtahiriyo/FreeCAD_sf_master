@@ -7264,10 +7264,23 @@ void SketchObject::handleSpecialProperty(Base::XMLReader &reader, const char * T
 
             newG->Restore(reader);
 
+            bool legacybpslineknot = false;
+
+            if( !newG->hasExtension(SketchGeometryExtension::getClassTypeId()) &&   // no extension = legacy
+                newG->getTypeId() == Part::GeomPoint::getClassTypeId() &&           // is a GeomPoint
+                newG->getConstruction() == true ) {                                 // this is a B-Spline knot in legacy
+                legacybpslineknot = true;
+            }
+
             auto newGF = GeometryFacade::getFacade(newG);
 
             if(hasId)
                 newGF->setId(id);
+
+            if(legacybpslineknot) {
+                newGF->setConstruction(false);
+                newGF->setInternalGeometry(SketchGeometry::BSplineKnotPoint);
+            }
 
             if(reader.testStatus(Base::XMLReader::ReaderStatus::PartialRestoreInObject)) {
                 Base::Console().Error("Geometry \"%s\" within a PropertyGeometryList was subject to a partial restore.\n",reader.localName());
