@@ -147,6 +147,7 @@ SketchObject::SketchObject()
 
     internaltransaction=false;
     managedoperation=false;
+    afterRestoreMigration=false;
 }
 
 SketchObject::~SketchObject()
@@ -7277,7 +7278,7 @@ void SketchObject::handleSpecialProperty(Base::XMLReader &reader, const char * T
             const char* TypeName = reader.getAttribute("type");
             Part::Geometry *newG = (Part::Geometry *)Base::Type::fromName(TypeName).createInstance();
 
-            // We need to create or modify the extension after a potential extension is restored
+            // To enable LinkStage3's backwards compatibility
             bool hasId = reader.hasAttribute("id");
             long id = 0;
             if(hasId)
@@ -7285,19 +7286,31 @@ void SketchObject::handleSpecialProperty(Base::XMLReader &reader, const char * T
 
             newG->Restore(reader);
 
+            // an initial migration to the geometry extension systems may be needed when there is no such extension
+            // for migration that requires that other properties are loaded, for example constraints, afterRestoreMigration
+            // tags such migration.
+            bool hasSketchGeometryExtension = newG->hasExtension(SketchGeometryExtension::getClassTypeId());
+
+            afterRestoreMigration = afterRestoreMigration || !hasSketchGeometryExtension;
+
+            // Undo the previous understanding that points in sketch may only be construction and construction points were not
+            // handled by the solver
             bool legacybpslineknot = false;
 
-            if( !newG->hasExtension(SketchGeometryExtension::getClassTypeId()) &&   // no extension = legacy
-                newG->getTypeId() == Part::GeomPoint::getClassTypeId() &&           // is a GeomPoint
-                newG->getConstruction() == true ) {                                 // this is a B-Spline knot in legacy
+            if( !hasSketchGeometryExtension                            &&   // no extension = legacy
+                newG->getTypeId() == Part::GeomPoint::getClassTypeId() &&   // is a GeomPoint
+                newG->getConstruction() == true ) {                         // this is a B-Spline knot in legacy
                 legacybpslineknot = true;
             }
 
             auto newGF = GeometryFacade::getFacade(newG);
 
+            // To enable LinkStage3's backwards compatibility
             if(hasId)
                 newGF->setId(id);
 
+            // Undo the previous understanding that points in sketch may only be construction and construction points were not
+            // handled by the solver
             if(legacybpslineknot) {
                 newGF->setConstruction(false);
                 newGF->setInternalType(InternalType::BSplineKnotPoint);
@@ -7428,6 +7441,9 @@ void SketchObject::onUndoRedoFinished()
 void SketchObject::onDocumentRestored()
 {
     try {
+        if(afterRestoreMigration)
+            migrateSketch();
+
         validateExternalLinks();
         rebuildExternalGeometry();
         Constraints.acceptGeometry(getCompleteGeometry());
@@ -7447,6 +7463,9 @@ void SketchObject::onDocumentRestored()
 void SketchObject::restoreFinished()
 {
     try {
+        if(afterRestoreMigration)
+            migrateSketch();
+
         validateExternalLinks();
         rebuildExternalGeometry();
         Constraints.acceptGeometry(getCompleteGeometry());
@@ -7458,6 +7477,84 @@ void SketchObject::restoreFinished()
         }
     }
     catch (...) {
+    }
+}
+
+void SketchObject::migrateSketch(void)
+{
+    const std::vector< Part::Geometry * > &vals = getInternalGeometry();
+
+    // Assign correct Internal Geometry Type
+    for( auto c : Constraints.getValues()) {
+
+        switch(c->AlignmentType){
+            case Undef:
+            {
+                auto gf = GeometryFacade::getFacade(vals[c->First]);
+                gf->setInternalType(InternalType::None);
+                break;
+            }
+            case EllipseMajorDiameter:
+            {
+                auto gf = GeometryFacade::getFacade(vals[c->First]);
+                gf->setInternalType(InternalType::EllipseMajorDiameter);
+                break;
+            }
+            case EllipseMinorDiameter:
+            {
+                auto gf = GeometryFacade::getFacade(vals[c->First]);
+                gf->setInternalType(InternalType::EllipseMinorDiameter);
+                break;
+            }
+            case EllipseFocus1:
+            {
+                auto gf = GeometryFacade::getFacade(vals[c->First]);
+                gf->setInternalType(InternalType::EllipseFocus1);
+                break;
+            }
+            case EllipseFocus2:
+            {
+                auto gf = GeometryFacade::getFacade(vals[c->First]);
+                gf->setInternalType(InternalType::EllipseFocus2);
+                break;
+            }
+            case HyperbolaMajor:
+            {
+                auto gf = GeometryFacade::getFacade(vals[c->First]);
+                gf->setInternalType(InternalType::HyperbolaMajor);
+                break;
+            }
+            case HyperbolaMinor:
+            {
+                auto gf = GeometryFacade::getFacade(vals[c->First]);
+                gf->setInternalType(InternalType::HyperbolaMinor);
+                break;
+            }
+            case HyperbolaFocus:
+            {
+                auto gf = GeometryFacade::getFacade(vals[c->First]);
+                gf->setInternalType(InternalType::HyperbolaFocus);
+                break;
+            }
+            case ParabolaFocus:
+            {
+                auto gf = GeometryFacade::getFacade(vals[c->First]);
+                gf->setInternalType(InternalType::ParabolaFocus);
+                break;
+            }
+            case BSplineControlPoint:
+            {
+                auto gf = GeometryFacade::getFacade(vals[c->First]);
+                gf->setInternalType(InternalType::BSplineControlPoint);
+                break;
+            }
+            case BSplineKnotPoint:
+            {
+                auto gf = GeometryFacade::getFacade(vals[c->First]);
+                gf->setInternalType(InternalType::BSplineKnotPoint);
+                break;
+            }
+        }
     }
 }
 
