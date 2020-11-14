@@ -4346,6 +4346,9 @@ int SketchObject::exposeInternalGeometry(int GeoId)
             Part::GeomLineSegment *lmajor = new Part::GeomLineSegment();
             lmajor->setPoints(majorpositiveend,majornegativeend);
 
+            auto lmajorf = GeometryFacade::getFacade(lmajor);
+            lmajorf->setInternalType(InternalType::EllipseMajorDiameter);
+
             igeo.push_back(lmajor);
 
             Sketcher::Constraint *newConstr = new Sketcher::Constraint();
@@ -4361,6 +4364,9 @@ int SketchObject::exposeInternalGeometry(int GeoId)
         {
             Part::GeomLineSegment *lminor = new Part::GeomLineSegment();
             lminor->setPoints(minorpositiveend,minornegativeend);
+
+            auto lminorf = GeometryFacade::getFacade(lminor);
+            lminorf->setInternalType(InternalType::EllipseMinorDiameter);
 
             igeo.push_back(lminor);
 
@@ -4378,6 +4384,9 @@ int SketchObject::exposeInternalGeometry(int GeoId)
             Part::GeomPoint *pf1 = new Part::GeomPoint();
             pf1->setPoint(focus1P);
 
+            auto pf1f = GeometryFacade::getFacade(pf1);
+            pf1f->setInternalType(InternalType::EllipseFocus1);
+
             igeo.push_back(pf1);
 
             Sketcher::Constraint *newConstr = new Sketcher::Constraint();
@@ -4394,6 +4403,10 @@ int SketchObject::exposeInternalGeometry(int GeoId)
         {
             Part::GeomPoint *pf2 = new Part::GeomPoint();
             pf2->setPoint(focus2P);
+
+            auto pf2f = GeometryFacade::getFacade(pf2);
+            pf2f->setInternalType(InternalType::EllipseFocus2);
+
             igeo.push_back(pf2);
 
             Sketcher::Constraint *newConstr = new Sketcher::Constraint();
@@ -4480,6 +4493,8 @@ int SketchObject::exposeInternalGeometry(int GeoId)
         {
             Part::GeomLineSegment *lmajor = new Part::GeomLineSegment();
             lmajor->setPoints(majorpositiveend,majornegativeend);
+            auto lmajorf = GeometryFacade::getFacade(lmajor);
+            lmajorf->setInternalType(InternalType::HyperbolaMajor);
 
             igeo.push_back(lmajor);
 
@@ -4496,6 +4511,8 @@ int SketchObject::exposeInternalGeometry(int GeoId)
         {
             Part::GeomLineSegment *lminor = new Part::GeomLineSegment();
             lminor->setPoints(minorpositiveend,minornegativeend);
+            auto lminorf = GeometryFacade::getFacade(lminor);
+            lminorf->setInternalType(InternalType::HyperbolaMinor);
 
             igeo.push_back(lminor);
 
@@ -4513,6 +4530,8 @@ int SketchObject::exposeInternalGeometry(int GeoId)
         {
             Part::GeomPoint *pf1 = new Part::GeomPoint();
             pf1->setPoint(focus1P);
+            auto pf1f = GeometryFacade::getFacade(pf1);
+            pf1f->setInternalType(InternalType::HyperbolaFocus);
 
             igeo.push_back(pf1);
 
@@ -4609,6 +4628,8 @@ int SketchObject::exposeInternalGeometry(int GeoId)
        if (!focus) {
             Part::GeomPoint *pf1 = new Part::GeomPoint();
             pf1->setPoint(focusp);
+            auto pf1f = GeometryFacade::getFacade(pf1);
+            pf1f->setInternalType(InternalType::ParabolaFocus);
 
             igeo.push_back(pf1);
 
@@ -4751,6 +4772,8 @@ int SketchObject::exposeInternalGeometry(int GeoId)
                 Part::GeomCircle *pc = new Part::GeomCircle();
                 pc->setCenter(poles[index]);
                 pc->setRadius(distance_p0_p1/6);
+                auto pcf = GeometryFacade::getFacade(pc);
+                pcf->setInternalType(InternalType::BSplineControlPoint);
 
                 igeo.push_back(pc);
 
@@ -4795,12 +4818,10 @@ int SketchObject::exposeInternalGeometry(int GeoId)
             if(!(*itb)) // if knot point not existing
             {
                 Part::GeomPoint *kp = new Part::GeomPoint();
-
                 kp->setPoint(bsp->pointAtParameter(knots[index]));
-
-                // a construction point, for now on, is a point that is not handled by the solver and does not contribute to the dofs
-                // This is done so as to avoid having to add another data member to GeomPoint that is specific for the sketcher.
-                kp->setConstruction(true);
+                auto kpf = GeometryFacade::getFacade(kp);
+                kpf->setConstruction(true);
+                kpf->setInternalType(InternalType::BSplineKnotPoint);
 
                 igeo.push_back(kp);
 

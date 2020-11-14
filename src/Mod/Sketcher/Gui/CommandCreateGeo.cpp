@@ -4073,7 +4073,8 @@ public:
                 Gui::Command::openCommand("Add Pole circle");
 
                 //Add pole
-                Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.Circle(App.Vector(%f,%f,0),App.Vector(0,0,1),10),True)",
+                Gui::cmdAppObjectArgs(sketchgui->getObject(),
+                                      "addGeometry(Part.Circle(App.Vector(%f,%f,0),App.Vector(0,0,1),10),True,'BSplineControlPoint')",
                                       EditCurve[0].x,EditCurve[0].y);
 
             }
@@ -4155,7 +4156,8 @@ public:
 
                 guess = normalize(guess);
 
-                Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.Circle(App.Vector(%f,%f,0),App.Vector(0,0,1),10),True)",
+                Gui::cmdAppObjectArgs(sketchgui->getObject(),
+                                      "addGeometry(Part.Circle(App.Vector(%f,%f,0),App.Vector(0,0,1),10),True,'BSplineControlPoint')",
                                       EditCurve[EditCurve.size()-1].x,EditCurve[EditCurve.size()-1].y);
 
                 if(EditCurve.size() == 2) {

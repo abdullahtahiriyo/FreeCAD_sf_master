@@ -72,19 +72,37 @@ PyObject* SketchObjectPy::addGeometry(PyObject *args)
     PyObject *pcObj;
     PyObject* construction; // this is an optional argument default false
     bool isConstruction;
-    if (!PyArg_ParseTuple(args, "OO!", &pcObj, &PyBool_Type, &construction)) {
+    char * internalgeometrytype; // this is an optional argument
+    InternalType::InternalType internalType;
+    if (!PyArg_ParseTuple(args, "OO!s", &pcObj, &PyBool_Type, &construction, &internalgeometrytype)) {
         PyErr_Clear();
-        if (!PyArg_ParseTuple(args, "O", &pcObj))
-            return 0;
-        else
-            isConstruction=false;
+
+        internalType = InternalType::None;
+
+        if (!PyArg_ParseTuple(args, "OO!", &pcObj, &PyBool_Type, &construction)) {
+            PyErr_Clear();
+
+            if (!PyArg_ParseTuple(args, "O", &pcObj))
+                return 0;
+            else
+                isConstruction=false;
+        }
+        else {
+            isConstruction = PyObject_IsTrue(construction) ? true : false;
+        }
     }
     else {
         isConstruction = PyObject_IsTrue(construction) ? true : false;
+
+        std::string str(internalgeometrytype);
+        if(!SketchGeometryExtension::getInternalTypeFromName(str, internalType))
+            internalType = InternalType::None;
     }
 
     if (PyObject_TypeCheck(pcObj, &(Part::GeometryPy::Type))) {
         Part::Geometry *geo = static_cast<Part::GeometryPy*>(pcObj)->getGeometryPtr();
+        auto geof = GeometryFacade::getFacade(geo);
+        geof->setInternalType(internalType);
         int ret;
         // An arc created with Part.Arc will be converted into a Part.ArcOfCircle
         if (geo->getTypeId() == Part::GeomTrimmedCurve::getClassTypeId()) {
@@ -137,7 +155,8 @@ PyObject* SketchObjectPy::addGeometry(PyObject *args)
         for (Py::Sequence::iterator it = list.begin(); it != list.end(); ++it) {
             if (PyObject_TypeCheck((*it).ptr(), &(Part::GeometryPy::Type))) {
                 Part::Geometry *geo = static_cast<Part::GeometryPy*>((*it).ptr())->getGeometryPtr();
-
+                auto geof = GeometryFacade::getFacade(geo);
+                geof->setInternalType(internalType);
                 // An arc created with Part.Arc will be converted into a Part.ArcOfCircle
                 if (geo->getTypeId() == Part::GeomTrimmedCurve::getClassTypeId()) {
                     Handle(Geom_TrimmedCurve) trim = Handle(Geom_TrimmedCurve)::DownCast(geo->handle());
