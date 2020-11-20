@@ -7484,9 +7484,9 @@ void SketchObject::migrateSketch(void)
 {
     const std::vector< Part::Geometry * > &vals = getInternalGeometry();
 
-    // Assign correct Internal Geometry Type
     for( auto c : Constraints.getValues()) {
 
+        // Assign correct Internal Geometry Type
         switch(c->AlignmentType){
             case Undef:
             {
@@ -7554,6 +7554,12 @@ void SketchObject::migrateSketch(void)
                 gf->setInternalType(InternalType::BSplineKnotPoint);
                 break;
             }
+        }
+
+        // Assign Blocked geometry mode
+        if(c->Type == Block){
+            auto gf = GeometryFacade::getFacade(vals[c->First]);
+            gf->setBlocked();
         }
     }
 }
