@@ -85,7 +85,7 @@ int ConstraintPy::PyInit(PyObject* args, PyObject* /*kwd*/)
     PyErr_Clear();
 
     if (PyArg_ParseTuple(args, "siO", &ConstraintType, &FirstIndex, &index_or_value)) {
-        // ConstraintType, GeoIndex1, GeoIndex2
+        // ConstraintType, GeoIndex1, GeoIndex2 or ConstraintType, GeoIndex1, GeoPos1
 #if PY_MAJOR_VERSION >= 3
         if (PyLong_Check(index_or_value)) {
             SecondIndex = PyLong_AsLong(index_or_value);
@@ -122,6 +122,12 @@ int ConstraintPy::PyInit(PyObject* args, PyObject* /*kwd*/)
                     this->getConstraintPtr()->AlignmentType=Undef;
                     valid = false;
                 }
+            }
+            else if (strcmp("Block",ConstraintType) == 0) {
+                this->getConstraintPtr()->Type = Block;
+                this->getConstraintPtr()->First = FirstIndex;
+                this->getConstraintPtr()->FirstPos = (Sketcher::PointPos) SecondIndex;
+                return 0;
             }
 
             if (valid) {
