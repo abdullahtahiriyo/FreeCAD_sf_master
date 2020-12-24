@@ -25,13 +25,13 @@
 #pragma warning(disable : 4996)
 #endif
 
-//#define _GCS_DEBUG
-//#define _GCS_DEBUG_SOLVER_JACOBIAN_QR_DECOMPOSITION_TRIANGULAR_MATRIX
-//#define _DEBUG_TO_FILE // Many matrices surpass the report view string size.
-//#define PROFILE_DIAGNOSE
-#undef _GCS_DEBUG
-#undef _GCS_DEBUG_SOLVER_JACOBIAN_QR_DECOMPOSITION_TRIANGULAR_MATRIX
-#undef _DEBUG_TO_FILE
+#define _GCS_DEBUG
+#define _GCS_DEBUG_SOLVER_JACOBIAN_QR_DECOMPOSITION_TRIANGULAR_MATRIX
+#define _DEBUG_TO_FILE // Many matrices surpass the report view string size.
+#define PROFILE_DIAGNOSE
+//#undef _GCS_DEBUG
+//#undef _GCS_DEBUG_SOLVER_JACOBIAN_QR_DECOMPOSITION_TRIANGULAR_MATRIX
+//#undef _DEBUG_TO_FILE
 
 // This has to be included BEFORE any EIGEN include
 // This format is Sage compatible, so you can just copy/paste the matrix into Sage
