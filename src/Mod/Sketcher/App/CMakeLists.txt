@@ -38,6 +38,7 @@ generate_from_xml(SketchObjectSFPy)
 generate_from_xml(SketchObjectPy)
 generate_from_xml(SketchGeometryExtensionPy)
 generate_from_xml(ExternalGeometryExtensionPy)
+generate_from_xml(TextGeometryExtensionPy)
 generate_from_xml(GeometryFacadePy)
 generate_from_xml(ExternalGeometryFacadePy)
 generate_from_xml(ConstraintPy)
@@ -60,6 +61,8 @@ SET(Features_SRCS
     ExternalGeometryExtension.h
     SolverGeometryExtension.cpp
     SolverGeometryExtension.h
+    TextGeometryExtension.cpp
+    TextGeometryExtension.h
     SketchObject.cpp
     SketchObject.h
     SketchAnalysis.h
@@ -89,6 +92,8 @@ SET(Python_SRCS
     SketchGeometryExtensionPyImp.cpp
     ExternalGeometryExtensionPy.xml
     ExternalGeometryExtensionPyImp.cpp
+    TextGeometryExtensionPy.xml
+    TextGeometryExtensionPyImp.cpp
     GeometryFacadePy.xml
     GeometryFacadePyImp.cpp
     ExternalGeometryFacadePy.xml

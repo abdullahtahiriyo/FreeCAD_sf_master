@@ -34,6 +34,7 @@
 #include "SketchGeometryExtension.h"
 #include "ExternalGeometryExtension.h"
 #include "SolverGeometryExtension.h"
+#include "TextGeometryExtension.h"
 #include "GeometryFacade.h"
 #include "ExternalGeometryFacade.h"
 #include "Constraint.h"
@@ -42,6 +43,7 @@
 #include "SketchPy.h"
 #include "SketchGeometryExtensionPy.h"
 #include "ExternalGeometryExtensionPy.h"
+#include "TextGeometryExtensionPy.h"
 #include "GeometryFacadePy.h"
 #include "ExternalGeometryFacadePy.h"
 #include "PropertyConstraintList.h"
@@ -71,6 +73,7 @@ PyMOD_INIT_FUNC(Sketcher)
     Base::Interpreter().addType(&Sketcher::SketchPy                     ::Type,sketcherModule,"Sketch");
     Base::Interpreter().addType(&Sketcher::ExternalGeometryExtensionPy  ::Type,sketcherModule,"ExternalGeometryExtension");
     Base::Interpreter().addType(&Sketcher::SketchGeometryExtensionPy  	::Type,sketcherModule,"SketchGeometryExtension");
+    Base::Interpreter().addType(&Sketcher::TextGeometryExtensionPy  	::Type,sketcherModule,"TextGeometryExtension");
     Base::Interpreter().addType(&Sketcher::GeometryFacadePy  	        ::Type,sketcherModule,"GeometryFacade");
     Base::Interpreter().addType(&Sketcher::ExternalGeometryFacadePy  	::Type,sketcherModule,"ExternalGeometryFacade");
 
@@ -82,6 +85,7 @@ PyMOD_INIT_FUNC(Sketcher)
     Sketcher::SketchGeometryExtension	::init();
     Sketcher::ExternalGeometryExtension	::init();
     Sketcher::SolverGeometryExtension	::init();
+    Sketcher::TextGeometryExtension	::init();
     Sketcher::GeometryFacade	        ::init();
     Sketcher::ExternalGeometryFacade	::init();
     Sketcher::SketchObjectSF        	::init();

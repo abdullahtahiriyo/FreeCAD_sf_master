@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenerateModel xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="generateMetaModel_Module.xsd">
+  <PythonExport
+      Father="GeometryExtensionPy"
+      Name="TextGeometryExtensionPy"
+      PythonName="Sketcher.TextGeometryExtensionPy"
+      Twin="TextGeometryExtension"
+      TwinPointer="TextGeometryExtension"
+      Include="Mod/Sketcher/App/TextGeometryExtension.h"
+      Namespace="Sketcher"
+      FatherInclude="Mod/Part/App/GeometryExtensionPy.h"
+      FatherNamespace="Part"
+      Constructor="true">
+    <Documentation>
+      <Author Licence="LGPL" Name="Abdullah Tahiri" EMail="abdullah.tahiri.yo@gmail.com" />
+      <UserDocu>A GeometryExtension enabling to draw a text string along a path defined by a Geometry.</UserDocu>
+    </Documentation>
+    <Attribute Name="ShapeOverrideEnabled" ReadOnly="false">
+        <Documentation>
+            <UserDocu>
+                returns/sets whether the shape should be overriden or not.
+            </UserDocu>
+        </Documentation>
+        <Parameter Name="Value" Type="Boolean"/>
+    </Attribute>
+  </PythonExport>
+</GenerateModel>
