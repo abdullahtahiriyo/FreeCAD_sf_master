@@ -123,6 +123,7 @@
 #include "CommandConstraints.h"
 #include "ViewProviderSketchGeometryExtension.h"
 #include <Mod/Sketcher/App/SolverGeometryExtension.h>
+#include <Mod/Sketcher/App/TextGeometryExtension.h>
 
 FC_LOG_LEVEL_INIT("Sketch",true,true)
 
@@ -140,6 +141,7 @@ FC_LOG_LEVEL_INIT("Sketch",true,true)
 #define GEOINFO_BSPLINE_DEGREE_POS 0
 #define GEOINFO_BSPLINE_DEGREE_TEXT 3
 #define GEOINFO_BSPLINE_POLYGON 1
+#define GEOINFO_TEXT_COORDS 1
 
 using namespace SketcherGui;
 using namespace Sketcher;
@@ -4764,7 +4766,94 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
         // End of pole weights
     }
 
+    // TextGeometryExtension associated with Geometry
+    GeoId = 0;
+    for(std::vector<Part::Geometry *>::const_iterator it = geomlist->begin(); it != geomlist->end()-2; ++it, GeoId++ ){
+        if((*it)->hasExtension(Sketcher::TextGeometryExtension::getClassTypeId())) {
+            // Add the ViewProvider representation of the text associated with this geometry
+            if (rebuildinformationlayer) {
+                SoSwitch *sw = new SoSwitch();
 
+                sw->whichChild = hGrpsk->GetBool("TextGeometryVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
+
+                SoSeparator *sep = new SoSeparator();
+                sep->ref();
+                // no caching for fluctuand data structures
+                sep->renderCaching = SoSeparator::OFF;
+
+                // every information visual node gets its own material for to-be-implemented preselection and selection
+                SoMaterial *mat = new SoMaterial;
+                mat->ref();
+                mat->diffuseColor = InformationColor;
+
+                SoLineSet *textlineset = new SoLineSet; // A set of lines
+
+                SoCoordinate3 *textcoords = new SoCoordinate3; // The coordinates of the points
+
+                const int numberofCoords = 6;
+                const int numberofLines = 3;
+
+                textcoords->point.setNum(numberofCoords);
+                textlineset->numVertices.setNum(numberofLines);
+
+                int32_t *index = textlineset->numVertices.startEditing();
+                SbVec3f *vts = textcoords->point.startEditing();
+
+                for (size_t i=0; i<numberofLines; i++) {
+                    vts[2*i].setValue(10,10,zInfo); // x=10, y=10
+                    vts[2*i+1].setValue(20,20*i,zInfo);
+                    index[i] = 2; // lines of 2 vertices, curves needs to be discretized.
+                }
+
+                textcoords->point.finishEditing();
+                textlineset->numVertices.finishEditing();
+
+                sep->addChild(mat);
+                sep->addChild(textcoords);
+                sep->addChild(textlineset);
+
+                sw->addChild(sep);
+
+                edit->infoGroup->addChild(sw);
+                sep->unref();
+                mat->unref();
+            }
+            else {
+                // The B-Spline type has other Information nodes before this one, that is not the case for the rest of geometries
+                int textinfonode = ((*it)->getTypeId() == Part::GeomBSplineCurve::getClassTypeId())?currentInfoNode:0;
+
+                SoSwitch *sw = static_cast<SoSwitch *>(edit->infoGroup->getChild(textinfonode));
+
+                if(visibleInformationChanged)
+                    sw->whichChild = hGrpsk->GetBool("TextGeometryVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
+
+                SoSeparator *sep = static_cast<SoSeparator *>(sw->getChild(0));
+
+                SoCoordinate3 *textcoords = static_cast<SoCoordinate3 *>(sep->getChild(GEOINFO_TEXT_COORDS));
+
+                SoLineSet *textlineset = static_cast<SoLineSet *>(sep->getChild(GEOINFO_TEXT_COORDS+1));
+
+                const int numberofCoords = 6;
+                const int numberofLines = 3;
+
+                textcoords->point.setNum(numberofCoords);
+                textlineset->numVertices.setNum(numberofLines);
+
+                int32_t *index = textlineset->numVertices.startEditing();
+                SbVec3f *vts = textcoords->point.startEditing();
+
+                for (size_t i=0; i<numberofLines; i++) {
+                    vts[2*i].setValue(10,10,zInfo); // x=10, y=10
+                    vts[2*i+1].setValue(20,20*i,zInfo);
+                    index[i] = 2; // lines of 2 vertices, curves needs to be discretized.
+                }
+
+                textcoords->point.finishEditing();
+                textlineset->numVertices.finishEditing();
+
+            }
+        }
+    }
 
     visibleInformationChanged=false; // whatever that changed in Information layer is already updated
 
