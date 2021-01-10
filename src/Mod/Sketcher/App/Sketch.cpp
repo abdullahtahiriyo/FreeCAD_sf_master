@@ -30,6 +30,7 @@
 # include <Standard_Version.hxx>
 # include <TopoDS.hxx>
 # include <TopoDS_Edge.hxx>
+# include <TopExp_Explorer.hxx>
 # include <BRepBuilderAPI_MakeWire.hxx>
 # include <cmath>
 # include <iostream>
@@ -59,6 +60,7 @@
 
 #include "GeometryFacade.h"
 #include "SolverGeometryExtension.h"
+#include "TextGeometryExtension.h"
 
 #include "Sketch.h"
 
@@ -4128,6 +4130,24 @@ TopoShape Sketch::toShape(void) const
             }
             else
                 vertex_list.push_back(TopoDS::Vertex(it->geo->toShape()));
+        }
+        if(gf->hasExtension(TextGeometryExtension::getClassTypeId())) {
+            auto ext = std::static_pointer_cast<const TextGeometryExtension>(gf->getExtension(TextGeometryExtension::getClassTypeId()).lock());
+
+            auto shape = ext->toShape();
+
+            if (!shape.IsNull()) {
+                if( shape.ShapeType() == TopAbs_WIRE ) { // just one wire
+                    wires.push_back(TopoDS::Wire(shape));
+                }
+                else if ( shape.ShapeType() == TopAbs_COMPOUND ) { // must be a set of wires, not any compound
+                    TopoDS_Iterator it(shape);
+                    for (; it.More(); it.Next()) { // it.Value()
+                        if( it.Value().ShapeType() == TopAbs_WIRE )
+                            wires.push_back(TopoDS::Wire(it.Value()));
+                    }
+                }
+            }
         }
     }
 
