@@ -5312,7 +5312,7 @@ CmdSketcherCreatePointFillet::CmdSketcherCreatePointFillet()
     sWhatsThis      = "Sketcher_CreatePointFillet";
     sStatusTip      = sToolTipText;
     sPixmap         = "Sketcher_CreateFillet";
-    sAccel          = "F";
+    sAccel          = "";
     eType           = ForEdit;
 }
 
