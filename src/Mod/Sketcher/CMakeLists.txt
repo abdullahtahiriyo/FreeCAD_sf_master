@@ -16,7 +16,7 @@ set(Sketcher_Scripts
 if(BUILD_GUI)
     list (APPEND Sketcher_Scripts
           InitGui.py
-          SketcherTests/TestSketcherGui.py
+          TestSketcherGui.py
     )
 endif(BUILD_GUI)
 
