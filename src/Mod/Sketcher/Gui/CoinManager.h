@@ -27,6 +27,11 @@
 #include <vector>
 
 
+namespace Base {
+    template< typename T >
+    class Vector3;
+}
+
 namespace Part {
     class Geometry;
 }
@@ -35,19 +40,28 @@ namespace SketcherGui {
 
 struct EditData;
 
+struct GeoList {
+    const std::vector<Part::Geometry *> & geomlist;
+    int intGeoCount;
+    int extGeoCount;
+};
 
 
 class SketcherGuiExport CoinManager
 {
+
 public:
     explicit CoinManager(EditData * editdata);
     ~CoinManager();
 
-    void processGeometry(const std::vector<Part::Geometry *> &geolist);
+    using Vector3d = Base::Vector3<double>;
+
+    std::tuple<std::vector<Vector3d>/* Coords*/, std::vector<Vector3d> /*Points;*/, std::vector<unsigned int> /* Index */>
+    processGeometry(const GeoList & geolist);
 
 
 
-    EditData * editData;
+    EditData * edit;
 };
 
 

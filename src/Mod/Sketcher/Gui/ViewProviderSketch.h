@@ -76,6 +76,7 @@ namespace Sketcher {
 namespace SketcherGui {
 
 struct EditData;
+class CoinManager;
 class DrawSketchHandler;
 
 /** The Sketch ViewProvider
@@ -488,6 +489,8 @@ protected:
     bool isShownVirtualSpace; // indicates whether the present virtual space view is the Real Space or the Virtual Space (virtual space 1 or 2)
 
     ShortcutListener* listener;
+
+    std::unique_ptr<CoinManager> coinManager;
 };
 
 } // namespace PartGui
