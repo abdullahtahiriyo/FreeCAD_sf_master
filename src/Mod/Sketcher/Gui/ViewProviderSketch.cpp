@@ -4314,60 +4314,9 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
         // End of pole weights
     }
 
-
-
     visibleInformationChanged=false; // whatever that changed in Information layer is already updated
 
-    edit->CurvesCoordinate->point.setNum(Coords.size());
-    edit->CurveSet->numVertices.setNum(Index.size());
-    edit->CurvesMaterials->diffuseColor.setNum(Index.size());
-    edit->PointsCoordinate->point.setNum(Points.size());
-    edit->PointsMaterials->diffuseColor.setNum(Points.size());
-
-    SbVec3f *verts = edit->CurvesCoordinate->point.startEditing();
-    int32_t *index = edit->CurveSet->numVertices.startEditing();
-    SbVec3f *pverts = edit->PointsCoordinate->point.startEditing();
-
-    float dMg = 100;
-
-    int i=0; // setting up the line set
-    for (std::vector<Base::Vector3d>::const_iterator it = Coords.begin(); it != Coords.end(); ++it,i++) {
-        dMg = dMg>std::abs(it->x)?dMg:std::abs(it->x);
-        dMg = dMg>std::abs(it->y)?dMg:std::abs(it->y);
-        verts[i].setValue(it->x,it->y,zLowLines);
-    }
-
-    i=0; // setting up the indexes of the line set
-    for (std::vector<unsigned int>::const_iterator it = Index.begin(); it != Index.end(); ++it,i++)
-        index[i] = *it;
-
-    i=0; // setting up the point set
-    for (std::vector<Base::Vector3d>::const_iterator it = Points.begin(); it != Points.end(); ++it,i++){
-        dMg = dMg>std::abs(it->x)?dMg:std::abs(it->x);
-        dMg = dMg>std::abs(it->y)?dMg:std::abs(it->y);
-        pverts[i].setValue(it->x,it->y,zLowPoints);
-    }
-
-    edit->CurvesCoordinate->point.finishEditing();
-    edit->CurveSet->numVertices.finishEditing();
-    edit->PointsCoordinate->point.finishEditing();
-
-    // set cross coordinates
-    edit->RootCrossSet->numVertices.set1Value(0,2);
-    edit->RootCrossSet->numVertices.set1Value(1,2);
-
-    // This code relies on Part2D, which is generally not updated in no update mode.
-    // Additionally it does not relate to the actual sketcher geometry.
-
-    /*
-    Base::Console().Log("MinX:%d,MaxX:%d,MinY:%d,MaxY:%d\n",MinX,MaxX,MinY,MaxY);
-    // make sure that nine of the numbers are exactly zero because log(0)
-    // is not defined
-    float xMin = std::abs(MinX) < FLT_EPSILON ? 0.01f : MinX;
-    float xMax = std::abs(MaxX) < FLT_EPSILON ? 0.01f : MaxX;
-    float yMin = std::abs(MinY) < FLT_EPSILON ? 0.01f : MinY;
-    float yMax = std::abs(MaxY) < FLT_EPSILON ? 0.01f : MaxY;
-    */
+    float dMg = 100; // TODO: Fix dMg calculation.
 
     float dMagF = exp(ceil(log(std::abs(dMg))));
 
@@ -4396,7 +4345,7 @@ Restart:
     // update the virtual space
     updateVirtualSpace();
     // go through the constraints and update the position
-    i = 0;
+    int i = 0;
     for (std::vector<Sketcher::Constraint *>::const_iterator it=constrlist.begin();
          it != constrlist.end(); ++it, i++) {
         // check if the type has changed
