@@ -39,7 +39,6 @@
 #include <Gui/Document.h>
 #include "ShortcutListener.h"
 
-
 class TopoDS_Shape;
 class TopoDS_Face;
 class SoSeparator;
@@ -62,7 +61,9 @@ class SoTranslation;
 class SbString;
 class SbTime;
 
-struct EditData;
+namespace Part {
+    class Geometry;
+}
 
 namespace Gui {
     class View3DInventorViewer;
@@ -76,7 +77,14 @@ namespace Sketcher {
 
 namespace SketcherGui {
 
+struct EditData;
+class CoinManager;
 class DrawSketchHandler;
+
+template < typename T >
+class GeoListModel;
+
+using GeoList = GeoListModel<Part::Geometry *>;
 
 /** The Sketch ViewProvider
   * This class handles mainly the drawing and editing of the sketch.
@@ -118,14 +126,10 @@ public:
     App::PropertyBool SectionView;
     App::PropertyString EditingWorkbench;
 
-    /// Draw all constraint icons
-    /*! Except maybe the radius and lock ones? */
-    void drawConstraintIcons();
-
     /// draw the sketch in the inventor nodes
     /// temp => use temporary solver solution in SketchObject
-    /// recreateinformationscenography => forces a rebuild of the information layer scenography
-    void draw(bool temp=false, bool rebuildinformationlayer=true);
+    /// recreateinformationscenography => forces a rebuild of the information overlay scenography
+    void draw(bool temp=false, bool rebuildinformationoverlay=true);
 
     /// draw the edit curve
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
@@ -137,9 +141,6 @@ public:
     bool isSelectable(void) const override;
     /// Observer message from the Selection
     virtual void onSelectionChanged(const Gui::SelectionChanges& msg) override;
-
-    /// Show/Hide nodes from information layer
-    void showRestoreInformationLayer();
 
     /** @name handler control */
     //@{
@@ -268,7 +269,7 @@ public:
     virtual QIcon mergeColorfulOverlayIcons (const QIcon & orig) const override;
 
     friend class DrawSketchHandler;
-    friend struct ::EditData;
+    friend class ViewProviderSketchCoinAttorney;
 
     /// signals if the constraints list has changed
     boost::signals2::signal<void ()> signalConstraintsChanged;
@@ -307,6 +308,18 @@ protected:
 
     void slotUndoDocument(const Gui::Document&);
     void slotRedoDocument(const Gui::Document&);
+
+private:
+    void scaleBSplinePoleCirclesAndUpdateSolverAndSketchObjectGeometry(
+                        GeoList & geolist,
+                        bool geometrywithmemoryallocation,
+                        std::vector<std::unique_ptr<Part::Geometry>> &deepCopiesToDelete);
+
+    bool constraintHasExpression(int constrid);
+
+    /// Draw all constraint icons
+    /*! Except maybe the radius and lock ones? */
+    void drawConstraintIcons();
 
 protected:
     boost::signals2::connection connectUndoDocument;
@@ -429,7 +442,6 @@ protected:
     // colors
     static SbColor VertexColor;
     static SbColor CurveColor;
-    static SbColor CreateCurveColor;
     static SbColor CurveDraftColor;
     static SbColor CurveExternalColor;
     static SbColor CrossColorV;
@@ -442,7 +454,6 @@ protected:
     static SbColor PreselectColor;
     static SbColor SelectColor;
     static SbColor PreselectSelectedColor;
-    static SbColor InformationColor;
     static SbColor DeactivatedConstrDimColor;
     static SbColor InternalAlignedGeoColor;
     static SbColor FullyConstraintElementColor;
@@ -456,17 +467,12 @@ protected:
     static SbVec2s prvCursorPos;
     static SbVec2s newCursorPos;
 
-    float zCross;
-    //float zLines;
-    //float zPoints;
     float zLowPoints;
     float zHighPoints;
     float zConstr;
     float zHighlight;
     float zText;
-    float zEdit;
     float zHighLine;
-    float zInfo;
     float zLowLines;
     float zMidLines;
     float zHighLines;
@@ -477,10 +483,6 @@ protected:
 
     Gui::Rubberband* rubberband;
 
-    // information layer variables
-    bool visibleInformationChanged;
-    double combrepscalehyst;
-
     std::string editDocName;
     std::string editObjName;
     std::string editSubName;
@@ -489,6 +491,8 @@ protected:
     bool isShownVirtualSpace; // indicates whether the present virtual space view is the Real Space or the Virtual Space (virtual space 1 or 2)
 
     ShortcutListener* listener;
+
+    std::unique_ptr<CoinManager> coinManager;
 };
 
 } // namespace PartGui
