@@ -39,7 +39,6 @@
 #include <Gui/Document.h>
 #include "ShortcutListener.h"
 
-
 class TopoDS_Shape;
 class TopoDS_Face;
 class SoSeparator;
@@ -62,7 +61,7 @@ class SoTranslation;
 class SbString;
 class SbTime;
 
-struct EditData;
+
 
 namespace Gui {
     class View3DInventorViewer;
@@ -76,6 +75,7 @@ namespace Sketcher {
 
 namespace SketcherGui {
 
+struct EditData;
 class DrawSketchHandler;
 
 /** The Sketch ViewProvider
@@ -268,7 +268,6 @@ public:
     virtual QIcon mergeColorfulOverlayIcons (const QIcon & orig) const override;
 
     friend class DrawSketchHandler;
-    friend struct ::EditData;
 
     /// signals if the constraints list has changed
     boost::signals2::signal<void ()> signalConstraintsChanged;

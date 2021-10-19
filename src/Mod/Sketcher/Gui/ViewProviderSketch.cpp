@@ -120,6 +120,9 @@
 #include "ViewProviderSketchGeometryExtension.h"
 #include <Mod/Sketcher/App/SolverGeometryExtension.h>
 
+#include "EditData.h"
+#include "CoinManager.h"
+
 FC_LOG_LEVEL_INIT("Sketch",true,true)
 
 // The first is used to point at a SoDatumLabel for some
@@ -170,134 +173,7 @@ SbVec2s ViewProviderSketch::prvClickPos;
 SbVec2s ViewProviderSketch::prvCursorPos;
 SbVec2s ViewProviderSketch::newCursorPos;
 
-//**************************************************************************
-// Edit data structure
 
-/// Data structure while editing the sketch
-struct EditData {
-    EditData():
-    sketchHandler(0),
-    buttonPress(false),
-    handleEscapeButton(false),
-    DragPoint(-1),
-    DragCurve(-1),
-    PreselectPoint(-1),
-    PreselectCurve(-1),
-    PreselectCross(-1),
-    MarkerSize(7),
-    coinFontSize(17), // this value is in pixels, 17 pixels
-    constraintIconSize(15),
-    pixelScalingFactor(1.0),
-    blockedPreselection(false),
-    FullyConstrained(false),
-    //ActSketch(0), // if you are wondering, it went to SketchObject, accessible via getSolvedSketch() and via SketchObject interface as appropriate
-    EditRoot(0),
-    PointsMaterials(0),
-    CurvesMaterials(0),
-    RootCrossMaterials(0),
-    EditCurvesMaterials(0),
-    EditMarkersMaterials(0),
-    PointsCoordinate(0),
-    CurvesCoordinate(0),
-    RootCrossCoordinate(0),
-    EditCurvesCoordinate(0),
-    EditMarkersCoordinate(0),
-    CurveSet(0),
-    RootCrossSet(0),
-    EditCurveSet(0),
-    EditMarkerSet(0),
-    PointSet(0),
-    textX(0),
-    textPos(0),
-    constrGroup(0),
-    infoGroup(0),
-    pickStyleAxes(0),
-    PointsDrawStyle(0),
-    CurvesDrawStyle(0),
-    RootCrossDrawStyle(0),
-    EditCurvesDrawStyle(0),
-    EditMarkersDrawStyle(0),
-    ConstraintDrawStyle(0),
-    InformationDrawStyle(0)
-    {}
-
-    // pointer to the active handler for new sketch objects
-    DrawSketchHandler *sketchHandler;
-    bool buttonPress;
-    bool handleEscapeButton;
-
-    // dragged point
-    int DragPoint;
-    // dragged curve
-    int DragCurve;
-    // dragged constraints
-    std::set<int> DragConstraintSet;
-
-    SbColor PreselectOldColor;
-    int PreselectPoint;
-    int PreselectCurve;
-    int PreselectCross;
-    int MarkerSize;
-    int coinFontSize;
-    int constraintIconSize;
-    double pixelScalingFactor;
-    std::set<int> PreselectConstraintSet;
-    bool blockedPreselection;
-    bool FullyConstrained;
-
-    // container to track our own selected parts
-    std::set<int> SelPointSet;
-    std::set<int> SelCurvSet; // also holds cross axes at -1 and -2
-    std::set<int> SelConstraintSet;
-    std::vector<int> CurvIdToGeoId; // conversion of SoLineSet index to GeoId
-    std::vector<int> PointIdToGeoId; // conversion of SoCoordinate3 index to GeoId
-
-    // helper data structures for the constraint rendering
-    std::vector<ConstraintType> vConstrType;
-
-    // For each of the combined constraint icons drawn, also create a vector
-    // of bounding boxes and associated constraint IDs, to go from the icon's
-    // pixel coordinates to the relevant constraint IDs.
-    //
-    // The outside map goes from a string representation of a set of constraint
-    // icons (like the one used by the constraint IDs we insert into the Coin
-    // rendering tree) to a vector of those bounding boxes paired with relevant
-    // constraint IDs.
-    std::map<QString, ViewProviderSketch::ConstrIconBBVec> combinedConstrBoxes;
-
-    // nodes for the visuals
-    SoSeparator   *EditRoot;
-    SoMaterial    *PointsMaterials;
-    SoMaterial    *CurvesMaterials;
-    SoMaterial    *RootCrossMaterials;
-    SoMaterial    *EditCurvesMaterials;
-    SoMaterial    *EditMarkersMaterials;
-    SoCoordinate3 *PointsCoordinate;
-    SoCoordinate3 *CurvesCoordinate;
-    SoCoordinate3 *RootCrossCoordinate;
-    SoCoordinate3 *EditCurvesCoordinate;
-    SoCoordinate3 *EditMarkersCoordinate;
-    SoLineSet     *CurveSet;
-    SoLineSet     *RootCrossSet;
-    SoLineSet     *EditCurveSet;
-    SoMarkerSet   *EditMarkerSet;
-    SoMarkerSet   *PointSet;
-
-    SoText2       *textX;
-    SoTranslation *textPos;
-
-    SmSwitchboard *constrGroup;
-    SoGroup       *infoGroup;
-    SoPickStyle   *pickStyleAxes;
-
-    SoDrawStyle * PointsDrawStyle;
-    SoDrawStyle * CurvesDrawStyle;
-    SoDrawStyle * RootCrossDrawStyle;
-    SoDrawStyle * EditCurvesDrawStyle;
-    SoDrawStyle * EditMarkersDrawStyle;
-    SoDrawStyle * ConstraintDrawStyle;
-    SoDrawStyle * InformationDrawStyle;
-};
 
 
 // this function is used to simulate cyclic periodic negative geometry indices (for external geometry)
@@ -403,7 +279,7 @@ ViewProviderSketch::ViewProviderSketch()
     rubberband = new Gui::Rubberband();
 
     // Status message states:
-    
+
 
     subscribeToParameters();
 }
@@ -3942,9 +3818,6 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
     assert(edit);
 
     // Render Geometry ===================================================
-    std::vector<Base::Vector3d> Coords;
-    std::vector<Base::Vector3d> Points;
-    std::vector<unsigned int> Index;
 
     int intGeoCount = getSketchObject()->getHighestCurveIndex() + 1;
     int extGeoCount = getSketchObject()->getExternalGeometryCount();
@@ -3956,7 +3829,6 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
     else
         tempGeo = getSketchObject()->getCompleteGeometry(); // without memory allocation
     geomlist = &tempGeo;
-
 
     assert(int(geomlist->size()) == extGeoCount + intGeoCount);
     assert(int(geomlist->size()) >= 2);
@@ -3989,6 +3861,10 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
     // value cannot be smaller than 3
     if (stdcountsegments < 3)
         stdcountsegments = 3;
+
+    std::vector<Base::Vector3d> Coords;
+    std::vector<Base::Vector3d> Points;
+    std::vector<unsigned int> Index;
 
     // RootPoint
     Points.emplace_back(0.,0.,0.);
@@ -6577,7 +6453,7 @@ QString ViewProviderSketch::appendConstraintMsg(const QString & singularmsg,
     return msg;
 }
 
-inline QString intListHelper(const std::vector<int> &ints) 
+inline QString intListHelper(const std::vector<int> &ints)
 {
     QString results;
     if (ints.size() < 8) { // The 8 is a bit heuristic... more than that and we shift formats

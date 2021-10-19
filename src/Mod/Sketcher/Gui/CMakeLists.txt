@@ -101,6 +101,10 @@ SET(SketcherGui_SRCS
     TaskSketcherValidation.h
     ShortcutListener.cpp
     ShortcutListener.h
+    EditData.cpp
+    EditData.h
+    CoinManager.cpp
+    CoinManager.h
     ViewProviderSketch.cpp
     ViewProviderSketch.h
     DrawSketchHandler.cpp
