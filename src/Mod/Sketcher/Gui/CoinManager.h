@@ -26,6 +26,9 @@
 
 #include <vector>
 
+#include <Base/Parameter.h>
+#include <App/Application.h>
+
 
 namespace Base {
     template< typename T >
@@ -49,6 +52,28 @@ struct GeoList {
 
 class SketcherGuiExport CoinManager
 {
+    // Delegate Pattern (Attorney - Client)
+    // Monitor changes in parameters affecting drawing
+    class ParameterObserver : public ParameterGrp::ObserverType
+    {
+    public:
+        ParameterObserver(CoinManager * pclient);
+        ~ParameterObserver();
+
+        void subscribeToParameters();
+
+        void unsubscribeToParameters();
+
+        /** Observer for parameter group. */
+        void OnChange(Base::Subject<const char*> &rCaller, const char * sReason) override;
+
+    private:
+        void initParameters();
+        void updateCurvedEdgeCountSegmentsParameter();
+
+    private:
+        CoinManager *pClient;
+    };
 
 public:
     explicit CoinManager(EditData * editdata);
@@ -60,8 +85,10 @@ public:
     processGeometry(const GeoList & geolist);
 
 
-
+private:
     EditData * edit;
+    int CurvedEdgeCountSegments;
+    std::unique_ptr<CoinManager::ParameterObserver> pObserver;
 };
 
 
