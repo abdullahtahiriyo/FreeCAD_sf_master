@@ -117,10 +117,6 @@ CoinManager::~CoinManager() {}
 std::tuple<std::vector<Base::Vector3d>/* Coords*/, std::vector<Base::Vector3d> /*Points;*/, std::vector<unsigned int> /* Index */>
 CoinManager::processGeometry(const GeoList & geolist)
 {
-    // TODO: Set appropriate helper class monitoring the parameter and updating it.
-    const float zLowLines=0.005f;       //TODO: Fix zLowLines
-    const float zLowPoints = 0.010f;    // TODO: Fix zLowPoints
-
     const std::vector<Part::Geometry *> *geomlist;
     geomlist = &geolist.geomlist;
 
@@ -146,6 +142,7 @@ CoinManager::processGeometry(const GeoList & geolist)
     for (std::vector<Part::Geometry *>::const_iterator it = geomlist->begin(); it != geomlist->end()-2; ++it, GeoId++) {
         if (GeoId >= geolist.intGeoCount)
             GeoId = -geolist.extGeoCount;
+
         if ((*it)->getTypeId() == Part::GeomPoint::getClassTypeId()) { // add a point
             const Part::GeomPoint *point = static_cast<const Part::GeomPoint *>(*it);
             Points.push_back(point->getPoint());
@@ -560,7 +557,7 @@ CoinManager::processGeometry(const GeoList & geolist)
     for (std::vector<Base::Vector3d>::const_iterator it = Coords.begin(); it != Coords.end(); ++it,i++) {
         dMg = dMg>std::abs(it->x)?dMg:std::abs(it->x);
         dMg = dMg>std::abs(it->y)?dMg:std::abs(it->y);
-        verts[i].setValue(it->x,it->y,zLowLines);
+        verts[i].setValue(it->x,it->y,drawingParameters.zLowLines);
     }
 
     i=0; // setting up the indexes of the line set
@@ -571,7 +568,7 @@ CoinManager::processGeometry(const GeoList & geolist)
     for (std::vector<Base::Vector3d>::const_iterator it = Points.begin(); it != Points.end(); ++it,i++){
         dMg = dMg>std::abs(it->x)?dMg:std::abs(it->x);
         dMg = dMg>std::abs(it->y)?dMg:std::abs(it->y);
-        pverts[i].setValue(it->x,it->y,zLowPoints);
+        pverts[i].setValue(it->x,it->y,drawingParameters.zLowPoints);
     }
 
     edit->CurvesCoordinate->point.finishEditing();

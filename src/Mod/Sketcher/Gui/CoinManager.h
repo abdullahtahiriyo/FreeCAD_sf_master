@@ -77,6 +77,9 @@ class SketcherGuiExport CoinManager
 
     struct DrawingParameters {
         int CurvedEdgeCountSegments;
+        // Rendering Heights
+        const float zLowLines=0.005f;       //TODO: Fix zLowLines
+        const float zLowPoints = 0.010f;    // TODO: Fix zLowPoints
     };
 
 public:
