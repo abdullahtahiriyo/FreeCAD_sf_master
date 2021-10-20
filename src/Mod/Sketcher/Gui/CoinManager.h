@@ -75,6 +75,10 @@ class SketcherGuiExport CoinManager
         CoinManager *pClient;
     };
 
+    struct DrawingParameters {
+        int CurvedEdgeCountSegments;
+    };
+
 public:
     explicit CoinManager(EditData * editdata);
     ~CoinManager();
@@ -87,7 +91,7 @@ public:
 
 private:
     EditData * edit;
-    int CurvedEdgeCountSegments;
+    DrawingParameters drawingParameters;
     std::unique_ptr<CoinManager::ParameterObserver> pObserver;
 };
 

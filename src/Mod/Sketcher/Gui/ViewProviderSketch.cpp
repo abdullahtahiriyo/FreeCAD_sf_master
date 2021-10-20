@@ -3853,7 +3853,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
     std::vector<int> bsplineGeoIds;
     double combrepscale = 0; // the repscale that would correspond to this comb based only on this calculation.
 
-    auto [Coords, Points, Index] = coinManager->processGeometry(geolist);
+    /*auto [Coords, Points, Index] =*/ coinManager->processGeometry(geolist);
 
     if ( (combrepscale > (2 * combrepscalehyst)) || (combrepscale < (combrepscalehyst/2)))
         combrepscalehyst = combrepscale ;

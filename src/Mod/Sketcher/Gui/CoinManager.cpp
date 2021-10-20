@@ -52,6 +52,7 @@
 using namespace SketcherGui;
 using namespace Sketcher;
 
+//**************************** ParameterObserver nested class ******************************
 CoinManager::ParameterObserver::ParameterObserver(CoinManager * pclient): pClient(pclient)
 {
     initParameters();
@@ -80,7 +81,7 @@ void CoinManager::ParameterObserver::updateCurvedEdgeCountSegmentsParameter()
     if (stdcountsegments < 3)
         stdcountsegments = 3;
 
-    pClient->CurvedEdgeCountSegments = stdcountsegments;
+    pClient->drawingParameters.CurvedEdgeCountSegments = stdcountsegments;
 }
 
 void CoinManager::ParameterObserver::subscribeToParameters()
@@ -104,7 +105,7 @@ void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCalle
 
 }
 
-
+//**************************** CoinManager class ******************************
 CoinManager::CoinManager(EditData * editdata):edit(editdata) {
     // Create parameter observer and initialise watched parameters
     pObserver = std::make_unique<CoinManager::ParameterObserver>(this);
@@ -167,7 +168,7 @@ CoinManager::processGeometry(const GeoList & geolist)
             Handle(Geom_Circle) curve = Handle(Geom_Circle)::DownCast(circle->handle());
             auto gf = GeometryFacade::getFacade(circle);
 
-            int countSegments = CurvedEdgeCountSegments;
+            int countSegments = drawingParameters.CurvedEdgeCountSegments;
             Base::Vector3d center = circle->getCenter();
 
             // BSpline weights have a radius corresponding to the weight value
@@ -287,7 +288,7 @@ CoinManager::processGeometry(const GeoList & geolist)
             const Part::GeomEllipse *ellipse = static_cast<const Part::GeomEllipse *>(*it);
             Handle(Geom_Ellipse) curve = Handle(Geom_Ellipse)::DownCast(ellipse->handle());
 
-            int countSegments = CurvedEdgeCountSegments;
+            int countSegments = drawingParameters.CurvedEdgeCountSegments;
             Base::Vector3d center = ellipse->getCenter();
             double segment = (2 * M_PI) / countSegments;
             for (int i=0; i < countSegments; i++) {
@@ -313,7 +314,7 @@ CoinManager::processGeometry(const GeoList & geolist)
                 std::swap(startangle, endangle);
 
             double range = endangle-startangle;
-            int countSegments = std::max(6, int(CurvedEdgeCountSegments * range / (2 * M_PI)));
+            int countSegments = std::max(6, int(drawingParameters.CurvedEdgeCountSegments * range / (2 * M_PI)));
             double segment = range / countSegments;
 
             Base::Vector3d center = arc->getCenter();
@@ -349,7 +350,7 @@ CoinManager::processGeometry(const GeoList & geolist)
                 std::swap(startangle, endangle);
 
             double range = endangle-startangle;
-            int countSegments = std::max(6, int(CurvedEdgeCountSegments * range / (2 * M_PI)));
+            int countSegments = std::max(6, int(drawingParameters.CurvedEdgeCountSegments * range / (2 * M_PI)));
             double segment = range / countSegments;
 
             Base::Vector3d center = arc->getCenter();
@@ -385,7 +386,7 @@ CoinManager::processGeometry(const GeoList & geolist)
                 std::swap(startangle, endangle);
 
             double range = endangle-startangle;
-            int countSegments = std::max(6, int(CurvedEdgeCountSegments * range / (2 * M_PI)));
+            int countSegments = std::max(6, int(drawingParameters.CurvedEdgeCountSegments * range / (2 * M_PI)));
             double segment = range / countSegments;
 
             Base::Vector3d center = aoh->getCenter();
@@ -421,7 +422,7 @@ CoinManager::processGeometry(const GeoList & geolist)
                 std::swap(startangle, endangle);
 
             double range = endangle-startangle;
-            int countSegments = std::max(6, int(CurvedEdgeCountSegments * range / (2 * M_PI)));
+            int countSegments = std::max(6, int(drawingParameters.CurvedEdgeCountSegments * range / (2 * M_PI)));
             double segment = range / countSegments;
 
             Base::Vector3d center = aop->getCenter();
@@ -461,7 +462,7 @@ CoinManager::processGeometry(const GeoList & geolist)
                 std::swap(first, last);
 
             double range = last-first;
-            int countSegments = CurvedEdgeCountSegments;
+            int countSegments = drawingParameters.CurvedEdgeCountSegments;
             double segment = range / countSegments;
 
             for (int i=0; i < countSegments; i++) {
