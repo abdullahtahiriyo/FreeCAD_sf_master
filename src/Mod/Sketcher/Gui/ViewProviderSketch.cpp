@@ -3853,6 +3853,138 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
     std::vector<int> bsplineGeoIds;
     double combrepscale = 0; // the repscale that would correspond to this comb based only on this calculation.
 
+    /* Insertion of representation factor */ //TODO: Refactor this
+    /*
+    std::vector<int> processedBSplines;
+    for(auto &c : getSketchObject()->Constraints.getValues()) {
+        if(c->Type == InternalAlignment && c->AlignmentType == BSplineControlPoint) {
+            // process B-Splines only once
+            if(std::find(processedBSplines.begin(), processedBSplines.end(), c->Second) == processedBSplines.end()) {
+                processedBSplines.push_back(c->Second);
+                auto gf = getSketchObject()->getGeometryFacade(c->Second);
+
+                auto weights = gf->getGeometry<const Part::GeomBSplineCurve>()->getWeights();
+
+                            double weight = 1.0;
+                            if(c->InternalAlignmentIndex < int(weights.size()))
+                                weight =  weights[c->InternalAlignmentIndex];
+
+                            // tentative scaling factor:
+                            // proportional to the length of the bspline
+                            // inversely proportional to the number of poles
+                            double scalefactor = bspline->length(bspline->getFirstParameter(), bspline->getLastParameter())/10.0/weights.size();
+
+            }
+        }
+    }
+
+
+    int GeoId = 0;
+    for (std::vector<Part::Geometry *>::const_iterator it = geomlist->begin(); it != geomlist->end()-2; ++it, GeoId++) {
+        if (GeoId >= geolist.intGeoCount)
+            GeoId = -geolist.extGeoCount;
+
+        if ((*it)->getTypeId() == Part::GeomCircle::getClassTypeId()) { // circle
+            const Part::GeomCircle *circle = static_cast<const Part::GeomCircle *>(*it);
+            auto gf = GeometryFacade::getFacade(circle);
+
+            // BSpline weights have a radius corresponding to the weight value
+            // However, in order for them proportional to the B-Spline size,
+            // the scenograph has a size scalefactor times the weight
+            //
+            // This code produces the scaled up version of the geometry for the scenograph
+            if(gf->getInternalType() == InternalType::BSplineControlPoint) {
+                for( auto c : getSketchObject()->Constraints.getValues()) {
+                    if( c->Type == InternalAlignment && c->AlignmentType == BSplineControlPoint && c->First == GeoId) {
+                        auto bspline = dynamic_cast<const Part::GeomBSplineCurve *>((*geomlist)[c->Second]);
+
+                        if(bspline){
+                            auto weights = bspline->getWeights();
+
+                            double weight = 1.0;
+                            if(c->InternalAlignmentIndex < int(weights.size()))
+                                weight =  weights[c->InternalAlignmentIndex];
+
+                            // tentative scaling factor:
+                            // proportional to the length of the bspline
+                            // inversely proportional to the number of poles
+                            double scalefactor = bspline->length(bspline->getFirstParameter(), bspline->getLastParameter())/10.0/weights.size();
+
+                            double vradius = weight*scalefactor;
+                            if(!bspline->isRational()) {
+                                // OCCT sets the weights to 1.0 if a bspline is non-rational, but if the user has a weight constraint on any
+                                // pole it would cause a visual artifact of having a constraint with a different radius and an unscaled circle
+                                // so better scale the circles.
+                                std::vector<int> polegeoids;
+                                polegeoids.reserve(weights.size());
+
+                                for ( auto ic : getSketchObject()->Constraints.getValues()) {
+                                    if( ic->Type == InternalAlignment && ic->AlignmentType == BSplineControlPoint && ic->Second == c->Second) {
+                                        polegeoids.push_back(ic->First);
+                                    }
+                                }
+
+                                for ( auto ic : getSketchObject()->Constraints.getValues()) {
+                                    if( ic->Type == Weight ) {
+                                        auto pos = std::find(polegeoids.begin(), polegeoids.end(), ic->First);
+
+                                        if(pos != polegeoids.end()) {
+                                            vradius = ic->getValue() * scalefactor;
+                                            break; // one is enough, otherwise it would not be non-rational
+                                        }
+                                    }
+                                }
+                            }
+
+                            // virtual circle or radius vradius
+                            auto mcurve = [&center, vradius](double param, double &x, double &y) {
+                                x = center.x + vradius*cos(param);
+                                y = center.y + vradius*sin(param);
+                            };
+
+                            double x;
+                            double y;
+                            for (int i=0; i < countSegments; i++) {
+                                double param = 2*M_PI*i/countSegments;
+                                mcurve(param,x,y);
+                                Coords.emplace_back(x, y, 0);
+                            }
+
+                            mcurve(0,x,y);
+                            Coords.emplace_back(x, y, 0);
+
+                            // save scale factor for any prospective dragging operation
+                            // 1. Solver must be updated, in case a dragging operation starts
+                            // 2. if temp geometry is being used (with memory allocation), then the copy we have here must be updated. If
+                            //    no temp geometry is being used, then the normal geometry must be updated.
+                            {// make solver be ready for a dragging operation
+                                auto vpext = std::make_unique<SketcherGui::ViewProviderSketchGeometryExtension>();
+                                vpext->setRepresentationFactor(scalefactor);
+
+                                getSketchObject()->updateSolverExtension(GeoId, std::move(vpext));
+                            }
+
+                            if(!circle->hasExtension(SketcherGui::ViewProviderSketchGeometryExtension::getClassTypeId()))
+                            {
+                                // It is ok to add this kind of extension to a const geometry because:
+                                // 1. It does not modify the object in a way that affects property state, just ViewProvider representation
+                                // 2. If it is lost (for example upon undo), redrawing will reinstate it with the correct value
+                                const_cast<Part::GeomCircle *>(circle)->setExtension(std::make_unique<SketcherGui::ViewProviderSketchGeometryExtension>());
+                            }
+
+                            auto vpext = std::const_pointer_cast<SketcherGui::ViewProviderSketchGeometryExtension>(
+                                            std::static_pointer_cast<const SketcherGui::ViewProviderSketchGeometryExtension>(
+                                                circle->getExtension(SketcherGui::ViewProviderSketchGeometryExtension::getClassTypeId()).lock()));
+
+                            vpext->setRepresentationFactor(scalefactor);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }*/
+
     /*auto [Coords, Points, Index] =*/ coinManager->processGeometry(geolist);
 
     if ( (combrepscale > (2 * combrepscalehyst)) || (combrepscale < (combrepscalehyst/2)))

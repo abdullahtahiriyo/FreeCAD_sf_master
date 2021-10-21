@@ -77,11 +77,11 @@ void CoinManager::ParameterObserver::updateCurvedEdgeCountSegmentsParameter()
 
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
     int stdcountsegments = hGrp->GetInt("SegmentsPerGeometry", 50);
-    // value cannot be smaller than 3
-    if (stdcountsegments < 3)
-        stdcountsegments = 3;
+    // value cannot be smaller than 6
+    if (stdcountsegments < 6)
+        stdcountsegments = 6;
 
-    pClient->drawingParameters.CurvedEdgeCountSegments = stdcountsegments;
+    pClient->drawingParameters.curvedEdgeCountSegments = stdcountsegments;
 }
 
 void CoinManager::ParameterObserver::subscribeToParameters()
@@ -104,6 +104,108 @@ void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCalle
         updateCurvedEdgeCountSegmentsParameter();
 
 }
+
+//*************************** GeometryCoinConverter ***************************
+
+enum class PointsMode {
+    InsertSingle,
+    InsertStartEnd,
+    InsertStartEndMid,
+    InsertMidOnly
+};
+
+enum class CurveMode {
+    NoCurve,
+    StartEndPointsOnly,
+    ClosedCurve,
+    OpenCurve,
+    Custom
+};
+
+enum class AnalyseMode {
+    NoAnalysis,
+    BoundingBox,
+    BoundingBoxAndCurvature
+};
+
+
+class GeometryCoinConverter {
+public:
+    GeometryCoinConverter(std::vector<Base::Vector3d> & points,
+                          std::vector<Base::Vector3d> & coords,
+                          std::vector<unsigned int> & index,
+                          int curvedEdgeCountSegments
+                         ): Points(points), Coords(coords), Index(index), CurvedEdgeCountSegments(curvedEdgeCountSegments){}
+
+    template < typename GeoType, PointsMode pointmode, CurveMode curvemode, AnalyseMode analysemode >
+    void convert(const Part::Geometry * geometry) {
+        auto geo = static_cast<const GeoType *>(geometry);
+
+        // Points
+        if constexpr (pointmode == PointsMode::InsertSingle) {
+            Points.push_back(geo->getPoint());
+        }
+        else if constexpr (pointmode == PointsMode::InsertStartEnd) {
+            Points.push_back(geo->getStartPoint());
+            Points.push_back(geo->getEndPoint());
+        }
+        else if constexpr (pointmode == PointsMode::InsertStartEndMid) {
+            // All in this group are Trimmed Curves (see Geometry.h)
+            Points.push_back(geo->getStartPoint(/*emulateCCW=*/true));
+            Points.push_back(geo->getEndPoint(/*emulateCCW=*/true));
+            Points.push_back(geo->getCenter());
+        }
+        else if constexpr (pointmode == PointsMode::InsertMidOnly) {
+            Points.push_back(geo->getCenter());
+        }
+
+        // Curves
+        if constexpr (curvemode == CurveMode::StartEndPointsOnly) {
+            Coords.push_back(geo->getStartPoint());
+            Coords.push_back(geo->getEndPoint());
+            Index.push_back(2);
+        }
+        else if constexpr (curvemode == CurveMode::ClosedCurve) {
+
+            double segment = (geo->getLastParameter() - geo->getFirstParameter()) / CurvedEdgeCountSegments;
+
+            for (int i=0; i < CurvedEdgeCountSegments; i++) {
+                Base::Vector3d pnt = geo->value(i*segment);
+                Coords.emplace_back(pnt);
+            }
+
+            Base::Vector3d pnt = geo->value(0);
+            Coords.emplace_back(pnt);
+
+            Index.push_back(CurvedEdgeCountSegments+1);
+        }
+        else if constexpr (curvemode == CurveMode::OpenCurve) {
+
+            double segment = (geo->getLastParameter() - geo->getFirstParameter()) / CurvedEdgeCountSegments;
+
+            for (int i=0; i < CurvedEdgeCountSegments; i++) {
+                Base::Vector3d pnt = geo->value(geo->getFirstParameter() + i*segment);
+                Coords.emplace_back(pnt);
+            }
+
+            Base::Vector3d pnt = geo->value(geo->getLastParameter());
+                Coords.emplace_back(pnt);
+
+            Index.push_back(CurvedEdgeCountSegments+1);
+        }
+
+    }
+
+private:
+    std::vector<Base::Vector3d> & Points;
+    std::vector<Base::Vector3d> & Coords;
+    std::vector<unsigned int> & Index;
+
+    // drawing parameters
+    int CurvedEdgeCountSegments;
+};
+
+
 
 //**************************** CoinManager class ******************************
 CoinManager::CoinManager(EditData * editdata):edit(editdata) {
@@ -135,6 +237,8 @@ CoinManager::processGeometry(const GeoList & geolist)
     std::vector<Base::Vector3d> Points;
     std::vector<unsigned int> Index;
 
+    GeometryCoinConverter gcconv(Points, Coords, Index, drawingParameters.curvedEdgeCountSegments);
+
     // RootPoint
     Points.emplace_back(0.,0.,0.);
 
@@ -144,18 +248,11 @@ CoinManager::processGeometry(const GeoList & geolist)
             GeoId = -geolist.extGeoCount;
 
         if ((*it)->getTypeId() == Part::GeomPoint::getClassTypeId()) { // add a point
-            const Part::GeomPoint *point = static_cast<const Part::GeomPoint *>(*it);
-            Points.push_back(point->getPoint());
+            gcconv.convert<Part::GeomPoint, PointsMode::InsertSingle, CurveMode::NoCurve, AnalyseMode::BoundingBox>((*it));
             edit->PointIdToGeoId.push_back(GeoId);
         }
         else if ((*it)->getTypeId() == Part::GeomLineSegment::getClassTypeId()) { // add a line
-            const Part::GeomLineSegment *lineSeg = static_cast<const Part::GeomLineSegment *>(*it);
-            // create the definition struct for that geom
-            Coords.push_back(lineSeg->getStartPoint());
-            Coords.push_back(lineSeg->getEndPoint());
-            Points.push_back(lineSeg->getStartPoint());
-            Points.push_back(lineSeg->getEndPoint());
-            Index.push_back(2);
+            gcconv.convert<Part::GeomLineSegment, PointsMode::InsertStartEnd, CurveMode::StartEndPointsOnly, AnalyseMode::BoundingBox>((*it));
             edit->CurvIdToGeoId.push_back(GeoId);
             edit->PointIdToGeoId.push_back(GeoId);
             edit->PointIdToGeoId.push_back(GeoId);
@@ -165,7 +262,7 @@ CoinManager::processGeometry(const GeoList & geolist)
             Handle(Geom_Circle) curve = Handle(Geom_Circle)::DownCast(circle->handle());
             auto gf = GeometryFacade::getFacade(circle);
 
-            int countSegments = drawingParameters.CurvedEdgeCountSegments;
+            int countSegments = drawingParameters.curvedEdgeCountSegments;
             Base::Vector3d center = circle->getCenter();
 
             // BSpline weights have a radius corresponding to the weight value
@@ -265,6 +362,7 @@ CoinManager::processGeometry(const GeoList & geolist)
             }
             else {
 
+                /*
                 double segment = (2 * M_PI) / countSegments;
 
                 for (int i=0; i < countSegments; i++) {
@@ -273,174 +371,45 @@ CoinManager::processGeometry(const GeoList & geolist)
                 }
 
                 gp_Pnt pnt = curve->Value(0);
-                Coords.emplace_back(pnt.X(), pnt.Y(), pnt.Z());
+                Coords.emplace_back(pnt.X(), pnt.Y(), pnt.Z());*/
+
+                gcconv.convert<Part::GeomCircle, PointsMode::InsertMidOnly, CurveMode::ClosedCurve, AnalyseMode::BoundingBox>((*it));
             }
 
-            Index.push_back(countSegments+1);
+            //Index.push_back(countSegments+1);
             edit->CurvIdToGeoId.push_back(GeoId);
-            Points.push_back(center);
+            //Points.push_back(center);
             edit->PointIdToGeoId.push_back(GeoId);
         }
         else if ((*it)->getTypeId() == Part::GeomEllipse::getClassTypeId()) { // add an ellipse
-            const Part::GeomEllipse *ellipse = static_cast<const Part::GeomEllipse *>(*it);
-            Handle(Geom_Ellipse) curve = Handle(Geom_Ellipse)::DownCast(ellipse->handle());
-
-            int countSegments = drawingParameters.CurvedEdgeCountSegments;
-            Base::Vector3d center = ellipse->getCenter();
-            double segment = (2 * M_PI) / countSegments;
-            for (int i=0; i < countSegments; i++) {
-                gp_Pnt pnt = curve->Value(i*segment);
-                Coords.emplace_back(pnt.X(), pnt.Y(), pnt.Z());
-            }
-
-            gp_Pnt pnt = curve->Value(0);
-            Coords.emplace_back(pnt.X(), pnt.Y(), pnt.Z());
-
-            Index.push_back(countSegments+1);
+            gcconv.convert<Part::GeomEllipse, PointsMode::InsertMidOnly, CurveMode::ClosedCurve, AnalyseMode::BoundingBox>((*it));
             edit->CurvIdToGeoId.push_back(GeoId);
-            Points.push_back(center);
             edit->PointIdToGeoId.push_back(GeoId);
         }
         else if ((*it)->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) { // add an arc
-            const Part::GeomArcOfCircle *arc = static_cast<const Part::GeomArcOfCircle *>(*it);
-            Handle(Geom_TrimmedCurve) curve = Handle(Geom_TrimmedCurve)::DownCast(arc->handle());
-
-            double startangle, endangle;
-            arc->getRange(startangle, endangle, /*emulateCCW=*/false);
-            if (startangle > endangle) // if arc is reversed
-                std::swap(startangle, endangle);
-
-            double range = endangle-startangle;
-            int countSegments = std::max(6, int(drawingParameters.CurvedEdgeCountSegments * range / (2 * M_PI)));
-            double segment = range / countSegments;
-
-            Base::Vector3d center = arc->getCenter();
-            Base::Vector3d start  = arc->getStartPoint(/*emulateCCW=*/true);
-            Base::Vector3d end    = arc->getEndPoint(/*emulateCCW=*/true);
-
-            for (int i=0; i < countSegments; i++) {
-                gp_Pnt pnt = curve->Value(startangle);
-                Coords.emplace_back(pnt.X(), pnt.Y(), pnt.Z());
-                startangle += segment;
-            }
-
-            // end point
-            gp_Pnt pnt = curve->Value(endangle);
-            Coords.emplace_back(pnt.X(), pnt.Y(), pnt.Z());
-
-            Index.push_back(countSegments+1);
+            gcconv.convert<Part::GeomArcOfCircle, PointsMode::InsertStartEndMid, CurveMode::OpenCurve, AnalyseMode::BoundingBox>((*it));
             edit->CurvIdToGeoId.push_back(GeoId);
-            Points.push_back(start);
-            Points.push_back(end);
-            Points.push_back(center);
             edit->PointIdToGeoId.push_back(GeoId);
             edit->PointIdToGeoId.push_back(GeoId);
             edit->PointIdToGeoId.push_back(GeoId);
         }
         else if ((*it)->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) { // add an arc
-            const Part::GeomArcOfEllipse *arc = static_cast<const Part::GeomArcOfEllipse *>(*it);
-            Handle(Geom_TrimmedCurve) curve = Handle(Geom_TrimmedCurve)::DownCast(arc->handle());
-
-            double startangle, endangle;
-            arc->getRange(startangle, endangle, /*emulateCCW=*/false);
-            if (startangle > endangle) // if arc is reversed
-                std::swap(startangle, endangle);
-
-            double range = endangle-startangle;
-            int countSegments = std::max(6, int(drawingParameters.CurvedEdgeCountSegments * range / (2 * M_PI)));
-            double segment = range / countSegments;
-
-            Base::Vector3d center = arc->getCenter();
-            Base::Vector3d start  = arc->getStartPoint(/*emulateCCW=*/true);
-            Base::Vector3d end    = arc->getEndPoint(/*emulateCCW=*/true);
-
-            for (int i=0; i < countSegments; i++) {
-                gp_Pnt pnt = curve->Value(startangle);
-                Coords.emplace_back(pnt.X(), pnt.Y(), pnt.Z());
-                startangle += segment;
-            }
-
-            // end point
-            gp_Pnt pnt = curve->Value(endangle);
-            Coords.emplace_back(pnt.X(), pnt.Y(), pnt.Z());
-
-            Index.push_back(countSegments+1);
+            gcconv.convert<Part::GeomArcOfEllipse, PointsMode::InsertStartEndMid, CurveMode::OpenCurve, AnalyseMode::BoundingBox>((*it));
             edit->CurvIdToGeoId.push_back(GeoId);
-            Points.push_back(start);
-            Points.push_back(end);
-            Points.push_back(center);
             edit->PointIdToGeoId.push_back(GeoId);
             edit->PointIdToGeoId.push_back(GeoId);
             edit->PointIdToGeoId.push_back(GeoId);
         }
         else if ((*it)->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
-            const Part::GeomArcOfHyperbola *aoh = static_cast<const Part::GeomArcOfHyperbola *>(*it);
-            Handle(Geom_TrimmedCurve) curve = Handle(Geom_TrimmedCurve)::DownCast(aoh->handle());
-
-            double startangle, endangle;
-            aoh->getRange(startangle, endangle, /*emulateCCW=*/true);
-            if (startangle > endangle) // if arc is reversed
-                std::swap(startangle, endangle);
-
-            double range = endangle-startangle;
-            int countSegments = std::max(6, int(drawingParameters.CurvedEdgeCountSegments * range / (2 * M_PI)));
-            double segment = range / countSegments;
-
-            Base::Vector3d center = aoh->getCenter();
-            Base::Vector3d start  = aoh->getStartPoint();
-            Base::Vector3d end    = aoh->getEndPoint();
-
-            for (int i=0; i < countSegments; i++) {
-                gp_Pnt pnt = curve->Value(startangle);
-                Coords.emplace_back(pnt.X(), pnt.Y(), pnt.Z());
-                startangle += segment;
-            }
-
-            // end point
-            gp_Pnt pnt = curve->Value(endangle);
-            Coords.emplace_back(pnt.X(), pnt.Y(), pnt.Z());
-
-            Index.push_back(countSegments+1);
+            gcconv.convert<Part::GeomArcOfHyperbola, PointsMode::InsertStartEndMid, CurveMode::OpenCurve, AnalyseMode::BoundingBox>((*it));
             edit->CurvIdToGeoId.push_back(GeoId);
-            Points.push_back(start);
-            Points.push_back(end);
-            Points.push_back(center);
             edit->PointIdToGeoId.push_back(GeoId);
             edit->PointIdToGeoId.push_back(GeoId);
             edit->PointIdToGeoId.push_back(GeoId);
         }
         else if ((*it)->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
-            const Part::GeomArcOfParabola *aop = static_cast<const Part::GeomArcOfParabola *>(*it);
-            Handle(Geom_TrimmedCurve) curve = Handle(Geom_TrimmedCurve)::DownCast(aop->handle());
-
-            double startangle, endangle;
-            aop->getRange(startangle, endangle, /*emulateCCW=*/true);
-            if (startangle > endangle) // if arc is reversed
-                std::swap(startangle, endangle);
-
-            double range = endangle-startangle;
-            int countSegments = std::max(6, int(drawingParameters.CurvedEdgeCountSegments * range / (2 * M_PI)));
-            double segment = range / countSegments;
-
-            Base::Vector3d center = aop->getCenter();
-            Base::Vector3d start  = aop->getStartPoint();
-            Base::Vector3d end    = aop->getEndPoint();
-
-            for (int i=0; i < countSegments; i++) {
-                gp_Pnt pnt = curve->Value(startangle);
-                Coords.emplace_back(pnt.X(), pnt.Y(), pnt.Z());
-                startangle += segment;
-            }
-
-            // end point
-            gp_Pnt pnt = curve->Value(endangle);
-            Coords.emplace_back(pnt.X(), pnt.Y(), pnt.Z());
-
-            Index.push_back(countSegments+1);
+            gcconv.convert<Part::GeomArcOfParabola, PointsMode::InsertStartEndMid, CurveMode::OpenCurve, AnalyseMode::BoundingBox>((*it));
             edit->CurvIdToGeoId.push_back(GeoId);
-            Points.push_back(start);
-            Points.push_back(end);
-            Points.push_back(center);
             edit->PointIdToGeoId.push_back(GeoId);
             edit->PointIdToGeoId.push_back(GeoId);
             edit->PointIdToGeoId.push_back(GeoId);
@@ -459,7 +428,7 @@ CoinManager::processGeometry(const GeoList & geolist)
                 std::swap(first, last);
 
             double range = last-first;
-            int countSegments = drawingParameters.CurvedEdgeCountSegments;
+            int countSegments = drawingParameters.curvedEdgeCountSegments;
             double segment = range / countSegments;
 
             for (int i=0; i < countSegments; i++) {
