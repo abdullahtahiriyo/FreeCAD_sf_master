@@ -3821,6 +3821,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
     // Render Geometry ===================================================
 
     std::vector<Part::Geometry *> tempGeo;
+
     if (temp)
         tempGeo = getSolvedSketch().extractGeometry(true, true); // with memory allocation
     else
@@ -3832,57 +3833,15 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
     assert(int(tempGeo.size()) == extGeoCount + intGeoCount);
     assert(int(tempGeo.size()) >= 2);
 
-    GeoList geolist {tempGeo, intGeoCount, extGeoCount};
-
-    // information layer
-    if(rebuildinformationlayer) {
-        // every time we start with empty information layer
-        Gui::coinRemoveAllChildren(edit->infoGroup);
-    }
-
-    int currentInfoNode = 0;
-
-    ParameterGrp::handle hGrpsk = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
-
-    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-    int stdcountsegments = hGrp->GetInt("SegmentsPerGeometry", 50);
-    // value cannot be smaller than 3
-    if (stdcountsegments < 3)
-        stdcountsegments = 3;
-
-    std::vector<int> bsplineGeoIds;
-    double combrepscale = 0; // the repscale that would correspond to this comb based only on this calculation.
-
     /* Insertion of representation factor */ //TODO: Refactor this
-    /*
-    std::vector<int> processedBSplines;
-    for(auto &c : getSketchObject()->Constraints.getValues()) {
-        if(c->Type == InternalAlignment && c->AlignmentType == BSplineControlPoint) {
-            // process B-Splines only once
-            if(std::find(processedBSplines.begin(), processedBSplines.end(), c->Second) == processedBSplines.end()) {
-                processedBSplines.push_back(c->Second);
-                auto gf = getSketchObject()->getGeometryFacade(c->Second);
 
-                auto weights = gf->getGeometry<const Part::GeomBSplineCurve>()->getWeights();
-
-                            double weight = 1.0;
-                            if(c->InternalAlignmentIndex < int(weights.size()))
-                                weight =  weights[c->InternalAlignmentIndex];
-
-                            // tentative scaling factor:
-                            // proportional to the length of the bspline
-                            // inversely proportional to the number of poles
-                            double scalefactor = bspline->length(bspline->getFirstParameter(), bspline->getLastParameter())/10.0/weights.size();
-
-            }
-        }
-    }
-
+    // memory management of deep copies necessary for drawing which are destroyed when the vector gets out of scope (i.e. at the end of this function).
+    std::vector<std::unique_ptr<Part::Geometry>> deepCopiesToDelete;
 
     int GeoId = 0;
-    for (std::vector<Part::Geometry *>::const_iterator it = geomlist->begin(); it != geomlist->end()-2; ++it, GeoId++) {
-        if (GeoId >= geolist.intGeoCount)
-            GeoId = -geolist.extGeoCount;
+    for (std::vector<Part::Geometry *>::const_iterator it = tempGeo.begin(); it != tempGeo.end()-2; ++it, GeoId++) {
+        if (GeoId >= intGeoCount)
+            GeoId = -extGeoCount;
 
         if ((*it)->getTypeId() == Part::GeomCircle::getClassTypeId()) { // circle
             const Part::GeomCircle *circle = static_cast<const Part::GeomCircle *>(*it);
@@ -3896,7 +3855,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
             if(gf->getInternalType() == InternalType::BSplineControlPoint) {
                 for( auto c : getSketchObject()->Constraints.getValues()) {
                     if( c->Type == InternalAlignment && c->AlignmentType == BSplineControlPoint && c->First == GeoId) {
-                        auto bspline = dynamic_cast<const Part::GeomBSplineCurve *>((*geomlist)[c->Second]);
+                        auto bspline = dynamic_cast<const Part::GeomBSplineCurve *>(tempGeo[c->Second]);
 
                         if(bspline){
                             auto weights = bspline->getWeights();
@@ -3936,22 +3895,18 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
                                 }
                             }
 
-                            // virtual circle or radius vradius
-                            auto mcurve = [&center, vradius](double param, double &x, double &y) {
-                                x = center.x + vradius*cos(param);
-                                y = center.y + vradius*sin(param);
-                            };
+                            Part::GeomCircle * tmpcircle;
 
-                            double x;
-                            double y;
-                            for (int i=0; i < countSegments; i++) {
-                                double param = 2*M_PI*i/countSegments;
-                                mcurve(param,x,y);
-                                Coords.emplace_back(x, y, 0);
+                            if(temp) { // with memory allocation
+                                tmpcircle = static_cast<Part::GeomCircle *>(*it);
+                                tmpcircle->setRadius(vradius);
                             }
-
-                            mcurve(0,x,y);
-                            Coords.emplace_back(x, y, 0);
+                            else { // without memory allocation
+                                tmpcircle = static_cast<Part::GeomCircle *>((*it)->clone());
+                                tmpcircle->setRadius(vradius);
+                                deepCopiesToDelete.push_back(std::unique_ptr<Part::GeomCircle>(tmpcircle));
+                                tempGeo[GeoId] = tmpcircle; // this is the circle that will be drawn, with the updated vradius.
+                            }
 
                             // save scale factor for any prospective dragging operation
                             // 1. Solver must be updated, in case a dragging operation starts
@@ -3983,7 +3938,25 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
                 }
             }
         }
-    }*/
+    }
+
+    GeoList geolist {tempGeo, intGeoCount, extGeoCount};
+
+    // information layer
+    if(rebuildinformationlayer) {
+        // every time we start with empty information layer
+        Gui::coinRemoveAllChildren(edit->infoGroup);
+    }
+
+
+
+
+    int currentInfoNode = 0;
+
+    ParameterGrp::handle hGrpsk = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+
+    std::vector<int> bsplineGeoIds;
+    double combrepscale = 0; // the repscale that would correspond to this comb based only on this calculation.
 
     /*auto [Coords, Points, Index] =*/ coinManager->processGeometry(geolist);
 
@@ -5413,22 +5386,7 @@ Restart:
 
                                 double radius;
 
-                                if(Constr->Type == Weight) {
-                                    double scalefactor = 1.0;
-
-                                    if(circle->hasExtension(SketcherGui::ViewProviderSketchGeometryExtension::getClassTypeId()))
-                                    {
-                                        auto vpext = std::static_pointer_cast<const SketcherGui::ViewProviderSketchGeometryExtension>(
-                                                        circle->getExtension(SketcherGui::ViewProviderSketchGeometryExtension::getClassTypeId()).lock());
-
-                                        scalefactor = vpext->getRepresentationFactor();
-                                    }
-
-                                    radius = circle->getRadius()*scalefactor;
-                                }
-                                else {
-                                    radius = circle->getRadius();
-                                }
+                                radius = circle->getRadius();
 
                                 double angle = (double) Constr->LabelPosition;
                                 if (angle == 10) {
@@ -5485,14 +5443,6 @@ Restart:
     if(Mode==STATUS_NONE || Mode==STATUS_SKETCH_UseHandler) {
        this->drawConstraintIcons();
        this->updateColor();
-    }
-
-    // delete the cloned objects
-    if (temp) {
-        for (std::vector<Part::Geometry *>::iterator it=tempGeo.begin(); it != tempGeo.end(); ++it) {
-            if (*it)
-                delete *it;
-        }
     }
 
     Gui::MDIView *mdi = this->getActiveView();
