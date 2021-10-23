@@ -107,18 +107,21 @@ public:
 
     using Vector3d = Base::Vector3<double>;
 
-    // This function populates the coin nodes with the information of the current geometry
-    void processGeometry(const GeoList & geolist);
-
-    // This function populates the geometry information layer of coin. It requires the analysis information
-    // gathered during the processGeometry step, so it is not possible to run both in parallel.
-    void processGeometryInformationLayer(const GeoList & geolist, bool rebuildinformationlayer);
+    void processGeometryAndInformationLayer(const GeoList & geolist, bool rebuildinformationlayer);
 
     void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel);
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
 
     inline void setVisibleInformationChanged() {visualisationControlParameters.visibleInformationChanged = true;}
     void updateCoinManagerColors();
+
+private:
+    // This function populates the coin nodes with the information of the current geometry
+    void processGeometry(const GeoList & geolist);
+
+    // This function populates the geometry information layer of coin. It requires the analysis information
+    // gathered during the processGeometry step, so it is not possible to run both in parallel.
+    void processGeometryInformationLayer(const GeoList & geolist, bool rebuildinformationlayer);
 
 private:
     EditData * edit;

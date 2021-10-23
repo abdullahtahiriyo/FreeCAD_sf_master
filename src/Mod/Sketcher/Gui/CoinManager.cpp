@@ -914,6 +914,13 @@ void CoinManager::processGeometryInformationLayer(const GeoList & geolist, bool 
     visualisationControlParameters.visibleInformationChanged = false; // just updated
 }
 
+void CoinManager::processGeometryAndInformationLayer(const GeoList & geolist, bool rebuildinformationlayer)
+{
+    processGeometry(geolist);
+
+    processGeometryInformationLayer(geolist, rebuildinformationlayer);
+}
+
 void CoinManager::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel)
 {
     assert(edit);

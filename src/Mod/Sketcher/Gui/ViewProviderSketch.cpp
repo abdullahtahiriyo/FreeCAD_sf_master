@@ -3937,11 +3937,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
         Gui::coinRemoveAllChildren(edit->infoGroup);
     }
 
-    coinManager->processGeometry(geolist);
-
-    coinManager->processGeometryInformationLayer(geolist, rebuildinformationlayer);
-
-
+    coinManager->processGeometryAndInformationLayer(geolist, rebuildinformationlayer);
 
     // ************ Visualisation Management - Axes length *********
 
