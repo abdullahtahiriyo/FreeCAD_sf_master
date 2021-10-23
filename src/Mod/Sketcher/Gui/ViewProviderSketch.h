@@ -61,7 +61,9 @@ class SoTranslation;
 class SbString;
 class SbTime;
 
-
+namespace Part {
+    class Geometry;
+}
 
 namespace Gui {
     class View3DInventorViewer;
@@ -307,6 +309,14 @@ protected:
 
     void slotUndoDocument(const Gui::Document&);
     void slotRedoDocument(const Gui::Document&);
+
+private:
+    void scaleBSplinePoleCirclesAndUpdateSolverAndSketchObjectGeometry(
+                        std::vector<Part::Geometry *> & tempGeo,
+                        int intGeoCount,
+                        int extGeoCount,
+                        bool geometrywithmemoryallocation,
+                        std::vector<std::unique_ptr<Part::Geometry>> &deepCopiesToDelete);
 
 protected:
     boost::signals2::connection connectUndoDocument;

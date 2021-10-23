@@ -3803,30 +3803,21 @@ void ViewProviderSketch::initItemsSizes()
     }
 }
 
-void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer /*=true*/)
+// This function ensures that the geometry used for drawing takes into account:
+// 1. the OCC mandated weight, which is normalised for non-rational BSplines, but not normalised for rational BSplines.
+// That includes properly sizing for drawing any weight constraint.
+// This function ensures that both the geometry of the SketchObject and solver are updated with the new value of the scaling factor (via the extension)
+// 2. the scaling factor, including inserting the scaling factor into the ViewProviderSketchGeometryExtension so as to enable
+// That ensures that dragging operations on the circles of the poles of the B-Splines are properly rendered.
+//
+// This function takes a reference to a vector of deep copies to delete. These deep copies are necessary to transparently perform (1) while doing (2).
+void ViewProviderSketch::scaleBSplinePoleCirclesAndUpdateSolverAndSketchObjectGeometry(
+        std::vector<Part::Geometry *> & tempGeo,
+        int intGeoCount,
+        int extGeoCount,
+        bool geometrywithmemoryallocation,
+        std::vector<std::unique_ptr<Part::Geometry>> &deepCopiesToDelete )
 {
-    assert(edit);
-
-    // Render Geometry ===================================================
-
-    std::vector<Part::Geometry *> tempGeo;
-
-    if (temp)
-        tempGeo = getSolvedSketch().extractGeometry(true, true); // with memory allocation
-    else
-        tempGeo = getSketchObject()->getCompleteGeometry(); // without memory allocation
-
-    int intGeoCount = getSketchObject()->getHighestCurveIndex() + 1;
-    int extGeoCount = getSketchObject()->getExternalGeometryCount();
-
-    assert(int(tempGeo.size()) == extGeoCount + intGeoCount);
-    assert(int(tempGeo.size()) >= 2);
-
-    /* Insertion of representation factor */ //TODO: Refactor this
-
-    // memory management of deep copies necessary for drawing which are destroyed when the vector gets out of scope (i.e. at the end of this function).
-    std::vector<std::unique_ptr<Part::Geometry>> deepCopiesToDelete;
-
     int GeoId = 0;
     for (std::vector<Part::Geometry *>::const_iterator it = tempGeo.begin(); it != tempGeo.end()-2; ++it, GeoId++) {
         if (GeoId >= intGeoCount)
@@ -3886,7 +3877,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
 
                             Part::GeomCircle * tmpcircle;
 
-                            if(temp) { // with memory allocation
+                            if(geometrywithmemoryallocation) { // with memory allocation
                                 tmpcircle = static_cast<Part::GeomCircle *>(*it);
                                 tmpcircle->setRadius(vradius);
                             }
@@ -3928,8 +3919,50 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
             }
         }
     }
+}
+
+
+
+void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer /*=true*/)
+{
+    assert(edit);
+
+    // Render Geometry ===================================================
+
+    std::vector<Part::Geometry *> tempGeo;
+
+    if (temp)
+        tempGeo = getSolvedSketch().extractGeometry(true, true); // with memory allocation
+    else
+        tempGeo = getSketchObject()->getCompleteGeometry(); // without memory allocation
+
+    int intGeoCount = getSketchObject()->getHighestCurveIndex() + 1;
+    int extGeoCount = getSketchObject()->getExternalGeometryCount();
+
+    assert(int(tempGeo.size()) == extGeoCount + intGeoCount);
+    assert(int(tempGeo.size()) >= 2);
 
     GeoList geolist {tempGeo, intGeoCount, extGeoCount};
+    // ************ Manage BSpline pole circle scaling  ****************************
+
+    // memory management of deep copies necessary for drawing which are destroyed when the vector gets out of scope (i.e. at the end of this function).
+    std::vector<std::unique_ptr<Part::Geometry>> deepCopiesToDelete;
+
+    // This function ensures that the geometry used for drawing takes into account:
+    // 1. the OCC mandated weight, which is normalised for non-rational BSplines, but not normalised for rational BSplines.
+    // That includes properly sizing for drawing any weight constraint.
+    // This function ensures that both the geometry of the SketchObject and solver are updated with the new value of the scaling factor (via the extension)
+    // 2. the scaling factor, including inserting the scaling factor into the ViewProviderSketchGeometryExtension so as to enable
+    // That ensures that dragging operations on the circles of the poles of the B-Splines are properly rendered.
+    //
+    // This function takes a reference to a vector of deep copies to delete. These deep copies are necessary to transparently perform (1) while doing (2).
+
+    scaleBSplinePoleCirclesAndUpdateSolverAndSketchObjectGeometry(
+        tempGeo,
+        intGeoCount,
+        extGeoCount,
+        temp,
+        deepCopiesToDelete);
 
     // ************ Process geometry and geometry information layers ****************************
     if(rebuildinformationlayer) {
