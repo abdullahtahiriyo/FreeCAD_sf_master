@@ -429,7 +429,6 @@ protected:
     // colors
     static SbColor VertexColor;
     static SbColor CurveColor;
-    static SbColor CreateCurveColor;
     static SbColor CurveDraftColor;
     static SbColor CurveExternalColor;
     static SbColor CrossColorV;
@@ -442,7 +441,6 @@ protected:
     static SbColor PreselectColor;
     static SbColor SelectColor;
     static SbColor PreselectSelectedColor;
-    static SbColor InformationColor;
     static SbColor DeactivatedConstrDimColor;
     static SbColor InternalAlignedGeoColor;
     static SbColor FullyConstraintElementColor;
@@ -464,9 +462,7 @@ protected:
     float zConstr;
     float zHighlight;
     float zText;
-    float zEdit;
     float zHighLine;
-    float zInfo;
     float zLowLines;
     float zMidLines;
     float zHighLines;
@@ -476,10 +472,6 @@ protected:
     bool relative;
 
     Gui::Rubberband* rubberband;
-
-    // information layer variables
-    bool visibleInformationChanged;
-    double combrepscalehyst;
 
     std::string editDocName;
     std::string editObjName;

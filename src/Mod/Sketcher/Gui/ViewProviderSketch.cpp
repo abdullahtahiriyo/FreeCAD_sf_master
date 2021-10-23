@@ -135,11 +135,6 @@ FC_LOG_LEVEL_INIT("Sketch",true,true)
 #define CONSTRAINT_SEPARATOR_INDEX_SECOND_ICON 5
 #define CONSTRAINT_SEPARATOR_INDEX_SECOND_CONSTRAINTID 6
 
-// Macros to define information layer node child positions within type
-#define GEOINFO_BSPLINE_DEGREE_POS 0
-#define GEOINFO_BSPLINE_DEGREE_TEXT 3
-#define GEOINFO_BSPLINE_POLYGON 1
-
 using namespace SketcherGui;
 using namespace Sketcher;
 namespace bp = boost::placeholders;
@@ -155,11 +150,9 @@ SbColor ViewProviderSketch::ConstrDimColor                          (1.0f,0.149f
 SbColor ViewProviderSketch::ConstrIcoColor                          (1.0f,0.149f,0.0f);   // #FF2600 -> (255, 38,  0)
 SbColor ViewProviderSketch::NonDrivingConstrDimColor                (0.0f,0.149f,1.0f);   // #0026FF -> (  0, 38,255)
 SbColor ViewProviderSketch::ExprBasedConstrDimColor                 (1.0f,0.5f,0.149f);   // #FF7F26 -> (255, 127,38)
-SbColor ViewProviderSketch::InformationColor                        (0.0f,1.0f,0.0f);     // #00FF00 -> (  0,255,  0)
 SbColor ViewProviderSketch::PreselectColor                          (0.88f,0.88f,0.0f);   // #E1E100 -> (225,225,  0)
 SbColor ViewProviderSketch::SelectColor                             (0.11f,0.68f,0.11f);  // #1CAD1C -> ( 28,173, 28)
 SbColor ViewProviderSketch::PreselectSelectedColor                  (0.36f,0.48f,0.11f);  // #5D7B1C -> ( 93,123, 28)
-SbColor ViewProviderSketch::CreateCurveColor                        (0.8f,0.8f,0.8f);     // #CCCCCC -> (204,204,204)
 SbColor ViewProviderSketch::DeactivatedConstrDimColor               (0.8f,0.8f,0.8f);     // #CCCCCC -> (204,204,204)
 SbColor ViewProviderSketch::InternalAlignedGeoColor                 (0.7f,0.7f,0.5f);     // #B2B27F -> (178,178,127)
 SbColor ViewProviderSketch::FullyConstraintElementColor             (0.50f,0.81f,0.62f);  // #80D0A0 -> (128,208,160)
@@ -197,8 +190,6 @@ ViewProviderSketch::ViewProviderSketch()
   : SelectionObserver(false),
     edit(0),
     Mode(STATUS_NONE),
-    visibleInformationChanged(true),
-    combrepscalehyst(0),
     isShownVirtualSpace(false),
     listener(0),
     coinManager(nullptr)
@@ -240,8 +231,6 @@ ViewProviderSketch::ViewProviderSketch()
     PointSize.setValue(4);
 
     zCross=0.001f;
-    zEdit=0.001f;
-    zInfo=0.004f;
     zLowLines=0.005f;
     //zLines=0.005f;    // ZLines removed in favour of 3 height groups intended for NormalLines, ConstructionLines, ExternalLines
     zMidLines=0.006f;
@@ -3942,484 +3931,19 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
 
     GeoList geolist {tempGeo, intGeoCount, extGeoCount};
 
-    // information layer
+    // ************ Process geometry and geometry information layers ****************************
     if(rebuildinformationlayer) {
         // every time we start with empty information layer
         Gui::coinRemoveAllChildren(edit->infoGroup);
     }
 
+    coinManager->processGeometry(geolist);
 
+    coinManager->processGeometryInformationLayer(geolist, rebuildinformationlayer);
 
 
-    int currentInfoNode = 0;
 
-    ParameterGrp::handle hGrpsk = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
-
-    std::vector<int> bsplineGeoIds;
-    double combrepscale = 0; // the repscale that would correspond to this comb based only on this calculation.
-
-    /*auto [Coords, Points, Index] =*/ coinManager->processGeometry(geolist);
-
-    if ( (combrepscale > (2 * combrepscalehyst)) || (combrepscale < (combrepscalehyst/2)))
-        combrepscalehyst = combrepscale ;
-
-    const std::vector<Part::Geometry *> *geomlist;
-    geomlist = &geolist.geomlist;
-
-
-    // geometry information layer for bsplines, as they need a second round now that max curvature is known
-    for (std::vector<int>::const_iterator it = bsplineGeoIds.begin(); it != bsplineGeoIds.end(); ++it) {
-
-        const Part::Geometry *geo = GeoById(*geomlist, *it);
-
-        const Part::GeomBSplineCurve *spline = static_cast<const Part::GeomBSplineCurve *>(geo);
-
-        //----------------------------------------------------------
-        // geometry information layer
-
-        // polynom degree --------------------------------------------------------
-        std::vector<Base::Vector3d> poles = spline->getPoles();
-
-        Base::Vector3d midp = Base::Vector3d(0,0,0);
-
-        for (std::vector<Base::Vector3d>::iterator it = poles.begin(); it != poles.end(); ++it) {
-            midp += (*it);
-        }
-
-        midp /= poles.size();
-
-        if (rebuildinformationlayer) {
-            SoSwitch *sw = new SoSwitch();
-
-            sw->whichChild = hGrpsk->GetBool("BSplineDegreeVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
-
-            SoSeparator *sep = new SoSeparator();
-            sep->ref();
-            // no caching for frequently-changing data structures
-            sep->renderCaching = SoSeparator::OFF;
-
-            // every information visual node gets its own material for to-be-implemented preselection and selection
-            SoMaterial *mat = new SoMaterial;
-            mat->ref();
-            mat->diffuseColor = InformationColor;
-
-            SoTranslation *translate = new SoTranslation;
-
-            translate->translation.setValue(midp.x,midp.y,zInfo);
-
-            SoFont *font = new SoFont;
-            font->name.setValue("Helvetica");
-            font->size.setValue(edit->coinFontSize);
-
-            SoText2 *degreetext = new SoText2;
-            degreetext->string = SbString(spline->getDegree());
-
-            sep->addChild(translate);
-            sep->addChild(mat);
-            sep->addChild(font);
-            sep->addChild(degreetext);
-
-            sw->addChild(sep);
-
-            edit->infoGroup->addChild(sw);
-            sep->unref();
-            mat->unref();
-        }
-        else {
-            SoSwitch *sw = static_cast<SoSwitch *>(edit->infoGroup->getChild(currentInfoNode));
-
-            if (visibleInformationChanged)
-                sw->whichChild = hGrpsk->GetBool("BSplineDegreeVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
-
-            SoSeparator *sep = static_cast<SoSeparator *>(sw->getChild(0));
-
-            static_cast<SoTranslation *>(sep->getChild(GEOINFO_BSPLINE_DEGREE_POS))->translation.setValue(midp.x,midp.y,zInfo);
-
-            static_cast<SoText2 *>(sep->getChild(GEOINFO_BSPLINE_DEGREE_TEXT))->string = SbString(spline->getDegree());
-        }
-
-        currentInfoNode++; // switch to next node
-
-        // control polygon --------------------------------------------------------
-        if (rebuildinformationlayer) {
-            SoSwitch *sw = new SoSwitch();
-
-            sw->whichChild = hGrpsk->GetBool("BSplineControlPolygonVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
-
-            SoSeparator *sep = new SoSeparator();
-            sep->ref();
-            // no caching for frequently-changing data structures
-            sep->renderCaching = SoSeparator::OFF;
-
-            // every information visual node gets its own material for to-be-implemented preselection and selection
-            SoMaterial *mat = new SoMaterial;
-            mat->ref();
-            mat->diffuseColor = InformationColor;
-
-            SoLineSet *polygon = new SoLineSet;
-
-            SoCoordinate3 *polygoncoords = new SoCoordinate3;
-
-            if (spline->isPeriodic()) {
-                polygoncoords->point.setNum(poles.size()+1);
-            }
-            else {
-                polygoncoords->point.setNum(poles.size());
-            }
-
-            SbVec3f *vts = polygoncoords->point.startEditing();
-
-            int i=0;
-            for (std::vector<Base::Vector3d>::iterator it = poles.begin(); it != poles.end(); ++it, i++) {
-                vts[i].setValue((*it).x,(*it).y,zInfo);
-            }
-
-            if (spline->isPeriodic()) {
-                vts[poles.size()].setValue(poles[0].x,poles[0].y,zInfo);
-            }
-
-            polygoncoords->point.finishEditing();
-
-            sep->addChild(mat);
-            sep->addChild(polygoncoords);
-            sep->addChild(polygon);
-
-            sw->addChild(sep);
-
-            edit->infoGroup->addChild(sw);
-            sep->unref();
-            mat->unref();
-        }
-        else {
-            SoSwitch *sw = static_cast<SoSwitch *>(edit->infoGroup->getChild(currentInfoNode));
-
-            if(visibleInformationChanged)
-                sw->whichChild = hGrpsk->GetBool("BSplineControlPolygonVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
-
-            SoSeparator *sep = static_cast<SoSeparator *>(sw->getChild(0));
-
-            SoCoordinate3 *polygoncoords = static_cast<SoCoordinate3 *>(sep->getChild(GEOINFO_BSPLINE_POLYGON));
-
-            if(spline->isPeriodic()) {
-                polygoncoords->point.setNum(poles.size()+1);
-            }
-            else {
-                polygoncoords->point.setNum(poles.size());
-            }
-
-            SbVec3f *vts = polygoncoords->point.startEditing();
-
-            int i=0;
-            for (std::vector<Base::Vector3d>::iterator it = poles.begin(); it != poles.end(); ++it, i++) {
-                vts[i].setValue((*it).x,(*it).y,zInfo);
-            }
-
-            if(spline->isPeriodic()) {
-                vts[poles.size()].setValue(poles[0].x,poles[0].y,zInfo);
-            }
-
-            polygoncoords->point.finishEditing();
-
-        }
-        currentInfoNode++; // switch to next node
-
-        // curvature graph --------------------------------------------------------
-
-        // reimplementation of python source:
-        // https://github.com/tomate44/CurvesWB/blob/master/ParametricComb.py
-        // by FreeCAD user Chris_G
-
-        double firstparam = spline->getFirstParameter();
-        double lastparam =  spline->getLastParameter();
-
-        const int ndiv = poles.size()>4?poles.size()*16:64;
-        double step = (lastparam - firstparam ) / (ndiv -1);
-
-        std::vector<double> paramlist(ndiv);
-        std::vector<Base::Vector3d> pointatcurvelist(ndiv);
-        std::vector<double> curvaturelist(ndiv);
-        std::vector<Base::Vector3d> normallist(ndiv);
-
-        for(int i = 0; i < ndiv; i++) {
-            paramlist[i] = firstparam + i * step;
-            pointatcurvelist[i] = spline->pointAtParameter(paramlist[i]);
-
-            try {
-                curvaturelist[i] = spline->curvatureAt(paramlist[i]);
-            }
-            catch(Base::CADKernelError &e) {
-                // it is "just" a visualisation matter OCC could not calculate the curvature
-                // terminating here would mean that the other shapes would not be drawn.
-                // Solution: Report the issue and set dummy curvature to 0
-                e.ReportException();
-                Base::Console().Error("Curvature graph for B-Spline with GeoId=%d could not be calculated.\n", 0); // TODO: Fix me
-                curvaturelist[i] = 0;
-            }
-
-            try {
-                spline->normalAt(paramlist[i],normallist[i]);
-            }
-            catch(Base::Exception&) {
-                normallist[i] = Base::Vector3d(0,0,0);
-            }
-
-        }
-
-        std::vector<Base::Vector3d> pointatcomblist(ndiv);
-
-        for(int i = 0; i < ndiv; i++) {
-            pointatcomblist[i] = pointatcurvelist[i] - combrepscalehyst * curvaturelist[i] * normallist[i];
-        }
-
-        if (rebuildinformationlayer) {
-            SoSwitch *sw = new SoSwitch();
-
-            sw->whichChild = hGrpsk->GetBool("BSplineCombVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
-
-            SoSeparator *sep = new SoSeparator();
-            sep->ref();
-            // no caching for frequently-changing data structures
-            sep->renderCaching = SoSeparator::OFF;
-
-            // every information visual node gets its own material for to-be-implemented preselection and selection
-            SoMaterial *mat = new SoMaterial;
-            mat->ref();
-            mat->diffuseColor = InformationColor;
-
-            SoLineSet *comblineset = new SoLineSet;
-
-            SoCoordinate3 *combcoords = new SoCoordinate3;
-
-            combcoords->point.setNum(3*ndiv); // 2*ndiv +1 points of ndiv separate segments + ndiv points for last segment
-            comblineset->numVertices.setNum(ndiv+1); // ndiv separate segments of radials + 1 segment connecting at comb end
-
-            int32_t *index = comblineset->numVertices.startEditing();
-            SbVec3f *vts = combcoords->point.startEditing();
-
-            for(int i = 0; i < ndiv; i++) {
-                vts[2*i].setValue(pointatcurvelist[i].x, pointatcurvelist[i].y, zInfo); // radials
-                vts[2*i+1].setValue(pointatcomblist[i].x, pointatcomblist[i].y, zInfo);
-                index[i] = 2;
-
-                vts[2*ndiv+i].setValue(pointatcomblist[i].x, pointatcomblist[i].y, zInfo); // comb endpoint closing segment
-            }
-
-            index[ndiv] = ndiv; // comb endpoint closing segment
-
-            combcoords->point.finishEditing();
-            comblineset->numVertices.finishEditing();
-
-            sep->addChild(mat);
-            sep->addChild(combcoords);
-            sep->addChild(comblineset);
-
-            sw->addChild(sep);
-
-            edit->infoGroup->addChild(sw);
-            sep->unref();
-            mat->unref();
-        }
-        else {
-            SoSwitch *sw = static_cast<SoSwitch *>(edit->infoGroup->getChild(currentInfoNode));
-
-            if(visibleInformationChanged)
-                sw->whichChild = hGrpsk->GetBool("BSplineCombVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
-
-            SoSeparator *sep = static_cast<SoSeparator *>(sw->getChild(0));
-
-            SoCoordinate3 *combcoords = static_cast<SoCoordinate3 *>(sep->getChild(GEOINFO_BSPLINE_POLYGON));
-
-            SoLineSet *comblineset = static_cast<SoLineSet *>(sep->getChild(GEOINFO_BSPLINE_POLYGON+1));
-
-            combcoords->point.setNum(3*ndiv); // 2*ndiv +1 points of ndiv separate segments + ndiv points for last segment
-            comblineset->numVertices.setNum(ndiv+1); // ndiv separate segments of radials + 1 segment connecting at comb end
-
-            int32_t *index = comblineset->numVertices.startEditing();
-            SbVec3f *vts = combcoords->point.startEditing();
-
-            for(int i = 0; i < ndiv; i++) {
-                vts[2*i].setValue(pointatcurvelist[i].x, pointatcurvelist[i].y, zInfo); // radials
-                vts[2*i+1].setValue(pointatcomblist[i].x, pointatcomblist[i].y, zInfo);
-                index[i] = 2;
-
-                vts[2*ndiv+i].setValue(pointatcomblist[i].x, pointatcomblist[i].y, zInfo); // comb endpoint closing segment
-            }
-
-            index[ndiv] = ndiv; // comb endpoint closing segment
-
-            combcoords->point.finishEditing();
-            comblineset->numVertices.finishEditing();
-
-        }
-
-        currentInfoNode++; // switch to next node
-
-        // knot multiplicity --------------------------------------------------------
-        std::vector<double> knots = spline->getKnots();
-        std::vector<int> mult = spline->getMultiplicities();
-
-        std::vector<double>::const_iterator itk;
-        std::vector<int>::const_iterator itm;
-
-
-        if (rebuildinformationlayer) {
-
-            for( itk = knots.begin(), itm = mult.begin(); itk != knots.end() && itm != mult.end(); ++itk, ++itm) {
-
-                SoSwitch *sw = new SoSwitch();
-
-                sw->whichChild = hGrpsk->GetBool("BSplineKnotMultiplicityVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
-
-                SoSeparator *sep = new SoSeparator();
-                sep->ref();
-                // no caching for frequently-changing data structures
-                sep->renderCaching = SoSeparator::OFF;
-
-                // every information visual node gets its own material for to-be-implemented preselection and selection
-                SoMaterial *mat = new SoMaterial;
-                mat->ref();
-                mat->diffuseColor = InformationColor;
-
-                SoTranslation *translate = new SoTranslation;
-
-                Base::Vector3d knotposition = spline->pointAtParameter(*itk);
-
-                translate->translation.setValue(knotposition.x, knotposition.y, zInfo);
-
-                SoFont *font = new SoFont;
-                font->name.setValue("Helvetica");
-                font->size.setValue(edit->coinFontSize);
-
-                SoText2 *degreetext = new SoText2;
-                degreetext->string = SbString("(") + SbString(*itm) + SbString(")");
-
-                sep->addChild(translate);
-                sep->addChild(mat);
-                sep->addChild(font);
-                sep->addChild(degreetext);
-
-                sw->addChild(sep);
-
-                edit->infoGroup->addChild(sw);
-                sep->unref();
-                mat->unref();
-
-                currentInfoNode++; // switch to next node
-            }
-        }
-        else {
-            for( itk = knots.begin(), itm = mult.begin(); itk != knots.end() && itm != mult.end(); ++itk, ++itm) {
-                SoSwitch *sw = static_cast<SoSwitch *>(edit->infoGroup->getChild(currentInfoNode));
-
-                if(visibleInformationChanged)
-                    sw->whichChild = hGrpsk->GetBool("BSplineKnotMultiplicityVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
-
-                SoSeparator *sep = static_cast<SoSeparator *>(sw->getChild(0));
-
-                Base::Vector3d knotposition = spline->pointAtParameter(*itk);
-
-                static_cast<SoTranslation *>(sep->getChild(GEOINFO_BSPLINE_DEGREE_POS))->translation.setValue(knotposition.x,knotposition.y,zInfo);
-
-                static_cast<SoText2 *>(sep->getChild(GEOINFO_BSPLINE_DEGREE_TEXT))->string = SbString("(") + SbString(*itm) + SbString(")");
-
-                currentInfoNode++; // switch to next node
-            }
-        }
-
-        // End of knot multiplicity
-
-        // pole weights --------------------------------------------------------
-        std::vector<double> weights = spline->getWeights();
-
-        if (rebuildinformationlayer) {
-
-            for (size_t index = 0; index < weights.size(); ++index) {
-
-                SoSwitch* sw = new SoSwitch();
-
-                sw->whichChild = hGrpsk->GetBool("BSplinePoleWeightVisible", true) ? SO_SWITCH_ALL : SO_SWITCH_NONE;
-
-                SoSeparator* sep = new SoSeparator();
-                sep->ref();
-                // no caching for frequently-changing data structures
-                sep->renderCaching = SoSeparator::OFF;
-
-                // every information visual node gets its own material for to-be-implemented preselection and selection
-                SoMaterial* mat = new SoMaterial;
-                mat->ref();
-                mat->diffuseColor = InformationColor;
-
-                SoTranslation* translate = new SoTranslation;
-
-                Base::Vector3d poleposition = poles[index];
-
-                SoFont* font = new SoFont;
-                font->name.setValue("Helvetica");
-                font->size.setValue(edit->coinFontSize);
-
-                translate->translation.setValue(poleposition.x, poleposition.y, zInfo);
-
-                // set up string with weight value and the user-defined number of decimals
-                QString WeightString  = QString::fromLatin1("%1").arg(weights[index], 0, 'f', Base::UnitsApi::getDecimals());
-
-                SoText2* WeightText = new SoText2;
-                // since the first and last control point of a spline is also treated as knot and thus
-                // can also have a displayed multiplicity, we must assure the multiplicity is not visibly overwritten
-                // therefore be output the weight in a second line
-                SoMFString label;
-                label.set1Value(0, SbString(""));
-                label.set1Value(1, SbString("[") + SbString(WeightString.toStdString().c_str()) + SbString("]"));
-                WeightText->string = label;
-
-                sep->addChild(translate);
-                sep->addChild(mat);
-                sep->addChild(font);
-                sep->addChild(WeightText);
-
-                sw->addChild(sep);
-
-                edit->infoGroup->addChild(sw);
-                sep->unref();
-                mat->unref();
-
-                currentInfoNode++; // switch to next node
-            }
-        }
-        else {
-            for (size_t index = 0; index < weights.size(); ++index) {
-                SoSwitch* sw = static_cast<SoSwitch*>(edit->infoGroup->getChild(currentInfoNode));
-
-                if (visibleInformationChanged)
-                    sw->whichChild = hGrpsk->GetBool("BSplinePoleWeightVisible", true) ? SO_SWITCH_ALL : SO_SWITCH_NONE;
-
-                SoSeparator* sep = static_cast<SoSeparator*>(sw->getChild(0));
-
-                Base::Vector3d poleposition = poles[index];
-
-                static_cast<SoTranslation*>(sep->getChild(GEOINFO_BSPLINE_DEGREE_POS))
-                    ->translation.setValue(poleposition.x, poleposition.y, zInfo);
-
-                // set up string with weight value and the user-defined number of decimals
-                QString WeightString = QString::fromLatin1("%1").arg(weights[index], 0, 'f', Base::UnitsApi::getDecimals());
-
-                // since the first and last control point of a spline is also treated as knot and thus
-                // can also have a displayed multiplicity, we must assure the multiplicity is not visibly overwritten
-                // therefore be output the weight in a second line
-                SoMFString label;
-                label.set1Value(0, SbString(""));
-                label.set1Value(1, SbString("[") + SbString(WeightString.toStdString().c_str()) + SbString("]"));
-
-                static_cast<SoText2*>(sep->getChild(GEOINFO_BSPLINE_DEGREE_TEXT))
-                                        ->string = label;
-
-                currentInfoNode++; // switch to next node
-            }
-        }
-
-        // End of pole weights
-    }
-
-    visibleInformationChanged=false; // whatever that changed in Information layer is already updated
+    // ************ Visualisation Management - Axes length *********
 
     float dMg = 100; // TODO: Fix dMg calculation.
 
@@ -4433,10 +3957,14 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
     edit->RootCrossCoordinate->point.set1Value(3,SbVec3f(0.0f, dMagF, zCross));
 
     // Render Constraints ===================================================
+    const std::vector<Part::Geometry *> *geomlist;
+    geomlist = &geolist.geomlist;
+
+
     const std::vector<Sketcher::Constraint *> &constrlist = getSketchObject()->Constraints.getValues();
     // After an undo/redo it can happen that we have an empty geometry list but a non-empty constraint list
     // In this case just ignore the constraints. (See bug #0000421)
-    if (geomlist->size() <= 2 && !constrlist.empty()) {
+    if (geolist.geomlist.size() <= 2 && !constrlist.empty()) {
         rebuildConstraintsVisual();
         return;
     }
@@ -5671,65 +5199,12 @@ bool ViewProviderSketch::getIsShownVirtualSpace() const
 
 void ViewProviderSketch::drawEdit(const std::vector<Base::Vector2d> &EditCurve)
 {
-    assert(edit);
-
-    edit->EditCurveSet->numVertices.setNum(1);
-    edit->EditCurvesCoordinate->point.setNum(EditCurve.size());
-    edit->EditCurvesMaterials->diffuseColor.setNum(EditCurve.size());
-    SbVec3f *verts = edit->EditCurvesCoordinate->point.startEditing();
-    int32_t *index = edit->EditCurveSet->numVertices.startEditing();
-    SbColor *color = edit->EditCurvesMaterials->diffuseColor.startEditing();
-
-    int i=0; // setting up the line set
-    for (std::vector<Base::Vector2d>::const_iterator it = EditCurve.begin(); it != EditCurve.end(); ++it,i++) {
-        verts[i].setValue(it->x,it->y,zEdit);
-        color[i] = CreateCurveColor;
-    }
-
-    index[0] = EditCurve.size();
-    edit->EditCurvesCoordinate->point.finishEditing();
-    edit->EditCurveSet->numVertices.finishEditing();
-    edit->EditCurvesMaterials->diffuseColor.finishEditing();
+    coinManager->drawEdit(EditCurve);
 }
 
 void ViewProviderSketch::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel)
 {
-    assert(edit);
-
-    // determine marker size
-    int augmentedmarkersize = edit->MarkerSize;
-
-    auto supportedsizes = Gui::Inventor::MarkerBitmaps::getSupportedSizes("CIRCLE_LINE");
-
-    auto defaultmarker = std::find(supportedsizes.begin(), supportedsizes.end(), edit->MarkerSize);
-
-    if(defaultmarker != supportedsizes.end()) {
-        auto validAugmentationLevels = std::distance(defaultmarker,supportedsizes.end());
-
-        if(augmentationlevel >= validAugmentationLevels)
-            augmentationlevel = validAugmentationLevels - 1;
-
-        augmentedmarkersize = *std::next(defaultmarker, augmentationlevel);
-    }
-
-    edit->EditMarkerSet->markerIndex.startEditing();
-    edit->EditMarkerSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_LINE", augmentedmarkersize);
-
-    // add the points to set
-    edit->EditMarkersCoordinate->point.setNum(EditMarkers.size());
-    edit->EditMarkersMaterials->diffuseColor.setNum(EditMarkers.size());
-    SbVec3f *verts = edit->EditMarkersCoordinate->point.startEditing();
-    SbColor *color = edit->EditMarkersMaterials->diffuseColor.startEditing();
-
-    int i=0; // setting up the line set
-    for (std::vector<Base::Vector2d>::const_iterator it = EditMarkers.begin(); it != EditMarkers.end(); ++it,i++) {
-        verts[i].setValue(it->x,it->y,zEdit);
-        color[i] = InformationColor;
-    }
-
-    edit->EditMarkersCoordinate->point.finishEditing();
-    edit->EditMarkersMaterials->diffuseColor.finishEditing();
-    edit->EditMarkerSet->markerIndex.finishEditing();
+    coinManager->drawEditMarkers(EditMarkers, augmentationlevel);
 }
 
 void ViewProviderSketch::updateData(const App::Property *prop)
@@ -5891,94 +5366,37 @@ bool ViewProviderSketch::setEdit(int ModNum)
 
     ViewProvider2DObjectGrid::setEdit(ModNum); // notify to handle grid according to edit mode property
 
-    float transparency;
-
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
+
+    auto updateColor = [&hGrp](SbColor & sbcolor, const char * parametername){
+        float transparency = 0.f;
+        unsigned long color = (unsigned long)(sbcolor.getPackedValue());
+        color = hGrp->GetUnsigned(parametername, color);
+        sbcolor.setPackedValue((uint32_t)color, transparency);
+    };
+
     // set the point color
-    unsigned long color = (unsigned long)(VertexColor.getPackedValue());
-    color = hGrp->GetUnsigned("EditedVertexColor", color);
-    VertexColor.setPackedValue((uint32_t)color, transparency);
-    // set the curve color
-    color = (unsigned long)(CurveColor.getPackedValue());
-    color = hGrp->GetUnsigned("EditedEdgeColor", color);
-    CurveColor.setPackedValue((uint32_t)color, transparency);
-    // set the create line (curve) color
-    color = (unsigned long)(CreateCurveColor.getPackedValue());
-    color = hGrp->GetUnsigned("CreateLineColor", color);
-    CreateCurveColor.setPackedValue((uint32_t)color, transparency);
-    // set the construction curve color
-    color = (unsigned long)(CurveDraftColor.getPackedValue());
-    color = hGrp->GetUnsigned("ConstructionColor", color);
-    CurveDraftColor.setPackedValue((uint32_t)color, transparency);
-    // set the internal alignment geometry color
-    color = (unsigned long)(InternalAlignedGeoColor.getPackedValue());
-    color = hGrp->GetUnsigned("InternalAlignedGeoColor", color);
-    InternalAlignedGeoColor.setPackedValue((uint32_t)color, transparency);
-    // set the color for a fully constrained element
-    color = (unsigned long)(FullyConstraintElementColor.getPackedValue());
-    color = hGrp->GetUnsigned("FullyConstraintElementColor", color);
-    FullyConstraintElementColor.setPackedValue((uint32_t)color, transparency);
-    // set the color for fully constrained construction element
-    color = (unsigned long)(FullyConstraintConstructionElementColor.getPackedValue());
-    color = hGrp->GetUnsigned("FullyConstraintConstructionElementColor", color);
-    FullyConstraintConstructionElementColor.setPackedValue((uint32_t)color, transparency);
-    // set the color for fully constrained internal alignment element
-    color = (unsigned long)(FullyConstraintInternalAlignmentColor.getPackedValue());
-    color = hGrp->GetUnsigned("FullyConstraintInternalAlignmentColor", color);
-    FullyConstraintInternalAlignmentColor.setPackedValue((uint32_t)color, transparency);
-    // set the color for fully constrained construction points
-    color = (unsigned long)(FullyConstraintConstructionPointColor.getPackedValue());
-    color = hGrp->GetUnsigned("FullyConstraintConstructionPointColor", color);
-    FullyConstraintConstructionPointColor.setPackedValue((uint32_t)color, transparency);
-    // set fullyconstraint element color
-    color = (unsigned long)(FullyConstraintElementColor.getPackedValue());
-    color = hGrp->GetUnsigned("FullyConstraintElementColor", color);
-    FullyConstraintElementColor.setPackedValue((uint32_t)color, transparency);
-    // set the cross lines color
-    //CrossColorV.setPackedValue((uint32_t)color, transparency);
-    //CrossColorH.setPackedValue((uint32_t)color, transparency);
-    // set invalid sketch color
-    color = (unsigned long)(InvalidSketchColor.getPackedValue());
-    color = hGrp->GetUnsigned("InvalidSketchColor", color);
-    InvalidSketchColor.setPackedValue((uint32_t)color, transparency);
-    // set the fully constrained color
-    color = (unsigned long)(FullyConstrainedColor.getPackedValue());
-    color = hGrp->GetUnsigned("FullyConstrainedColor", color);
-    FullyConstrainedColor.setPackedValue((uint32_t)color, transparency);
-    // set the constraint dimension color
-    color = (unsigned long)(ConstrDimColor.getPackedValue());
-    color = hGrp->GetUnsigned("ConstrainedDimColor", color);
-    ConstrDimColor.setPackedValue((uint32_t)color, transparency);
-    // set the constraint color
-    color = (unsigned long)(ConstrIcoColor.getPackedValue());
-    color = hGrp->GetUnsigned("ConstrainedIcoColor", color);
-    ConstrIcoColor.setPackedValue((uint32_t)color, transparency);
-    // set non-driving constraint color
-    color = (unsigned long)(NonDrivingConstrDimColor.getPackedValue());
-    color = hGrp->GetUnsigned("NonDrivingConstrDimColor", color);
-    NonDrivingConstrDimColor.setPackedValue((uint32_t)color, transparency);
-    // set expression based constraint color
-    color = (unsigned long)(ExprBasedConstrDimColor.getPackedValue());
-    color = hGrp->GetUnsigned("ExprBasedConstrDimColor", color);
-    ExprBasedConstrDimColor.setPackedValue((uint32_t)color, transparency);
-    // set expression based constraint color
-    color = (unsigned long)(DeactivatedConstrDimColor.getPackedValue());
-    color = hGrp->GetUnsigned("DeactivatedConstrDimColor", color);
-    DeactivatedConstrDimColor.setPackedValue((uint32_t)color, transparency);
+    updateColor(VertexColor, "EditedVertexColor");
+    updateColor(CurveColor, "EditedEdgeColor");
+    updateColor(CurveDraftColor, "ConstructionColor");
+    updateColor(InternalAlignedGeoColor, "InternalAlignedGeoColor");
+    updateColor(FullyConstraintElementColor, "FullyConstraintElementColor");
+    updateColor(FullyConstraintConstructionElementColor, "FullyConstraintConstructionElementColor");
+    updateColor(FullyConstraintInternalAlignmentColor, "FullyConstraintInternalAlignmentColor");
+    updateColor(FullyConstraintConstructionPointColor, "FullyConstraintConstructionPointColor");
+    updateColor(FullyConstraintElementColor, "FullyConstraintElementColor");
+    updateColor(InvalidSketchColor, "InvalidSketchColor");
+    updateColor(FullyConstrainedColor, "FullyConstrainedColor");
+    updateColor(ConstrDimColor, "ConstrainedDimColor");
+    updateColor(ConstrIcoColor, "ConstrainedIcoColor");
+    updateColor(NonDrivingConstrDimColor, "NonDrivingConstrDimColor");
+    updateColor(ExprBasedConstrDimColor, "ExprBasedConstrDimColor");
+    updateColor(DeactivatedConstrDimColor, "DeactivatedConstrDimColor");
+    updateColor(CurveExternalColor, "ExternalColor");
+    updateColor(PreselectColor, "HighlightColor");
+    updateColor(SelectColor, "SelectionColor");
 
-    // set the external geometry color
-    color = (unsigned long)(CurveExternalColor.getPackedValue());
-    color = hGrp->GetUnsigned("ExternalColor", color);
-    CurveExternalColor.setPackedValue((uint32_t)color, transparency);
-
-    // set the highlight color
-    unsigned long highlight = (unsigned long)(PreselectColor.getPackedValue());
-    highlight = hGrp->GetUnsigned("HighlightColor", highlight);
-    PreselectColor.setPackedValue((uint32_t)highlight, transparency);
-    // set the selection color
-    highlight = (unsigned long)(SelectColor.getPackedValue());
-    highlight = hGrp->GetUnsigned("SelectionColor", highlight);
-    SelectColor.setPackedValue((uint32_t)highlight, transparency);
+    coinManager->updateCoinManagerColors();
 
     // start the edit dialog
     if (sketchDlg)
@@ -6828,7 +6246,7 @@ bool ViewProviderSketch::onDelete(const std::vector<std::string> &subList)
 
 void ViewProviderSketch::showRestoreInformationLayer() {
 
-    visibleInformationChanged = true ;
+    coinManager->setVisibleInformationChanged();
     draw(false,false);
 }
 

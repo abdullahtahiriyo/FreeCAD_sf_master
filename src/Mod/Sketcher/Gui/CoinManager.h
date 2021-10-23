@@ -33,6 +33,8 @@
 namespace Base {
     template< typename T >
     class Vector3;
+
+    class Vector2d;
 }
 
 namespace Part {
@@ -78,8 +80,25 @@ class SketcherGuiExport CoinManager
     struct DrawingParameters {
         int curvedEdgeCountSegments;
         // Rendering Heights
-        const float zLowLines=0.005f;       //TODO: Fix zLowLines
-        const float zLowPoints = 0.010f;    // TODO: Fix zLowPoints
+        const float zLowLines   = 0.005f;       //TODO: Fix zLowLines
+        const float zLowPoints  = 0.010f;    // TODO: Fix zLowPoints
+        const float zInfo       = 0.004f;
+        const float zEdit       = 0.001f;
+        // Rendering Colors
+        static SbColor InformationColor;
+        static SbColor CreateCurveColor;
+    };
+
+    struct VisualisationControlParameters {
+        double currentBSplineCombRepresentationScale = 0;
+        bool visibleInformationChanged = true;
+    };
+
+    struct AnalysisResuls { // TODO: This needs to be refactored
+        double combRepresentationScale = 0;
+        float boundingBoxMagnitudeOrder = 0;
+        std::vector<int> bsplineGeoIds;
+
     };
 
 public:
@@ -88,13 +107,24 @@ public:
 
     using Vector3d = Base::Vector3<double>;
 
-    std::tuple<std::vector<Vector3d>/* Coords*/, std::vector<Vector3d> /*Points;*/, std::vector<unsigned int> /* Index */>
-    processGeometry(const GeoList & geolist);
+    // This function populates the coin nodes with the information of the current geometry
+    void processGeometry(const GeoList & geolist);
 
+    // This function populates the geometry information layer of coin. It requires the analysis information
+    // gathered during the processGeometry step, so it is not possible to run both in parallel.
+    void processGeometryInformationLayer(const GeoList & geolist, bool rebuildinformationlayer);
+
+    void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel);
+    void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
+
+    inline void setVisibleInformationChanged() {visualisationControlParameters.visibleInformationChanged = true;}
+    void updateCoinManagerColors();
 
 private:
     EditData * edit;
     DrawingParameters drawingParameters;
+    VisualisationControlParameters visualisationControlParameters;
+    AnalysisResuls analysisResults;
     std::unique_ptr<CoinManager::ParameterObserver> pObserver;
 };
 
