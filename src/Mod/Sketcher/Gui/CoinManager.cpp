@@ -151,7 +151,7 @@ public:
     void convert(const Part::Geometry * geometry) {
         auto geo = static_cast<const GeoType *>(geometry);
 
-        auto addPoint = [&dMg = dMg] (auto & pushvector, Base::Vector3d point) {
+        auto addPoint = [&dMg = boundingBoxMaxMagnitude] (auto & pushvector, Base::Vector3d point) {
 
             if constexpr (analysemode == AnalyseMode::BoundingBox || analysemode == AnalyseMode::BoundingBoxAndBSplineCurvature ) {
                 dMg = dMg>std::abs(point.x)?dMg:std::abs(point.x);
@@ -278,7 +278,7 @@ public:
 
     }
 
-    float getBoundingBoxMagnitudeOrder() {return dMg;}
+    float getBoundingBoxMaxMagnitude() {return boundingBoxMaxMagnitude;}
     double getCombRepresentationScale() {return combrepscale;}
 
 private:
@@ -290,7 +290,7 @@ private:
     int CurvedEdgeCountSegments;
 
     // measurements
-    float dMg = 100;
+    float boundingBoxMaxMagnitude = 100;
     double combrepscale = 0; // the repscale that would correspond to this comb based only on this calculation.
 
 };
@@ -428,7 +428,15 @@ void CoinManager::processGeometry(const GeoList & geolist)
 
     // TODO: THIS NEEDS REFACTORING
     analysisResults.combRepresentationScale = gcconv.getCombRepresentationScale();
-    analysisResults.boundingBoxMagnitudeOrder = gcconv.getBoundingBoxMagnitudeOrder();
+    analysisResults.boundingBoxMagnitudeOrder = exp(ceil(log(std::abs(gcconv.getBoundingBoxMaxMagnitude()))));
+}
+
+void CoinManager::updateAxesLength()
+{
+    edit->RootCrossCoordinate->point.set1Value(0,SbVec3f(-analysisResults.boundingBoxMagnitudeOrder, 0.0f, drawingParameters.zCross));
+    edit->RootCrossCoordinate->point.set1Value(1,SbVec3f(analysisResults.boundingBoxMagnitudeOrder, 0.0f, drawingParameters.zCross));
+    edit->RootCrossCoordinate->point.set1Value(2,SbVec3f(0.0f, -analysisResults.boundingBoxMagnitudeOrder, drawingParameters.zCross));
+    edit->RootCrossCoordinate->point.set1Value(3,SbVec3f(0.0f, analysisResults.boundingBoxMagnitudeOrder, drawingParameters.zCross));
 }
 
 void CoinManager::processGeometryInformationLayer(const GeoList & geolist, bool rebuildinformationlayer)
@@ -919,6 +927,8 @@ void CoinManager::processGeometryAndInformationLayer(const GeoList & geolist, bo
     processGeometry(geolist);
 
     processGeometryInformationLayer(geolist, rebuildinformationlayer);
+
+    updateAxesLength();
 }
 
 void CoinManager::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel)

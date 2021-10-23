@@ -464,9 +464,6 @@ protected:
     static SbVec2s prvCursorPos;
     static SbVec2s newCursorPos;
 
-    float zCross;
-    //float zLines;
-    //float zPoints;
     float zLowPoints;
     float zHighPoints;
     float zConstr;

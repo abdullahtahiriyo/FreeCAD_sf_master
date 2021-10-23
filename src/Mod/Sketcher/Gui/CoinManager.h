@@ -80,10 +80,11 @@ class SketcherGuiExport CoinManager
     struct DrawingParameters {
         int curvedEdgeCountSegments;
         // Rendering Heights
-        const float zLowLines   = 0.005f;       //TODO: Fix zLowLines
+        const float zLowLines   = 0.005f;    //TODO: Fix zLowLines
         const float zLowPoints  = 0.010f;    // TODO: Fix zLowPoints
         const float zInfo       = 0.004f;
         const float zEdit       = 0.001f;
+        const float zCross      = 0.001f;
         // Rendering Colors
         static SbColor InformationColor;
         static SbColor CreateCurveColor;
@@ -115,6 +116,8 @@ public:
     inline void setVisibleInformationChanged() {visualisationControlParameters.visibleInformationChanged = true;}
     void updateCoinManagerColors();
 
+    float getboundingBoxMagnitudeOrder() { return analysisResults.boundingBoxMagnitudeOrder;}
+
 private:
     // This function populates the coin nodes with the information of the current geometry
     void processGeometry(const GeoList & geolist);
@@ -122,6 +125,9 @@ private:
     // This function populates the geometry information layer of coin. It requires the analysis information
     // gathered during the processGeometry step, so it is not possible to run both in parallel.
     void processGeometryInformationLayer(const GeoList & geolist, bool rebuildinformationlayer);
+
+    // updates the Axes length to extend beyond the calculated bounding box magnitude
+    void updateAxesLength();
 
 private:
     EditData * edit;

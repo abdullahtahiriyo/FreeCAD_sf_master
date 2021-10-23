@@ -230,7 +230,6 @@ ViewProviderSketch::ViewProviderSketch()
     PointColor.setValue(1,1,1);
     PointSize.setValue(4);
 
-    zCross=0.001f;
     zLowLines=0.005f;
     //zLines=0.005f;    // ZLines removed in favour of 3 height groups intended for NormalLines, ConstructionLines, ExternalLines
     zMidLines=0.006f;
@@ -3972,18 +3971,10 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
 
     coinManager->processGeometryAndInformationLayer(geolist, rebuildinformationlayer);
 
-    // ************ Visualisation Management - Axes length *********
-
-    float dMg = 100; // TODO: Fix dMg calculation.
-
-    float dMagF = exp(ceil(log(std::abs(dMg))));
+    // ************ Visualisation Management - Grid Extent *********
+    float dMagF = coinManager->getboundingBoxMagnitudeOrder();
 
     updateGridExtent(-dMagF, dMagF, -dMagF, dMagF);
-
-    edit->RootCrossCoordinate->point.set1Value(0,SbVec3f(-dMagF, 0.0f, zCross));
-    edit->RootCrossCoordinate->point.set1Value(1,SbVec3f(dMagF, 0.0f, zCross));
-    edit->RootCrossCoordinate->point.set1Value(2,SbVec3f(0.0f, -dMagF, zCross));
-    edit->RootCrossCoordinate->point.set1Value(3,SbVec3f(0.0f, dMagF, zCross));
 
     // Render Constraints ===================================================
     const std::vector<Part::Geometry *> *geomlist;
