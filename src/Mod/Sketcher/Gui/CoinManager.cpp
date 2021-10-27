@@ -563,7 +563,7 @@ public:
 
         addUpdateNode<StringNode, Calculation::Degree, VisualisationType::Text>(degree);
         addUpdateNode<PolygonNode, Calculation::ControlPolygon, VisualisationType::Polygon>(controlPolygon);
-        //addUpdateNode<PolygonNode, Calculation::CurvatureComb, VisualisationType::Polygon>(curvatureComb);
+        addUpdateNode<PolygonNode, Calculation::CurvatureComb, VisualisationType::Polygon>(curvatureComb);
         addUpdateNode<StringNode, Calculation::KnotMultiplicity, VisualisationType::Text>(knotMultiplicity);
         addUpdateNode<StringNode, Calculation::PoleWeight, VisualisationType::Text>(poleWeights);
 
@@ -677,16 +677,14 @@ private:
 
             for(int i = 0; i < ndiv; i++) {
                 // note emplace emplaces on the position BEFORE the iterator given.
-                curvatureComb.coordinates.emplace( curvatureComb.coordinates.begin() + 2*i + 1,
-                                                    pointatcurvelist[i].x, pointatcurvelist[i].y, drawingParameters.zInfo); // radials
-                curvatureComb.coordinates.emplace( curvatureComb.coordinates.begin() + 2*i + 2,
-                                                    pointatcomblist[i].x, pointatcomblist[i].y, drawingParameters.zInfo); // radials
+                curvatureComb.coordinates.emplace_back(pointatcurvelist[i].x, pointatcurvelist[i].y, drawingParameters.zInfo); // radials
+                curvatureComb.coordinates.emplace_back(pointatcomblist[i].x, pointatcomblist[i].y, drawingParameters.zInfo); // radials
 
                 curvatureComb.indices.emplace_back(2); // line
-
-                curvatureComb.coordinates.emplace( curvatureComb.coordinates.begin() + 2*ndiv + i + 1,
-                                                    pointatcomblist[i].x, pointatcomblist[i].y, drawingParameters.zInfo); // // comb endpoint closing segment
             }
+
+            for(int i = 0; i < ndiv; i++)
+                curvatureComb.coordinates.emplace_back(pointatcomblist[i].x, pointatcomblist[i].y, drawingParameters.zInfo); // // comb endpoint closing segment
 
             curvatureComb.indices.emplace_back(ndiv); // Comb line
         }
