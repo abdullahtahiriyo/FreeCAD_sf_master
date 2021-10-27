@@ -127,8 +127,8 @@ public:
 
     /// draw the sketch in the inventor nodes
     /// temp => use temporary solver solution in SketchObject
-    /// recreateinformationscenography => forces a rebuild of the information layer scenography
-    void draw(bool temp=false, bool rebuildinformationlayer=true);
+    /// recreateinformationscenography => forces a rebuild of the information overlay scenography
+    void draw(bool temp=false, bool rebuildinformationoverlay=true);
 
     /// draw the edit curve
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);

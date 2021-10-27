@@ -3922,7 +3922,7 @@ void ViewProviderSketch::scaleBSplinePoleCirclesAndUpdateSolverAndSketchObjectGe
 
 
 
-void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer /*=true*/)
+void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverlay /*=true*/)
 {
     assert(edit);
 
@@ -3963,13 +3963,13 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationlayer
         temp,
         deepCopiesToDelete);
 
-    // ************ Process geometry and geometry information layers ****************************
-    if(rebuildinformationlayer) {
-        // every time we start with empty information layer
+    // ************ Process geometry and geometry information overlays ****************************
+    if(rebuildinformationoverlay) {
+        // every time we start with empty information overlay
         Gui::coinRemoveAllChildren(edit->infoGroup);
     }
 
-    coinManager->processGeometryAndInformationLayer(geolist, rebuildinformationlayer);
+    coinManager->processGeometryAndInformationOverlay(geolist, rebuildinformationoverlay);
 
     // ************ Visualisation Management - Grid Extent *********
     float dMagF = coinManager->getboundingBoxMagnitudeOrder();

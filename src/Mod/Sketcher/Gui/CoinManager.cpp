@@ -80,6 +80,12 @@ void CoinManager::ParameterObserver::initParameters()
 {
     updateCurvedEdgeCountSegmentsParameter();
 
+    updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineDegree>();
+    updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineControlPolygonVisible>();
+    updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineCombVisible>();
+    updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineKnotMultiplicityVisible>();
+    updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplinePoleWeightVisible>();
+
 }
 
 void CoinManager::ParameterObserver::updateCurvedEdgeCountSegmentsParameter()
@@ -96,50 +102,83 @@ void CoinManager::ParameterObserver::updateCurvedEdgeCountSegmentsParameter()
     pClient->drawingParameters.curvedEdgeCountSegments = stdcountsegments;
 }
 
+template<CoinManager::ParameterObserver::OverlayVisibilityParameter visibilityparameter>
+void CoinManager::ParameterObserver::updateOverlayVisibilityParameter()
+{
+    ParameterGrp::handle hGrpsk = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+
+    if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplineDegree)
+        pClient->overlayParameters.bSplineDegreeVisible = hGrpsk->GetBool("BSplineDegreeVisible", true);
+    else if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplineControlPolygonVisible)
+        pClient->overlayParameters.bSplineControlPolygonVisible = hGrpsk->GetBool("BSplineControlPolygonVisible", true);
+    else if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplineCombVisible)
+        pClient->overlayParameters.bSplineCombVisible = hGrpsk->GetBool("BSplineCombVisible", true);
+    else if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplineKnotMultiplicityVisible)
+        pClient->overlayParameters.bSplineKnotMultiplicityVisible = hGrpsk->GetBool("BSplineKnotMultiplicityVisible", true);
+    else if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplinePoleWeightVisible)
+        pClient->overlayParameters.bSplinePoleWeightVisible = hGrpsk->GetBool("BSplinePoleWeightVisible", true);
+}
+
 void CoinManager::ParameterObserver::subscribeToParameters()
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
     hGrp->Attach(this);
+
+    ParameterGrp::handle hGrpsk = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+    hGrpsk->Attach(this);
 }
 
 void CoinManager::ParameterObserver::unsubscribeToParameters()
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
     hGrp->Detach(this);
+
+    ParameterGrp::handle hGrpsk = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+    hGrpsk->Detach(this);
 }
 
 void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCaller, const char * sReason)
 {
     (void) rCaller;
 
-    if (strcmp(sReason, "SegmentsPerGeometry") == 0)
-        updateCurvedEdgeCountSegmentsParameter();
+    static std::map<const char *, std::function<void()>> str2updatefunction {
+        {"SegmentsPerGeometry", [this](){updateCurvedEdgeCountSegmentsParameter();}},
+        {"BSplineDegreeVisible", [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineDegree>();}},
+        {"BSplineControlPolygonVisible", [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineControlPolygonVisible>();}},
+        {"BSplineCombVisible", [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineCombVisible>();}},
+        {"BSplineKnotMultiplicityVisible", [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineKnotMultiplicityVisible>();}},
+        {"BSplinePoleWeightVisible", [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplinePoleWeightVisible>();}}
 
+    };
+
+    auto key = str2updatefunction.find(sReason);
+    if( key != str2updatefunction.end() )
+        key->second();
 }
 
 //*************************** GeometryCoinConverter ***************************
 
-enum class PointsMode {
+class GeometryCoinConverter {
+public:
+    enum class PointsMode {
     InsertSingle,
     InsertStartEnd,
     InsertStartEndMid,
     InsertMidOnly
-};
+    };
 
 enum class CurveMode {
     NoCurve,
     StartEndPointsOnly,
     ClosedCurve,
     OpenCurve
-};
+    };
 
 enum class AnalyseMode {
-    BoundingBox,
-    BoundingBoxAndBSplineCurvature
-};
+    BoundingBoxMagnitude,
+    BoundingBoxMagnitudeAndBSplineCurvature
+    };
 
-
-class GeometryCoinConverter {
 public:
     GeometryCoinConverter(std::vector<Base::Vector3d> & points,
                           std::vector<Base::Vector3d> & coords,
@@ -153,7 +192,7 @@ public:
 
         auto addPoint = [&dMg = boundingBoxMaxMagnitude] (auto & pushvector, Base::Vector3d point) {
 
-            if constexpr (analysemode == AnalyseMode::BoundingBox || analysemode == AnalyseMode::BoundingBoxAndBSplineCurvature ) {
+            if constexpr (analysemode == AnalyseMode::BoundingBoxMagnitude || analysemode == AnalyseMode::BoundingBoxMagnitudeAndBSplineCurvature) {
                 dMg = dMg>std::abs(point.x)?dMg:std::abs(point.x);
                 dMg = dMg>std::abs(point.y)?dMg:std::abs(point.y);
                 pushvector.push_back(point);
@@ -211,7 +250,7 @@ public:
 
             Index.push_back(CurvedEdgeCountSegments+1);
 
-            if constexpr (analysemode == AnalyseMode::BoundingBoxAndBSplineCurvature) {
+            if constexpr (analysemode == AnalyseMode::BoundingBoxMagnitudeAndBSplineCurvature) {
                 //***************************************************************************************************************
                 // global information gathering for geometry information layer
 
@@ -358,39 +397,66 @@ void CoinManager::processGeometry(const GeoList & geolist)
             GeoId = -geolist.extGeoCount;
 
         if ((*it)->getTypeId() == Part::GeomPoint::getClassTypeId()) { // add a point
-            gcconv.convert<Part::GeomPoint, PointsMode::InsertSingle, CurveMode::NoCurve, AnalyseMode::BoundingBox>((*it));
+            gcconv.convert< Part::GeomPoint,
+                            GeometryCoinConverter::PointsMode::InsertSingle,
+                            GeometryCoinConverter::CurveMode::NoCurve,
+                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
             pushToEdit(GeoId, 1, 0);
         }
         else if ((*it)->getTypeId() == Part::GeomLineSegment::getClassTypeId()) { // add a line
-            gcconv.convert<Part::GeomLineSegment, PointsMode::InsertStartEnd, CurveMode::StartEndPointsOnly, AnalyseMode::BoundingBox>((*it));
+            gcconv.convert< Part::GeomLineSegment,
+                            GeometryCoinConverter::PointsMode::InsertStartEnd,
+                            GeometryCoinConverter::CurveMode::StartEndPointsOnly,
+                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
             pushToEdit(GeoId, 2, 1);
         }
         else if ((*it)->getTypeId() == Part::GeomCircle::getClassTypeId()) { // add a circle
-            gcconv.convert<Part::GeomCircle, PointsMode::InsertMidOnly, CurveMode::ClosedCurve, AnalyseMode::BoundingBox>((*it));
+            gcconv.convert< Part::GeomCircle,
+                            GeometryCoinConverter::PointsMode::InsertMidOnly,
+                            GeometryCoinConverter::CurveMode::ClosedCurve,
+                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
             pushToEdit(GeoId, 1, 1);
         }
         else if ((*it)->getTypeId() == Part::GeomEllipse::getClassTypeId()) { // add an ellipse
-            gcconv.convert<Part::GeomEllipse, PointsMode::InsertMidOnly, CurveMode::ClosedCurve, AnalyseMode::BoundingBox>((*it));
+            gcconv.convert< Part::GeomEllipse,
+                            GeometryCoinConverter::PointsMode::InsertMidOnly,
+                            GeometryCoinConverter::CurveMode::ClosedCurve,
+                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
             pushToEdit(GeoId, 1, 1);
         }
         else if ((*it)->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) { // add an arc
-            gcconv.convert<Part::GeomArcOfCircle, PointsMode::InsertStartEndMid, CurveMode::OpenCurve, AnalyseMode::BoundingBox>((*it));
+            gcconv.convert< Part::GeomArcOfCircle,
+                            GeometryCoinConverter::PointsMode::InsertStartEndMid,
+                            GeometryCoinConverter::CurveMode::OpenCurve,
+                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
             pushToEdit(GeoId, 3, 1);
         }
         else if ((*it)->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) { // add an arc
-            gcconv.convert<Part::GeomArcOfEllipse, PointsMode::InsertStartEndMid, CurveMode::OpenCurve, AnalyseMode::BoundingBox>((*it));
+            gcconv.convert< Part::GeomArcOfEllipse,
+                            GeometryCoinConverter::PointsMode::InsertStartEndMid,
+                            GeometryCoinConverter::CurveMode::OpenCurve,
+                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
             pushToEdit(GeoId, 3, 1);
         }
         else if ((*it)->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
-            gcconv.convert<Part::GeomArcOfHyperbola, PointsMode::InsertStartEndMid, CurveMode::OpenCurve, AnalyseMode::BoundingBox>((*it));
+            gcconv.convert< Part::GeomArcOfHyperbola,
+                            GeometryCoinConverter::PointsMode::InsertStartEndMid,
+                            GeometryCoinConverter::CurveMode::OpenCurve,
+                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
             pushToEdit(GeoId, 3, 1);
         }
         else if ((*it)->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
-            gcconv.convert<Part::GeomArcOfParabola, PointsMode::InsertStartEndMid, CurveMode::OpenCurve, AnalyseMode::BoundingBox>((*it));
+            gcconv.convert< Part::GeomArcOfParabola,
+                            GeometryCoinConverter::PointsMode::InsertStartEndMid,
+                            GeometryCoinConverter::CurveMode::OpenCurve,
+                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
             pushToEdit(GeoId, 3, 1);
         }
         else if ((*it)->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) { // add a bspline
-            gcconv.convert<Part::GeomBSplineCurve, PointsMode::InsertStartEnd, CurveMode::OpenCurve, AnalyseMode::BoundingBoxAndBSplineCurvature>((*it));
+            gcconv.convert< Part::GeomBSplineCurve,
+                            GeometryCoinConverter::PointsMode::InsertStartEnd,
+                            GeometryCoinConverter::CurveMode::OpenCurve,
+                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitudeAndBSplineCurvature>((*it));
             pushToEdit(GeoId, 2, 1);
             analysisResults.bsplineGeoIds.push_back(GeoId);
         }
@@ -439,335 +505,314 @@ void CoinManager::updateAxesLength()
     edit->RootCrossCoordinate->point.set1Value(3,SbVec3f(0.0f, analysisResults.boundingBoxMagnitudeOrder, drawingParameters.zCross));
 }
 
-void CoinManager::processGeometryInformationLayer(const GeoList & geolist, bool rebuildinformationlayer)
-{
-    const int GEOINFO_BSPLINE_DEGREE_POS = 0;
-    const int GEOINFO_BSPLINE_DEGREE_TEXT = 3;
-    const int GEOINFO_BSPLINE_POLYGON = 1;
 
 
-    int currentInfoNode = 0;
-
-    ParameterGrp::handle hGrpsk = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
-
-    if ( (analysisResults.combRepresentationScale > (2 * visualisationControlParameters.currentBSplineCombRepresentationScale)) ||
-         (analysisResults.combRepresentationScale < (visualisationControlParameters.currentBSplineCombRepresentationScale / 2)))
-        visualisationControlParameters.currentBSplineCombRepresentationScale = analysisResults.combRepresentationScale ;
-
-    const std::vector<Part::Geometry *> *geomlist;
-    geomlist = &geolist.geomlist;
-
-    auto GeoById = [](const std::vector<Part::Geometry*> GeoList, int Id){
+class InformationOverlayCoinConverter {
+public:
+    enum class Calculation
     {
-        if (Id >= 0)
-            return GeoList[Id];
-        else
-            return GeoList[GeoList.size()+Id];
-        }
+        Degree,
+        ControlPolygon,
+        CurvatureComb,
+        KnotMultiplicity,
+        PoleWeight
+    };
+    enum class VisualisationType
+    {
+        Text,
+        Polygon
     };
 
-    // geometry information layer for bsplines, as they need a second round now that max curvature is known
-    for (std::vector<int>::const_iterator it = analysisResults.bsplineGeoIds.begin(); it != analysisResults.bsplineGeoIds.end(); ++it) {
+    struct StringNode {
+        std::vector<std::string> strings;
+        std::vector<Base::Vector3d> positions;
+    };
 
-        const Part::Geometry *geo = GeoById(*geomlist, *it);
+    struct PolygonNode {
+        std::vector<Base::Vector3d> coordinates;
+        std::vector<int> indices;
+    };
 
-        const Part::GeomBSplineCurve *spline = static_cast<const Part::GeomBSplineCurve *>(geo);
+private:
+    enum class TextNodePosition {
+        TextCoordinates = 0,
+        TextInformation = 3
+    };
 
-        //----------------------------------------------------------
-        // geometry information layer
+    enum class PolygonNodePosition {
+        PolygonCoordinates = 1,
+        PolygonLineSet = 2
+    };
 
-        // polynom degree --------------------------------------------------------
-        std::vector<Base::Vector3d> poles = spline->getPoles();
+public:
+    InformationOverlayCoinConverter(SoGroup * infogroup,
+                                    CoinManager::OverlayParameters & overlayparameters,
+                                    CoinManager::DrawingParameters & drawingparameters):    infoGroup(infogroup),
+                                                                                            overlayParameters(overlayparameters),
+                                                                                            drawingParameters(drawingparameters),
+                                                                                            nodeId(0){};
 
-        Base::Vector3d midp = Base::Vector3d(0,0,0);
+    // converts geometry information into an information layer and returns the nodeid of the addition
+    void convert(const Part::Geometry * geometry) {
 
-        for (std::vector<Base::Vector3d>::iterator it = poles.begin(); it != poles.end(); ++it) {
-            midp += (*it);
+        calculate<Calculation::Degree>(geometry);
+        calculate<Calculation::ControlPolygon>(geometry);
+        calculate<Calculation::CurvatureComb>(geometry);
+        calculate<Calculation::KnotMultiplicity>(geometry);
+        calculate<Calculation::PoleWeight>(geometry);
+
+        addUpdateNode<StringNode, Calculation::Degree, VisualisationType::Text>(degree);
+        addUpdateNode<PolygonNode, Calculation::ControlPolygon, VisualisationType::Polygon>(controlPolygon);
+        //addUpdateNode<PolygonNode, Calculation::CurvatureComb, VisualisationType::Polygon>(curvatureComb);
+        addUpdateNode<StringNode, Calculation::KnotMultiplicity, VisualisationType::Text>(knotMultiplicity);
+        addUpdateNode<StringNode, Calculation::PoleWeight, VisualisationType::Text>(poleWeights);
+
+    };
+
+private:
+    template < Calculation calculation >
+    void calculate(const Part::Geometry * geometry) {
+        const Part::GeomBSplineCurve *spline = static_cast<const Part::GeomBSplineCurve *>(geometry);
+
+        if constexpr (calculation == Calculation::Degree) {
+            clearCalculation<StringNode, VisualisationType::Text>(degree);
+
+            std::vector<Base::Vector3d> poles = spline->getPoles();
+
+            degree.strings.clear();
+            degree.positions.clear();
+
+            Base::Vector3d midp = Base::Vector3d(0,0,0);
+
+            for (auto val : poles)
+                midp += val;
+
+            midp /= poles.size();
+
+            degree.strings.emplace_back(std::to_string(spline->getDegree()));
+            degree.positions.emplace_back(midp);
         }
+        else if constexpr (calculation == Calculation::ControlPolygon) {
 
-        midp /= poles.size();
+            clearCalculation<PolygonNode, VisualisationType::Polygon>(controlPolygon);
 
-        if (rebuildinformationlayer) {
-            SoSwitch *sw = new SoSwitch();
+            std::vector<Base::Vector3d> poles = spline->getPoles();
 
-            sw->whichChild = hGrpsk->GetBool("BSplineDegreeVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
+            controlPolygon.coordinates.clear();
+            controlPolygon.indices.clear();
 
-            SoSeparator *sep = new SoSeparator();
-            sep->ref();
-            // no caching for frequently-changing data structures
-            sep->renderCaching = SoSeparator::OFF;
+            if (spline->isPeriodic())
+                controlPolygon.coordinates.reserve(poles.size()+1);
+            else
+                controlPolygon.coordinates.reserve(poles.size());
 
-            // every information visual node gets its own material for to-be-implemented preselection and selection
-            SoMaterial *mat = new SoMaterial;
-            mat->ref();
-            mat->diffuseColor = DrawingParameters::InformationColor;
+            for (auto & v : poles)
+                controlPolygon.coordinates.emplace_back(v);
 
-            SoTranslation *translate = new SoTranslation;
+            if (spline->isPeriodic())
+                controlPolygon.coordinates.emplace_back(poles[0]);
 
-            translate->translation.setValue(midp.x, midp.y, drawingParameters.zInfo);
-
-            SoFont *font = new SoFont;
-            font->name.setValue("Helvetica");
-            font->size.setValue(edit->coinFontSize);
-
-            SoText2 *degreetext = new SoText2;
-            degreetext->string = SbString(spline->getDegree());
-
-            sep->addChild(translate);
-            sep->addChild(mat);
-            sep->addChild(font);
-            sep->addChild(degreetext);
-
-            sw->addChild(sep);
-
-            edit->infoGroup->addChild(sw);
-            sep->unref();
-            mat->unref();
+            controlPolygon.indices.push_back(poles.size()); // single continuous poligon starting at index 0
         }
-        else {
-            SoSwitch *sw = static_cast<SoSwitch *>(edit->infoGroup->getChild(currentInfoNode));
+        else if constexpr (calculation == Calculation::CurvatureComb) {
 
-            if (visualisationControlParameters.visibleInformationChanged)
-                sw->whichChild = hGrpsk->GetBool("BSplineDegreeVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
+            clearCalculation<PolygonNode, VisualisationType::Polygon>(curvatureComb);
+            // curvature graph --------------------------------------------------------
 
-            SoSeparator *sep = static_cast<SoSeparator *>(sw->getChild(0));
+            // reimplementation of python source:
+            // https://github.com/tomate44/CurvesWB/blob/master/ParametricComb.py
+            // by FreeCAD user Chris_G
 
-            static_cast<SoTranslation *>(sep->getChild(GEOINFO_BSPLINE_DEGREE_POS))->translation.setValue(midp.x, midp.y, drawingParameters.zInfo);
+            std::vector<Base::Vector3d> poles = spline->getPoles();
 
-            static_cast<SoText2 *>(sep->getChild(GEOINFO_BSPLINE_DEGREE_TEXT))->string = SbString(spline->getDegree());
-        }
+            double firstparam = spline->getFirstParameter();
+            double lastparam =  spline->getLastParameter();
 
-        currentInfoNode++; // switch to next node
+            const int ndiv = poles.size()>4?poles.size()*16:64; // heuristic of number of division to fill in
+            double step = (lastparam - firstparam) / (ndiv-1);
 
-        // control polygon --------------------------------------------------------
-        if (rebuildinformationlayer) {
-            SoSwitch *sw = new SoSwitch();
+            std::vector<Base::Vector3d> pointatcurvelist;
+            std::vector<double> curvaturelist;
+            std::vector<Base::Vector3d> normallist;
 
-            sw->whichChild = hGrpsk->GetBool("BSplineControlPolygonVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
-
-            SoSeparator *sep = new SoSeparator();
-            sep->ref();
-            // no caching for frequently-changing data structures
-            sep->renderCaching = SoSeparator::OFF;
-
-            // every information visual node gets its own material for to-be-implemented preselection and selection
-            SoMaterial *mat = new SoMaterial;
-            mat->ref();
-            mat->diffuseColor = drawingParameters.InformationColor;
-
-            SoLineSet *polygon = new SoLineSet;
-
-            SoCoordinate3 *polygoncoords = new SoCoordinate3;
-
-            if (spline->isPeriodic()) {
-                polygoncoords->point.setNum(poles.size()+1);
-            }
-            else {
-                polygoncoords->point.setNum(poles.size());
-            }
-
-            SbVec3f *vts = polygoncoords->point.startEditing();
-
-            int i=0;
-            for (std::vector<Base::Vector3d>::iterator it = poles.begin(); it != poles.end(); ++it, i++) {
-                vts[i].setValue((*it).x,(*it).y,drawingParameters.zInfo);
-            }
-
-            if (spline->isPeriodic()) {
-                vts[poles.size()].setValue(poles[0].x,poles[0].y,drawingParameters.zInfo);
-            }
-
-            polygoncoords->point.finishEditing();
-
-            sep->addChild(mat);
-            sep->addChild(polygoncoords);
-            sep->addChild(polygon);
-
-            sw->addChild(sep);
-
-            edit->infoGroup->addChild(sw);
-            sep->unref();
-            mat->unref();
-        }
-        else {
-            SoSwitch *sw = static_cast<SoSwitch *>(edit->infoGroup->getChild(currentInfoNode));
-
-            if(visualisationControlParameters.visibleInformationChanged)
-                sw->whichChild = hGrpsk->GetBool("BSplineControlPolygonVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
-
-            SoSeparator *sep = static_cast<SoSeparator *>(sw->getChild(0));
-
-            SoCoordinate3 *polygoncoords = static_cast<SoCoordinate3 *>(sep->getChild(GEOINFO_BSPLINE_POLYGON));
-
-            if(spline->isPeriodic()) {
-                polygoncoords->point.setNum(poles.size()+1);
-            }
-            else {
-                polygoncoords->point.setNum(poles.size());
-            }
-
-            SbVec3f *vts = polygoncoords->point.startEditing();
-
-            int i=0;
-            for (std::vector<Base::Vector3d>::iterator it = poles.begin(); it != poles.end(); ++it, i++) {
-                vts[i].setValue((*it).x,(*it).y,drawingParameters.zInfo);
-            }
-
-            if(spline->isPeriodic()) {
-                vts[poles.size()].setValue(poles[0].x,poles[0].y,drawingParameters.zInfo);
-            }
-
-            polygoncoords->point.finishEditing();
-
-        }
-        currentInfoNode++; // switch to next node
-
-        // curvature graph --------------------------------------------------------
-
-        // reimplementation of python source:
-        // https://github.com/tomate44/CurvesWB/blob/master/ParametricComb.py
-        // by FreeCAD user Chris_G
-
-        double firstparam = spline->getFirstParameter();
-        double lastparam =  spline->getLastParameter();
-
-        const int ndiv = poles.size()>4?poles.size()*16:64;
-        double step = (lastparam - firstparam ) / (ndiv -1);
-
-        std::vector<double> paramlist(ndiv);
-        std::vector<Base::Vector3d> pointatcurvelist(ndiv);
-        std::vector<double> curvaturelist(ndiv);
-        std::vector<Base::Vector3d> normallist(ndiv);
-
-        for(int i = 0; i < ndiv; i++) {
-            paramlist[i] = firstparam + i * step;
-            pointatcurvelist[i] = spline->pointAtParameter(paramlist[i]);
-
-            try {
-                curvaturelist[i] = spline->curvatureAt(paramlist[i]);
-            }
-            catch(Base::CADKernelError &e) {
-                // it is "just" a visualisation matter OCC could not calculate the curvature
-                // terminating here would mean that the other shapes would not be drawn.
-                // Solution: Report the issue and set dummy curvature to 0
-                e.ReportException();
-                Base::Console().Error("Curvature graph for B-Spline with GeoId=%d could not be calculated.\n", 0); // TODO: Fix me
-                curvaturelist[i] = 0;
-            }
-
-            try {
-                spline->normalAt(paramlist[i],normallist[i]);
-            }
-            catch(Base::Exception&) {
-                normallist[i] = Base::Vector3d(0,0,0);
-            }
-
-        }
-
-        std::vector<Base::Vector3d> pointatcomblist(ndiv);
-
-        for(int i = 0; i < ndiv; i++) {
-            pointatcomblist[i] = pointatcurvelist[i] - visualisationControlParameters.currentBSplineCombRepresentationScale * curvaturelist[i] * normallist[i];
-        }
-
-        if (rebuildinformationlayer) {
-            SoSwitch *sw = new SoSwitch();
-
-            sw->whichChild = hGrpsk->GetBool("BSplineCombVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
-
-            SoSeparator *sep = new SoSeparator();
-            sep->ref();
-            // no caching for frequently-changing data structures
-            sep->renderCaching = SoSeparator::OFF;
-
-            // every information visual node gets its own material for to-be-implemented preselection and selection
-            SoMaterial *mat = new SoMaterial;
-            mat->ref();
-            mat->diffuseColor = drawingParameters.InformationColor;
-
-            SoLineSet *comblineset = new SoLineSet;
-
-            SoCoordinate3 *combcoords = new SoCoordinate3;
-
-            combcoords->point.setNum(3*ndiv); // 2*ndiv +1 points of ndiv separate segments + ndiv points for last segment
-            comblineset->numVertices.setNum(ndiv+1); // ndiv separate segments of radials + 1 segment connecting at comb end
-
-            int32_t *index = comblineset->numVertices.startEditing();
-            SbVec3f *vts = combcoords->point.startEditing();
+            pointatcurvelist.reserve(ndiv);
+            curvaturelist.reserve(ndiv);
+            normallist.reserve(ndiv);
 
             for(int i = 0; i < ndiv; i++) {
-                vts[2*i].setValue(pointatcurvelist[i].x, pointatcurvelist[i].y, drawingParameters.zInfo); // radials
-                vts[2*i+1].setValue(pointatcomblist[i].x, pointatcomblist[i].y, drawingParameters.zInfo);
-                index[i] = 2;
+                double param = firstparam + i * step;
+                pointatcurvelist.emplace_back(spline->value(param));
 
-                vts[2*ndiv+i].setValue(pointatcomblist[i].x, pointatcomblist[i].y, drawingParameters.zInfo); // comb endpoint closing segment
+                try {
+                    curvaturelist.emplace_back(spline->curvatureAt(param));
+                }
+                catch(Base::CADKernelError &e) {
+                    // it is "just" a visualisation matter OCC could not calculate the curvature
+                    // terminating here would mean that the other shapes would not be drawn.
+                    // Solution: Report the issue and set dummy curvature to 0
+                    e.ReportException();
+                    Base::Console().Error("Curvature graph for B-Spline with GeoId=%d could not be calculated.\n", 0); // TODO: Fix me
+                    curvaturelist.emplace_back(0);
+                }
+
+                Base::Vector3d normal;
+                try {
+                    spline->normalAt(param, normal);
+                    normallist.emplace_back(normal);
+                }
+                catch(Base::Exception&) {
+                    normallist.emplace_back(0,0,0);
+                }
             }
 
-            index[ndiv] = ndiv; // comb endpoint closing segment
-
-            combcoords->point.finishEditing();
-            comblineset->numVertices.finishEditing();
-
-            sep->addChild(mat);
-            sep->addChild(combcoords);
-            sep->addChild(comblineset);
-
-            sw->addChild(sep);
-
-            edit->infoGroup->addChild(sw);
-            sep->unref();
-            mat->unref();
-        }
-        else {
-            SoSwitch *sw = static_cast<SoSwitch *>(edit->infoGroup->getChild(currentInfoNode));
-
-            if(visualisationControlParameters.visibleInformationChanged)
-                sw->whichChild = hGrpsk->GetBool("BSplineCombVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
-
-            SoSeparator *sep = static_cast<SoSeparator *>(sw->getChild(0));
-
-            SoCoordinate3 *combcoords = static_cast<SoCoordinate3 *>(sep->getChild(GEOINFO_BSPLINE_POLYGON));
-
-            SoLineSet *comblineset = static_cast<SoLineSet *>(sep->getChild(GEOINFO_BSPLINE_POLYGON+1));
-
-            combcoords->point.setNum(3*ndiv); // 2*ndiv +1 points of ndiv separate segments + ndiv points for last segment
-            comblineset->numVertices.setNum(ndiv+1); // ndiv separate segments of radials + 1 segment connecting at comb end
-
-            int32_t *index = comblineset->numVertices.startEditing();
-            SbVec3f *vts = combcoords->point.startEditing();
+            std::vector<Base::Vector3d> pointatcomblist;
+            pointatcomblist.reserve(ndiv);
 
             for(int i = 0; i < ndiv; i++) {
-                vts[2*i].setValue(pointatcurvelist[i].x, pointatcurvelist[i].y, drawingParameters.zInfo); // radials
-                vts[2*i+1].setValue(pointatcomblist[i].x, pointatcomblist[i].y, drawingParameters.zInfo);
-                index[i] = 2;
-
-                vts[2*ndiv+i].setValue(pointatcomblist[i].x, pointatcomblist[i].y, drawingParameters.zInfo); // comb endpoint closing segment
+                pointatcomblist.emplace_back(pointatcurvelist[i] - overlayParameters.currentBSplineCombRepresentationScale * curvaturelist[i] * normallist[i]);
             }
 
-            index[ndiv] = ndiv; // comb endpoint closing segment
+            curvatureComb.coordinates.reserve(3*ndiv); // 2*ndiv +1 points of ndiv separate segments + ndiv points for last segment
+            curvatureComb.indices.reserve(ndiv+1); // ndiv separate segments of radials + 1 segment connecting at comb end
 
-            combcoords->point.finishEditing();
-            comblineset->numVertices.finishEditing();
+            for(int i = 0; i < ndiv; i++) {
+                // note emplace emplaces on the position BEFORE the iterator given.
+                curvatureComb.coordinates.emplace( curvatureComb.coordinates.begin() + 2*i + 1,
+                                                    pointatcurvelist[i].x, pointatcurvelist[i].y, drawingParameters.zInfo); // radials
+                curvatureComb.coordinates.emplace( curvatureComb.coordinates.begin() + 2*i + 2,
+                                                    pointatcomblist[i].x, pointatcomblist[i].y, drawingParameters.zInfo); // radials
 
+                curvatureComb.indices.emplace_back(2); // line
+
+                curvatureComb.coordinates.emplace( curvatureComb.coordinates.begin() + 2*ndiv + i + 1,
+                                                    pointatcomblist[i].x, pointatcomblist[i].y, drawingParameters.zInfo); // // comb endpoint closing segment
+            }
+
+            curvatureComb.indices.emplace_back(ndiv); // Comb line
+        }
+        else if constexpr (calculation == Calculation::KnotMultiplicity) {
+
+            clearCalculation<StringNode, VisualisationType::Text>(knotMultiplicity);
+            std::vector<double> knots = spline->getKnots();
+            std::vector<int> mult = spline->getMultiplicities();
+
+            for(size_t i=0; i<knots.size(); i++) {
+                knotMultiplicity.positions.emplace_back(spline->pointAtParameter(knots[i]));
+
+                std::ostringstream stringStream;
+                stringStream << "(" << mult[i] << ")";
+
+                knotMultiplicity.strings.emplace_back( stringStream.str());
+            }
+        }
+        else if constexpr (calculation == Calculation::PoleWeight) {
+
+            clearCalculation<StringNode, VisualisationType::Text>(poleWeights);
+            std::vector<Base::Vector3d> poles = spline->getPoles();
+            auto weights = spline->getWeights();
+
+            for(size_t i=0; i<poles.size(); i++) {
+                poleWeights.positions.emplace_back(poles[i]);
+
+                QString WeightString  = QString::fromLatin1("[%1]").arg(weights[i], 0, 'f', Base::UnitsApi::getDecimals());
+
+                poleWeights.strings.emplace_back(WeightString.toStdString());
+            }
         }
 
-        currentInfoNode++; // switch to next node
+    }
 
-        // knot multiplicity --------------------------------------------------------
-        std::vector<double> knots = spline->getKnots();
-        std::vector<int> mult = spline->getMultiplicities();
+    template < typename Result, Calculation calculation, VisualisationType type >
+    void addUpdateNode(const Result & result) {
 
-        std::vector<double>::const_iterator itk;
-        std::vector<int>::const_iterator itm;
+        if(overlayParameters.rebuildInformationLayer)
+            addNode<Result, calculation, type>(result);
+        else
+            updateNode<Result, calculation, type>(result);
+    }
 
+    template < Calculation calculation >
+    bool isVisible() {
+        if constexpr ( calculation == Calculation::Degree ) {
+            return overlayParameters.bSplineDegreeVisible;
+        }
+        else if constexpr ( calculation == Calculation::ControlPolygon ) {
+            return overlayParameters.bSplineControlPolygonVisible;
+        }
+        else if constexpr ( calculation == Calculation::CurvatureComb ) {
+            return overlayParameters.bSplineCombVisible;
+        }
+        else if constexpr ( calculation == Calculation::KnotMultiplicity ) {
+            return overlayParameters.bSplineKnotMultiplicityVisible;
+        }
+        else if constexpr ( calculation == Calculation::PoleWeight ) {
+            return overlayParameters.bSplinePoleWeightVisible;
+        }
+    }
 
-        if (rebuildinformationlayer) {
+    template < typename Result >
+    void setPolygon(const Result & result, SoLineSet *polygonlineset, SoCoordinate3 *polygoncoords) {
 
-            for( itk = knots.begin(), itm = mult.begin(); itk != knots.end() && itm != mult.end(); ++itk, ++itm) {
+        polygoncoords->point.setNum(result.coordinates.size());
+        polygonlineset->numVertices.setNum(result.indices.size());
+
+        int32_t *index = polygonlineset->numVertices.startEditing();
+        SbVec3f *vts = polygoncoords->point.startEditing();
+
+        for(size_t i = 0; i < result.coordinates.size(); i++)
+            vts[i].setValue(result.coordinates[i].x, result.coordinates[i].y, drawingParameters.zInfo);
+
+        for(size_t i = 0; i < result.indices.size(); i++)
+            index[i] = result.indices[i];
+
+        polygoncoords->point.finishEditing();
+        polygonlineset->numVertices.finishEditing();
+    }
+
+    template < int line = 1 >
+    void setText(const std::string & string, SoText2 * text) {
+
+        if constexpr (line == 1) {
+            text->string = SbString(string.c_str());
+        }
+        else {
+            assert(line > 1);
+            SoMFString label;
+            for ( int l = 0; l < (line - 1) ; l++)
+                label.set1Value(l, SbString(""));
+
+            label.set1Value(line-1, SbString(string.c_str()));
+            text->string = label;
+        }
+    }
+
+    void addToInfoGroup(SoSwitch * sw) {
+        infoGroup->addChild(sw);
+        nodeId++;
+    }
+
+    template < typename Result, VisualisationType type >
+    void clearCalculation(Result & result) {
+         if constexpr ( type == VisualisationType::Text ) {
+            result.positions.clear();
+            result.strings.clear();
+         }
+         else if constexpr (type == VisualisationType::Polygon) {
+            result.coordinates.clear();
+            result.indices.clear();
+         }
+    }
+
+    template < typename Result, Calculation calculation, VisualisationType type >
+    void addNode(const Result & result) {
+
+        if constexpr ( type == VisualisationType::Text ) {
+
+            for(size_t i = 0; i < result.strings.size(); i++) {
 
                 SoSwitch *sw = new SoSwitch();
 
-                sw->whichChild = hGrpsk->GetBool("BSplineKnotMultiplicityVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
+                sw->whichChild = isVisible<calculation>()?SO_SWITCH_ALL:SO_SWITCH_NONE;
 
                 SoSeparator *sep = new SoSeparator();
                 sep->ref();
@@ -781,152 +826,174 @@ void CoinManager::processGeometryInformationLayer(const GeoList & geolist, bool 
 
                 SoTranslation *translate = new SoTranslation;
 
-                Base::Vector3d knotposition = spline->pointAtParameter(*itk);
-
-                translate->translation.setValue(knotposition.x, knotposition.y, drawingParameters.zInfo);
+                translate->translation.setValue(result.positions[i].x, result.positions[i].y, drawingParameters.zInfo);
 
                 SoFont *font = new SoFont;
                 font->name.setValue("Helvetica");
-                font->size.setValue(edit->coinFontSize);
+                font->size.setValue(drawingParameters.coinFontSize);
 
-                SoText2 *degreetext = new SoText2;
-                degreetext->string = SbString("(") + SbString(*itm) + SbString(")");
+                SoText2 *text = new SoText2;
+
+                // since the first and last control point of a spline is also treated as knot and thus
+                // can also have a displayed multiplicity, we must assure the multiplicity is not visibly overwritten
+                // therefore be output the weight in a second line
+                //
+                // This could be made into a more generic form, but it is probably not worth the effort at this time.
+                if constexpr ( calculation == Calculation::PoleWeight )
+                    setText<2>(result.strings[i], text);
+                else
+                    setText(result.strings[i], text);
 
                 sep->addChild(translate);
                 sep->addChild(mat);
                 sep->addChild(font);
-                sep->addChild(degreetext);
+                sep->addChild(text);
 
                 sw->addChild(sep);
 
-                edit->infoGroup->addChild(sw);
+                addToInfoGroup(sw);
                 sep->unref();
                 mat->unref();
-
-                currentInfoNode++; // switch to next node
             }
         }
-        else {
-            for( itk = knots.begin(), itm = mult.begin(); itk != knots.end() && itm != mult.end(); ++itk, ++itm) {
-                SoSwitch *sw = static_cast<SoSwitch *>(edit->infoGroup->getChild(currentInfoNode));
+        else if constexpr (type == VisualisationType::Polygon) {
 
-                if(visualisationControlParameters.visibleInformationChanged)
-                    sw->whichChild = hGrpsk->GetBool("BSplineKnotMultiplicityVisible", true)?SO_SWITCH_ALL:SO_SWITCH_NONE;
+            SoSwitch *sw = new SoSwitch();
+
+            // hGrpsk->GetBool("BSplineControlPolygonVisible", true)
+            sw->whichChild = isVisible<calculation>()?SO_SWITCH_ALL:SO_SWITCH_NONE;
+
+            SoSeparator *sep = new SoSeparator();
+            sep->ref();
+            // no caching for frequently-changing data structures
+            sep->renderCaching = SoSeparator::OFF;
+
+            // every information visual node gets its own material for to-be-implemented preselection and selection
+            SoMaterial *mat = new SoMaterial;
+            mat->ref();
+            mat->diffuseColor = drawingParameters.InformationColor;
+
+            SoLineSet *polygonlineset = new SoLineSet;
+            SoCoordinate3 *polygoncoords = new SoCoordinate3;
+
+            setPolygon<Result>(result, polygonlineset, polygoncoords);
+
+            sep->addChild(mat);
+            sep->addChild(polygoncoords);
+            sep->addChild(polygonlineset);
+
+            sw->addChild(sep);
+
+            addToInfoGroup(sw);
+            sep->unref();
+            mat->unref();
+        }
+    }
+
+    template < typename Result, Calculation calculation, VisualisationType type >
+    void updateNode(const Result & result) {
+
+         if constexpr ( type == VisualisationType::Text ) {
+
+            for(size_t i = 0; i < result.strings.size(); i++) {
+                SoSwitch *sw = static_cast<SoSwitch *>(infoGroup->getChild(nodeId));
+
+                if (overlayParameters.visibleInformationChanged)
+                    sw->whichChild = isVisible<calculation>()?SO_SWITCH_ALL:SO_SWITCH_NONE;
 
                 SoSeparator *sep = static_cast<SoSeparator *>(sw->getChild(0));
 
-                Base::Vector3d knotposition = spline->pointAtParameter(*itk);
-
-                static_cast<SoTranslation *>(sep->getChild(GEOINFO_BSPLINE_DEGREE_POS))->translation.setValue(knotposition.x,knotposition.y,drawingParameters.zInfo);
-
-                static_cast<SoText2 *>(sep->getChild(GEOINFO_BSPLINE_DEGREE_TEXT))->string = SbString("(") + SbString(*itm) + SbString(")");
-
-                currentInfoNode++; // switch to next node
-            }
-        }
-
-        // End of knot multiplicity
-
-        // pole weights --------------------------------------------------------
-        std::vector<double> weights = spline->getWeights();
-
-        if (rebuildinformationlayer) {
-
-            for (size_t index = 0; index < weights.size(); ++index) {
-
-                SoSwitch* sw = new SoSwitch();
-
-                sw->whichChild = hGrpsk->GetBool("BSplinePoleWeightVisible", true) ? SO_SWITCH_ALL : SO_SWITCH_NONE;
-
-                SoSeparator* sep = new SoSeparator();
-                sep->ref();
-                // no caching for frequently-changing data structures
-                sep->renderCaching = SoSeparator::OFF;
-
-                // every information visual node gets its own material for to-be-implemented preselection and selection
-                SoMaterial* mat = new SoMaterial;
-                mat->ref();
-                mat->diffuseColor = drawingParameters.InformationColor;
-
-                SoTranslation* translate = new SoTranslation;
-
-                Base::Vector3d poleposition = poles[index];
-
-                SoFont* font = new SoFont;
-                font->name.setValue("Helvetica");
-                font->size.setValue(edit->coinFontSize);
-
-                translate->translation.setValue(poleposition.x, poleposition.y, drawingParameters.zInfo);
-
-                // set up string with weight value and the user-defined number of decimals
-                QString WeightString  = QString::fromLatin1("%1").arg(weights[index], 0, 'f', Base::UnitsApi::getDecimals());
-
-                SoText2* WeightText = new SoText2;
-                // since the first and last control point of a spline is also treated as knot and thus
-                // can also have a displayed multiplicity, we must assure the multiplicity is not visibly overwritten
-                // therefore be output the weight in a second line
-                SoMFString label;
-                label.set1Value(0, SbString(""));
-                label.set1Value(1, SbString("[") + SbString(WeightString.toStdString().c_str()) + SbString("]"));
-                WeightText->string = label;
-
-                sep->addChild(translate);
-                sep->addChild(mat);
-                sep->addChild(font);
-                sep->addChild(WeightText);
-
-                sw->addChild(sep);
-
-                edit->infoGroup->addChild(sw);
-                sep->unref();
-                mat->unref();
-
-                currentInfoNode++; // switch to next node
-            }
-        }
-        else {
-            for (size_t index = 0; index < weights.size(); ++index) {
-                SoSwitch* sw = static_cast<SoSwitch*>(edit->infoGroup->getChild(currentInfoNode));
-
-                if (visualisationControlParameters.visibleInformationChanged)
-                    sw->whichChild = hGrpsk->GetBool("BSplinePoleWeightVisible", true) ? SO_SWITCH_ALL : SO_SWITCH_NONE;
-
-                SoSeparator* sep = static_cast<SoSeparator*>(sw->getChild(0));
-
-                Base::Vector3d poleposition = poles[index];
-
-                static_cast<SoTranslation*>(sep->getChild(GEOINFO_BSPLINE_DEGREE_POS))
-                    ->translation.setValue(poleposition.x, poleposition.y, drawingParameters.zInfo);
-
-                // set up string with weight value and the user-defined number of decimals
-                QString WeightString = QString::fromLatin1("%1").arg(weights[index], 0, 'f', Base::UnitsApi::getDecimals());
+                static_cast<SoTranslation *>(sep->getChild(static_cast<int>(TextNodePosition::TextCoordinates)))->translation.setValue(result.positions[i].x, result.positions[i].y, drawingParameters.zInfo);
 
                 // since the first and last control point of a spline is also treated as knot and thus
                 // can also have a displayed multiplicity, we must assure the multiplicity is not visibly overwritten
                 // therefore be output the weight in a second line
-                SoMFString label;
-                label.set1Value(0, SbString(""));
-                label.set1Value(1, SbString("[") + SbString(WeightString.toStdString().c_str()) + SbString("]"));
+                //
+                // This could be made into a more generic form, but it is probably not worth the effort at this time.
+                if constexpr ( calculation == Calculation::PoleWeight )
+                    setText<2>(result.strings[i], static_cast<SoText2 *>(sep->getChild(static_cast<int>(TextNodePosition::TextInformation))));
+                else
+                    setText(result.strings[i], static_cast<SoText2 *>(sep->getChild(static_cast<int>(TextNodePosition::TextInformation))));
 
-                static_cast<SoText2*>(sep->getChild(GEOINFO_BSPLINE_DEGREE_TEXT))
-                                        ->string = label;
-
-                currentInfoNode++; // switch to next node
+                nodeId++;
             }
-        }
 
-        // End of pole weights
+        }
+        else if constexpr (type == VisualisationType::Polygon) {
+
+            SoSwitch *sw = static_cast<SoSwitch *>(infoGroup->getChild(nodeId));
+
+            if(overlayParameters.visibleInformationChanged)
+                sw->whichChild = isVisible<calculation>()?SO_SWITCH_ALL:SO_SWITCH_NONE;
+
+            SoSeparator *sep = static_cast<SoSeparator *>(sw->getChild(0));
+
+            SoCoordinate3 *polygoncoords = static_cast<SoCoordinate3 *>(sep->getChild(static_cast<int>(PolygonNodePosition::PolygonCoordinates)));
+
+            SoLineSet *polygonlineset = static_cast<SoLineSet *>(sep->getChild(static_cast<int>(PolygonNodePosition::PolygonLineSet)));
+
+            setPolygon(result, polygonlineset, polygoncoords);
+
+            nodeId++;
+        }
     }
 
+private:
+    SoGroup * infoGroup;
+    CoinManager::OverlayParameters & overlayParameters;
+    CoinManager::DrawingParameters & drawingParameters;
 
-    visualisationControlParameters.visibleInformationChanged = false; // just updated
+    // Calculations
+    StringNode degree;
+    StringNode knotMultiplicity;
+    StringNode poleWeights;
+    PolygonNode controlPolygon;
+    PolygonNode curvatureComb;
+
+    // Node Management
+    int nodeId;
+};
+
+void CoinManager::processGeometryInformationOverlay(const GeoList & geolist)
+{
+    auto GeoById = [](const std::vector<Part::Geometry*> GeoList, int Id){
+    {
+        if (Id >= 0)
+            return GeoList[Id];
+        else
+            return GeoList[GeoList.size()+Id];
+        }
+    };
+
+    auto ioconv = InformationOverlayCoinConverter(edit->infoGroup, overlayParameters, drawingParameters);
+
+    // geometry information layer for bsplines, as they need a second round now that max curvature is known
+    for (auto geoid : analysisResults.bsplineGeoIds) {
+        const Part::Geometry *geo = GeoById(geolist.geomlist, geoid);
+
+        ioconv.convert(geo);
+    }
+
+    overlayParameters.visibleInformationChanged = false; // just updated
 }
 
-void CoinManager::processGeometryAndInformationLayer(const GeoList & geolist, bool rebuildinformationlayer)
+void CoinManager::updateOverlayParameters()
 {
+    if ( (analysisResults.combRepresentationScale > (2 * overlayParameters.currentBSplineCombRepresentationScale)) ||
+        (analysisResults.combRepresentationScale < (overlayParameters.currentBSplineCombRepresentationScale / 2)))
+        overlayParameters.currentBSplineCombRepresentationScale = analysisResults.combRepresentationScale ;
+}
+
+void CoinManager::processGeometryAndInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer)
+{
+    drawingParameters.coinFontSize = edit->coinFontSize; // TODO: Evaluate refactoring this after constraints are migrated.
+    overlayParameters.rebuildInformationLayer = rebuildinformationlayer;
+
     processGeometry(geolist);
 
-    processGeometryInformationLayer(geolist, rebuildinformationlayer);
+    updateOverlayParameters();
+
+    processGeometryInformationOverlay(geolist);
 
     updateAxesLength();
 }

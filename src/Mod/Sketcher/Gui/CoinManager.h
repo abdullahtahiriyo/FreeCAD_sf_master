@@ -58,6 +58,15 @@ class SketcherGuiExport CoinManager
     // Monitor changes in parameters affecting drawing
     class ParameterObserver : public ParameterGrp::ObserverType
     {
+    private:
+        enum class OverlayVisibilityParameter {
+            BSplineDegree,
+            BSplineControlPolygonVisible,
+            BSplineCombVisible,
+            BSplineKnotMultiplicityVisible,
+            BSplinePoleWeightVisible
+        };
+
     public:
         ParameterObserver(CoinManager * pclient);
         ~ParameterObserver();
@@ -73,10 +82,30 @@ class SketcherGuiExport CoinManager
         void initParameters();
         void updateCurvedEdgeCountSegmentsParameter();
 
+        template<OverlayVisibilityParameter visibilityparameter>
+        void updateOverlayVisibilityParameter();
+
     private:
         CoinManager *pClient;
     };
 
+    struct AnalysisResuls { // TODO: This needs to be refactored
+        double combRepresentationScale = 0;
+        float boundingBoxMagnitudeOrder = 0;
+        std::vector<int> bsplineGeoIds;
+
+    };
+
+    enum class OverlayParameter {
+        BSplineDegree,
+        BSplineControlPolygon,
+        BSplineComb,
+        BSplineKnotMultiplicity,
+        BSplinePoleWeight,
+        BSplineNum
+    };
+
+public:
     struct DrawingParameters {
         int curvedEdgeCountSegments;
         // Rendering Heights
@@ -88,18 +117,21 @@ class SketcherGuiExport CoinManager
         // Rendering Colors
         static SbColor InformationColor;
         static SbColor CreateCurveColor;
+        // Rendering font information
+        int coinFontSize;
     };
 
-    struct VisualisationControlParameters {
-        double currentBSplineCombRepresentationScale = 0;
+    struct OverlayParameters {
+        bool rebuildInformationLayer;
         bool visibleInformationChanged = true;
-    };
+        double currentBSplineCombRepresentationScale = 0;
 
-    struct AnalysisResuls { // TODO: This needs to be refactored
-        double combRepresentationScale = 0;
-        float boundingBoxMagnitudeOrder = 0;
-        std::vector<int> bsplineGeoIds;
-
+        // Parameters
+        bool bSplineDegreeVisible;
+        bool bSplineControlPolygonVisible;
+        bool bSplineCombVisible;
+        bool bSplineKnotMultiplicityVisible;
+        bool bSplinePoleWeightVisible;
     };
 
 public:
@@ -108,12 +140,13 @@ public:
 
     using Vector3d = Base::Vector3<double>;
 
-    void processGeometryAndInformationLayer(const GeoList & geolist, bool rebuildinformationlayer);
+    void processGeometryAndInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer);
 
     void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel);
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
 
-    inline void setVisibleInformationChanged() {visualisationControlParameters.visibleInformationChanged = true;}
+
+    inline void setVisibleInformationChanged() {overlayParameters.visibleInformationChanged = true;}
     void updateCoinManagerColors();
 
     float getboundingBoxMagnitudeOrder() { return analysisResults.boundingBoxMagnitudeOrder;}
@@ -124,16 +157,19 @@ private:
 
     // This function populates the geometry information layer of coin. It requires the analysis information
     // gathered during the processGeometry step, so it is not possible to run both in parallel.
-    void processGeometryInformationLayer(const GeoList & geolist, bool rebuildinformationlayer);
+    void processGeometryInformationOverlay(const GeoList & geolist);
 
     // updates the Axes length to extend beyond the calculated bounding box magnitude
     void updateAxesLength();
 
+    // updates the parameters to be used for the Overlay information layer
+    void updateOverlayParameters();
+
 private:
     EditData * edit;
     DrawingParameters drawingParameters;
-    VisualisationControlParameters visualisationControlParameters;
     AnalysisResuls analysisResults;
+    OverlayParameters overlayParameters;
     std::unique_ptr<CoinManager::ParameterObserver> pObserver;
 };
 
