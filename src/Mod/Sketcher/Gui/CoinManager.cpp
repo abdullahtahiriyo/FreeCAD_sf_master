@@ -117,6 +117,8 @@ void CoinManager::ParameterObserver::updateOverlayVisibilityParameter()
         pClient->overlayParameters.bSplineKnotMultiplicityVisible = hGrpsk->GetBool("BSplineKnotMultiplicityVisible", true);
     else if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplinePoleWeightVisible)
         pClient->overlayParameters.bSplinePoleWeightVisible = hGrpsk->GetBool("BSplinePoleWeightVisible", true);
+
+    pClient->overlayParameters.visibleInformationChanged = true;
 }
 
 void CoinManager::ParameterObserver::subscribeToParameters()

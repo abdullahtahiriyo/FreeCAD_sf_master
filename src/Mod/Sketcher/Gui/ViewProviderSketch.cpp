@@ -6265,8 +6265,6 @@ bool ViewProviderSketch::onDelete(const std::vector<std::string> &subList)
 }
 
 void ViewProviderSketch::showRestoreInformationLayer() {
-
-    coinManager->setVisibleInformationChanged();
     draw(false,false);
 }
 

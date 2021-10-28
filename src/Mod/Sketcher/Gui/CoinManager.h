@@ -145,8 +145,6 @@ public:
     void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel);
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
 
-
-    inline void setVisibleInformationChanged() {overlayParameters.visibleInformationChanged = true;}
     void updateCoinManagerColors();
 
     float getboundingBoxMagnitudeOrder() { return analysisResults.boundingBoxMagnitudeOrder;}
