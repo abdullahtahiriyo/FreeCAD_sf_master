@@ -96,15 +96,6 @@ class SketcherGuiExport CoinManager
 
     };
 
-    enum class OverlayParameter {
-        BSplineDegree,
-        BSplineControlPolygon,
-        BSplineComb,
-        BSplineKnotMultiplicity,
-        BSplinePoleWeight,
-        BSplineNum
-    };
-
 public:
     struct DrawingParameters {
         int curvedEdgeCountSegments;
