@@ -552,12 +552,17 @@ private:
     };
 
 private:
-    struct StringNode {
+    template< VisualisationType visualisationtype >
+    struct Node {
+        static constexpr VisualisationType type = visualisationtype;
+    };
+
+    struct NodeText : public Node<VisualisationType::Text> {
         std::vector<std::string> strings;
         std::vector<Base::Vector3d> positions;
     };
 
-    struct PolygonNode {
+    struct NodePolygon: public Node<VisualisationType::Polygon> {
         std::vector<Base::Vector3d> coordinates;
         std::vector<int> indices;
     };
@@ -599,11 +604,11 @@ public:
         calculate<Calculation::BSplineKnotMultiplicity>(geometry);
         calculate<Calculation::BSplinePoleWeight>(geometry);
 
-        addUpdateNode<StringNode, Calculation::BSplineDegree, VisualisationType::Text>(degree);
-        addUpdateNode<PolygonNode, Calculation::BSplineControlPolygon, VisualisationType::Polygon>(controlPolygon);
-        addUpdateNode<PolygonNode, Calculation::BSplineCurvatureComb, VisualisationType::Polygon>(curvatureComb);
-        addUpdateNode<StringNode, Calculation::BSplineKnotMultiplicity, VisualisationType::Text>(knotMultiplicity);
-        addUpdateNode<StringNode, Calculation::BSplinePoleWeight, VisualisationType::Text>(poleWeights);
+        addUpdateNode<NodeText, Calculation::BSplineDegree>(degree);
+        addUpdateNode<NodePolygon, Calculation::BSplineControlPolygon>(controlPolygon);
+        addUpdateNode<NodePolygon, Calculation::BSplineCurvatureComb>(curvatureComb);
+        addUpdateNode<NodeText, Calculation::BSplineKnotMultiplicity>(knotMultiplicity);
+        addUpdateNode<NodeText, Calculation::BSplinePoleWeight>(poleWeights);
 
     };
 
@@ -613,7 +618,7 @@ private:
         const Part::GeomBSplineCurve *spline = static_cast<const Part::GeomBSplineCurve *>(geometry);
 
         if constexpr (calculation == Calculation::BSplineDegree ) {
-            clearCalculation<StringNode, VisualisationType::Text>(degree);
+            clearCalculation<NodeText>(degree);
 
             std::vector<Base::Vector3d> poles = spline->getPoles();
 
@@ -632,7 +637,7 @@ private:
         }
         else if constexpr (calculation == Calculation::BSplineControlPolygon ) {
 
-            clearCalculation<PolygonNode, VisualisationType::Polygon>(controlPolygon);
+            clearCalculation<NodePolygon>(controlPolygon);
 
             std::vector<Base::Vector3d> poles = spline->getPoles();
 
@@ -654,7 +659,7 @@ private:
         }
         else if constexpr (calculation == Calculation::BSplineCurvatureComb ) {
 
-            clearCalculation<PolygonNode, VisualisationType::Polygon>(curvatureComb);
+            clearCalculation<NodePolygon>(curvatureComb);
             // curvature graph --------------------------------------------------------
 
             // reimplementation of python source:
@@ -728,7 +733,7 @@ private:
         }
         else if constexpr (calculation == Calculation::BSplineKnotMultiplicity ) {
 
-            clearCalculation<StringNode, VisualisationType::Text>(knotMultiplicity);
+            clearCalculation<NodeText>(knotMultiplicity);
             std::vector<double> knots = spline->getKnots();
             std::vector<int> mult = spline->getMultiplicities();
 
@@ -743,7 +748,7 @@ private:
         }
         else if constexpr (calculation == Calculation::BSplinePoleWeight ) {
 
-            clearCalculation<StringNode, VisualisationType::Text>(poleWeights);
+            clearCalculation<NodeText>(poleWeights);
             std::vector<Base::Vector3d> poles = spline->getPoles();
             auto weights = spline->getWeights();
 
@@ -758,13 +763,13 @@ private:
 
     }
 
-    template < typename Result, Calculation calculation, VisualisationType type >
+    template < typename Result, Calculation calculation>
     void addUpdateNode(const Result & result) {
 
         if(overlayParameters.rebuildInformationLayer)
-            addNode<Result, calculation, type>(result);
+            addNode<Result, calculation>(result);
         else
-            updateNode<Result, calculation, type>(result);
+            updateNode<Result, calculation>(result);
     }
 
     template < Calculation calculation >
@@ -827,22 +832,22 @@ private:
         nodeId++;
     }
 
-    template < typename Result, VisualisationType type >
+    template < typename Result >
     void clearCalculation(Result & result) {
-         if constexpr ( type == VisualisationType::Text ) {
+         if constexpr ( Result::type == VisualisationType::Text ) {
             result.positions.clear();
             result.strings.clear();
          }
-         else if constexpr (type == VisualisationType::Polygon) {
+         else if constexpr (result.type == VisualisationType::Polygon) {
             result.coordinates.clear();
             result.indices.clear();
          }
     }
 
-    template < typename Result, Calculation calculation, VisualisationType type >
+    template < typename Result, Calculation calculation >
     void addNode(const Result & result) {
 
-        if constexpr ( type == VisualisationType::Text ) {
+        if constexpr ( Result::type == VisualisationType::Text ) {
 
             for(size_t i = 0; i < result.strings.size(); i++) {
 
@@ -892,7 +897,7 @@ private:
                 mat->unref();
             }
         }
-        else if constexpr (type == VisualisationType::Polygon) {
+        else if constexpr (Result::type == VisualisationType::Polygon) {
 
             SoSwitch *sw = new SoSwitch();
 
@@ -926,10 +931,10 @@ private:
         }
     }
 
-    template < typename Result, Calculation calculation, VisualisationType type >
+    template < typename Result, Calculation calculation >
     void updateNode(const Result & result) {
 
-         if constexpr ( type == VisualisationType::Text ) {
+         if constexpr ( Result::type == VisualisationType::Text ) {
 
             for(size_t i = 0; i < result.strings.size(); i++) {
                 SoSwitch *sw = static_cast<SoSwitch *>(infoGroup->getChild(nodeId));
@@ -955,7 +960,7 @@ private:
             }
 
         }
-        else if constexpr (type == VisualisationType::Polygon) {
+        else if constexpr (Result::type == VisualisationType::Polygon) {
 
             SoSwitch *sw = static_cast<SoSwitch *>(infoGroup->getChild(nodeId));
 
@@ -980,11 +985,11 @@ private:
     CoinManager::DrawingParameters & drawingParameters;
 
     // Calculations
-    StringNode degree;
-    StringNode knotMultiplicity;
-    StringNode poleWeights;
-    PolygonNode controlPolygon;
-    PolygonNode curvatureComb;
+    NodeText degree;
+    NodeText knotMultiplicity;
+    NodeText poleWeights;
+    NodePolygon controlPolygon;
+    NodePolygon curvatureComb;
 
     // Node Management
     int nodeId;
