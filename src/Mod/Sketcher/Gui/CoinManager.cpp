@@ -141,7 +141,7 @@ void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCalle
 {
     (void) rCaller;
 
-    static std::map<const char *, std::function<void()>> str2updatefunction {
+    static std::map<std::string, std::function<void()>> str2updatefunction {
         {"SegmentsPerGeometry", [this](){updateCurvedEdgeCountSegmentsParameter();}},
         {"BSplineDegreeVisible", [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineDegree>();}},
         {"BSplineControlPolygonVisible", [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineControlPolygonVisible>();}},
