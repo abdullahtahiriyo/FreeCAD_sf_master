@@ -537,7 +537,7 @@ void CoinManager::updateAxesLength()
 class InformationOverlayCoinConverter {
 private:
 
-    enum class Calculation
+    enum class CalculationType
     {
         BSplineDegree,
         BSplineControlPolygon,
@@ -598,26 +598,26 @@ public:
         // at this point all calculations relate to BSplineCurves
         assert(geometry->getTypeId() == Part::GeomBSplineCurve::getClassTypeId());
 
-        calculate<Calculation::BSplineDegree>(geometry);
-        calculate<Calculation::BSplineControlPolygon>(geometry);
-        calculate<Calculation::BSplineCurvatureComb>(geometry);
-        calculate<Calculation::BSplineKnotMultiplicity>(geometry);
-        calculate<Calculation::BSplinePoleWeight>(geometry);
+        calculate<CalculationType::BSplineDegree>(geometry);
+        calculate<CalculationType::BSplineControlPolygon>(geometry);
+        calculate<CalculationType::BSplineCurvatureComb>(geometry);
+        calculate<CalculationType::BSplineKnotMultiplicity>(geometry);
+        calculate<CalculationType::BSplinePoleWeight>(geometry);
 
-        addUpdateNode<NodeText, Calculation::BSplineDegree>(degree);
-        addUpdateNode<NodePolygon, Calculation::BSplineControlPolygon>(controlPolygon);
-        addUpdateNode<NodePolygon, Calculation::BSplineCurvatureComb>(curvatureComb);
-        addUpdateNode<NodeText, Calculation::BSplineKnotMultiplicity>(knotMultiplicity);
-        addUpdateNode<NodeText, Calculation::BSplinePoleWeight>(poleWeights);
+        addUpdateNode<NodeText, CalculationType::BSplineDegree>(degree);
+        addUpdateNode<NodePolygon, CalculationType::BSplineControlPolygon>(controlPolygon);
+        addUpdateNode<NodePolygon, CalculationType::BSplineCurvatureComb>(curvatureComb);
+        addUpdateNode<NodeText, CalculationType::BSplineKnotMultiplicity>(knotMultiplicity);
+        addUpdateNode<NodeText, CalculationType::BSplinePoleWeight>(poleWeights);
 
     };
 
 private:
-    template < Calculation calculation >
+    template < CalculationType calculation >
     void calculate(const Part::Geometry * geometry) {
         const Part::GeomBSplineCurve *spline = static_cast<const Part::GeomBSplineCurve *>(geometry);
 
-        if constexpr (calculation == Calculation::BSplineDegree ) {
+        if constexpr (calculation == CalculationType::BSplineDegree ) {
             clearCalculation<NodeText>(degree);
 
             std::vector<Base::Vector3d> poles = spline->getPoles();
@@ -635,7 +635,7 @@ private:
             degree.strings.emplace_back(std::to_string(spline->getDegree()));
             degree.positions.emplace_back(midp);
         }
-        else if constexpr (calculation == Calculation::BSplineControlPolygon ) {
+        else if constexpr (calculation == CalculationType::BSplineControlPolygon ) {
 
             clearCalculation<NodePolygon>(controlPolygon);
 
@@ -657,7 +657,7 @@ private:
 
             controlPolygon.indices.push_back(poles.size()); // single continuous poligon starting at index 0
         }
-        else if constexpr (calculation == Calculation::BSplineCurvatureComb ) {
+        else if constexpr (calculation == CalculationType::BSplineCurvatureComb ) {
 
             clearCalculation<NodePolygon>(curvatureComb);
             // curvature graph --------------------------------------------------------
@@ -731,7 +731,7 @@ private:
 
             curvatureComb.indices.emplace_back(ndiv); // Comb line
         }
-        else if constexpr (calculation == Calculation::BSplineKnotMultiplicity ) {
+        else if constexpr (calculation == CalculationType::BSplineKnotMultiplicity ) {
 
             clearCalculation<NodeText>(knotMultiplicity);
             std::vector<double> knots = spline->getKnots();
@@ -746,7 +746,7 @@ private:
                 knotMultiplicity.strings.emplace_back( stringStream.str());
             }
         }
-        else if constexpr (calculation == Calculation::BSplinePoleWeight ) {
+        else if constexpr (calculation == CalculationType::BSplinePoleWeight ) {
 
             clearCalculation<NodeText>(poleWeights);
             std::vector<Base::Vector3d> poles = spline->getPoles();
@@ -763,7 +763,7 @@ private:
 
     }
 
-    template < typename Result, Calculation calculation>
+    template < typename Result, CalculationType calculation>
     void addUpdateNode(const Result & result) {
 
         if(overlayParameters.rebuildInformationLayer)
@@ -772,21 +772,21 @@ private:
             updateNode<Result, calculation>(result);
     }
 
-    template < Calculation calculation >
+    template < CalculationType calculation >
     bool isVisible() {
-        if constexpr ( calculation == Calculation::BSplineDegree ) {
+        if constexpr ( calculation == CalculationType::BSplineDegree ) {
             return overlayParameters.bSplineDegreeVisible;
         }
-        else if constexpr ( calculation == Calculation::BSplineControlPolygon ) {
+        else if constexpr ( calculation == CalculationType::BSplineControlPolygon ) {
             return overlayParameters.bSplineControlPolygonVisible;
         }
-        else if constexpr ( calculation == Calculation::BSplineCurvatureComb ) {
+        else if constexpr ( calculation == CalculationType::BSplineCurvatureComb ) {
             return overlayParameters.bSplineCombVisible;
         }
-        else if constexpr ( calculation == Calculation::BSplineKnotMultiplicity ) {
+        else if constexpr ( calculation == CalculationType::BSplineKnotMultiplicity ) {
             return overlayParameters.bSplineKnotMultiplicityVisible;
         }
-        else if constexpr ( calculation == Calculation::BSplinePoleWeight ) {
+        else if constexpr ( calculation == CalculationType::BSplinePoleWeight ) {
             return overlayParameters.bSplinePoleWeightVisible;
         }
     }
@@ -844,7 +844,7 @@ private:
          }
     }
 
-    template < typename Result, Calculation calculation >
+    template < typename Result, CalculationType calculation >
     void addNode(const Result & result) {
 
         if constexpr (Result::visualisationType == VisualisationType::Text) {
@@ -880,7 +880,7 @@ private:
                 // therefore be output the weight in a second line
                 //
                 // This could be made into a more generic form, but it is probably not worth the effort at this time.
-                if constexpr ( calculation == Calculation::BSplinePoleWeight )
+                if constexpr ( calculation == CalculationType::BSplinePoleWeight )
                     setText<2>(result.strings[i], text);
                 else
                     setText(result.strings[i], text);
@@ -931,7 +931,7 @@ private:
         }
     }
 
-    template < typename Result, Calculation calculation >
+    template < typename Result, CalculationType calculation >
     void updateNode(const Result & result) {
 
          if constexpr (Result::visualisationType == VisualisationType::Text ) {
@@ -951,7 +951,7 @@ private:
                 // therefore be output the weight in a second line
                 //
                 // This could be made into a more generic form, but it is probably not worth the effort at this time.
-                if constexpr ( calculation == Calculation::BSplinePoleWeight )
+                if constexpr ( calculation == CalculationType::BSplinePoleWeight )
                     setText<2>(result.strings[i], static_cast<SoText2 *>(sep->getChild(static_cast<int>(TextNodePosition::TextInformation))));
                 else
                     setText(result.strings[i], static_cast<SoText2 *>(sep->getChild(static_cast<int>(TextNodePosition::TextInformation))));
