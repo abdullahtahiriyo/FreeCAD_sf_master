@@ -838,7 +838,7 @@ private:
             result.positions.clear();
             result.strings.clear();
          }
-         else if constexpr (result.type == VisualisationType::Polygon) {
+         else if constexpr (Result::type == VisualisationType::Polygon) {
             result.coordinates.clear();
             result.indices.clear();
          }
