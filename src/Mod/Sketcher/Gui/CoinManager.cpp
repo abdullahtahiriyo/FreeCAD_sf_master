@@ -552,9 +552,9 @@ private:
     };
 
 private:
-    template< VisualisationType visualisationtype >
+    template< VisualisationType vtype >
     struct Node {
-        static constexpr VisualisationType type = visualisationtype;
+        static constexpr VisualisationType visualisationType = vtype;
     };
 
     struct NodeText : public Node<VisualisationType::Text> {
@@ -834,11 +834,11 @@ private:
 
     template < typename Result >
     void clearCalculation(Result & result) {
-         if constexpr ( Result::type == VisualisationType::Text ) {
+         if constexpr (Result::visualisationType == VisualisationType::Text) {
             result.positions.clear();
             result.strings.clear();
          }
-         else if constexpr (Result::type == VisualisationType::Polygon) {
+         else if constexpr (Result::visualisationType == VisualisationType::Polygon) {
             result.coordinates.clear();
             result.indices.clear();
          }
@@ -847,7 +847,7 @@ private:
     template < typename Result, Calculation calculation >
     void addNode(const Result & result) {
 
-        if constexpr ( Result::type == VisualisationType::Text ) {
+        if constexpr (Result::visualisationType == VisualisationType::Text) {
 
             for(size_t i = 0; i < result.strings.size(); i++) {
 
@@ -897,7 +897,7 @@ private:
                 mat->unref();
             }
         }
-        else if constexpr (Result::type == VisualisationType::Polygon) {
+        else if constexpr (Result::visualisationType == VisualisationType::Polygon) {
 
             SoSwitch *sw = new SoSwitch();
 
@@ -934,7 +934,7 @@ private:
     template < typename Result, Calculation calculation >
     void updateNode(const Result & result) {
 
-         if constexpr ( Result::type == VisualisationType::Text ) {
+         if constexpr (Result::visualisationType == VisualisationType::Text ) {
 
             for(size_t i = 0; i < result.strings.size(); i++) {
                 SoSwitch *sw = static_cast<SoSwitch *>(infoGroup->getChild(nodeId));
@@ -960,7 +960,7 @@ private:
             }
 
         }
-        else if constexpr (Result::type == VisualisationType::Polygon) {
+        else if constexpr (Result::visualisationType == VisualisationType::Polygon) {
 
             SoSwitch *sw = static_cast<SoSwitch *>(infoGroup->getChild(nodeId));
 
