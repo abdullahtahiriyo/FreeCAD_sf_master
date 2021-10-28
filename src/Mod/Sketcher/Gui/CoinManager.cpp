@@ -506,16 +506,44 @@ void CoinManager::updateAxesLength()
 }
 
 
-
+/** @brief      Class for creating the Overlay information layer
+ *  @details
+ *
+ * Responsibility:
+ * To create and update the SoGroup provided as a constructor parameter,
+ * taking into account the drawing and overlay parameters provided as
+ * constructor parameters.
+ *
+ * Interface:
+ * A single entry point convert(), performing the following flow:
+ *
+ * [Geometry] => Calculate => addUpdateNode
+ *
+ * Calculate is responsible for generating information directly usable by Coin (but with standard types that
+ * would enable portability) in a predetermined internal Node structure format (e.g. StringNode, PolygonNode)
+ * that can generically be used by the addUpdateNode.
+ *
+ * addUpdateNode is responsible for creating or updating the node structure (depending on overlayParameters.rebuildInformationLayer)
+ *
+ * Supported:
+ * Currently it only supports information of Part::Geometry objects and implements calculations only for GeomBSplineCurve.
+ *
+ * Caveats:
+ * - This class relies on the order of creation to perform the update. Any parallel execution that does not deterministically
+ * maintain the order will result in undefined behaviour. This provides a reasonable tradeoff between complexity and the fact that
+ * currently the information layer is generally so small that no parallel execution would actually result in a performance gain.
+ *
+ */
 class InformationOverlayCoinConverter {
-public:
+private:
+
     enum class Calculation
     {
-        Degree,
-        ControlPolygon,
-        CurvatureComb,
-        KnotMultiplicity,
-        PoleWeight
+        BSplineDegree,
+        BSplineControlPolygon,
+        BSplineCurvatureComb,
+        BSplineKnotMultiplicity,
+        BSplinePoleWeight
     };
     enum class VisualisationType
     {
@@ -523,6 +551,7 @@ public:
         Polygon
     };
 
+private:
     struct StringNode {
         std::vector<std::string> strings;
         std::vector<Base::Vector3d> positions;
@@ -534,6 +563,7 @@ public:
     };
 
 private:
+    // Node Position in the Coin Scenograph for the different types of nodes
     enum class TextNodePosition {
         TextCoordinates = 0,
         TextInformation = 3
@@ -552,20 +582,28 @@ public:
                                                                                             drawingParameters(drawingparameters),
                                                                                             nodeId(0){};
 
-    // converts geometry information into an information layer and returns the nodeid of the addition
+    /**
+    * extracts information from the geometry and converts it into an information overlay in the
+    * SoGroup provided in the constructor.
+    *
+    * @param geometry: the geometry to be processed
+    */
     void convert(const Part::Geometry * geometry) {
 
-        calculate<Calculation::Degree>(geometry);
-        calculate<Calculation::ControlPolygon>(geometry);
-        calculate<Calculation::CurvatureComb>(geometry);
-        calculate<Calculation::KnotMultiplicity>(geometry);
-        calculate<Calculation::PoleWeight>(geometry);
+        // at this point all calculations relate to BSplineCurves
+        assert(geometry->getTypeId() == Part::GeomBSplineCurve::getClassTypeId());
 
-        addUpdateNode<StringNode, Calculation::Degree, VisualisationType::Text>(degree);
-        addUpdateNode<PolygonNode, Calculation::ControlPolygon, VisualisationType::Polygon>(controlPolygon);
-        addUpdateNode<PolygonNode, Calculation::CurvatureComb, VisualisationType::Polygon>(curvatureComb);
-        addUpdateNode<StringNode, Calculation::KnotMultiplicity, VisualisationType::Text>(knotMultiplicity);
-        addUpdateNode<StringNode, Calculation::PoleWeight, VisualisationType::Text>(poleWeights);
+        calculate<Calculation::BSplineDegree>(geometry);
+        calculate<Calculation::BSplineControlPolygon>(geometry);
+        calculate<Calculation::BSplineCurvatureComb>(geometry);
+        calculate<Calculation::BSplineKnotMultiplicity>(geometry);
+        calculate<Calculation::BSplinePoleWeight>(geometry);
+
+        addUpdateNode<StringNode, Calculation::BSplineDegree, VisualisationType::Text>(degree);
+        addUpdateNode<PolygonNode, Calculation::BSplineControlPolygon, VisualisationType::Polygon>(controlPolygon);
+        addUpdateNode<PolygonNode, Calculation::BSplineCurvatureComb, VisualisationType::Polygon>(curvatureComb);
+        addUpdateNode<StringNode, Calculation::BSplineKnotMultiplicity, VisualisationType::Text>(knotMultiplicity);
+        addUpdateNode<StringNode, Calculation::BSplinePoleWeight, VisualisationType::Text>(poleWeights);
 
     };
 
@@ -574,7 +612,7 @@ private:
     void calculate(const Part::Geometry * geometry) {
         const Part::GeomBSplineCurve *spline = static_cast<const Part::GeomBSplineCurve *>(geometry);
 
-        if constexpr (calculation == Calculation::Degree) {
+        if constexpr (calculation == Calculation::BSplineDegree ) {
             clearCalculation<StringNode, VisualisationType::Text>(degree);
 
             std::vector<Base::Vector3d> poles = spline->getPoles();
@@ -592,7 +630,7 @@ private:
             degree.strings.emplace_back(std::to_string(spline->getDegree()));
             degree.positions.emplace_back(midp);
         }
-        else if constexpr (calculation == Calculation::ControlPolygon) {
+        else if constexpr (calculation == Calculation::BSplineControlPolygon ) {
 
             clearCalculation<PolygonNode, VisualisationType::Polygon>(controlPolygon);
 
@@ -614,7 +652,7 @@ private:
 
             controlPolygon.indices.push_back(poles.size()); // single continuous poligon starting at index 0
         }
-        else if constexpr (calculation == Calculation::CurvatureComb) {
+        else if constexpr (calculation == Calculation::BSplineCurvatureComb ) {
 
             clearCalculation<PolygonNode, VisualisationType::Polygon>(curvatureComb);
             // curvature graph --------------------------------------------------------
@@ -688,7 +726,7 @@ private:
 
             curvatureComb.indices.emplace_back(ndiv); // Comb line
         }
-        else if constexpr (calculation == Calculation::KnotMultiplicity) {
+        else if constexpr (calculation == Calculation::BSplineKnotMultiplicity ) {
 
             clearCalculation<StringNode, VisualisationType::Text>(knotMultiplicity);
             std::vector<double> knots = spline->getKnots();
@@ -703,7 +741,7 @@ private:
                 knotMultiplicity.strings.emplace_back( stringStream.str());
             }
         }
-        else if constexpr (calculation == Calculation::PoleWeight) {
+        else if constexpr (calculation == Calculation::BSplinePoleWeight ) {
 
             clearCalculation<StringNode, VisualisationType::Text>(poleWeights);
             std::vector<Base::Vector3d> poles = spline->getPoles();
@@ -731,19 +769,19 @@ private:
 
     template < Calculation calculation >
     bool isVisible() {
-        if constexpr ( calculation == Calculation::Degree ) {
+        if constexpr ( calculation == Calculation::BSplineDegree ) {
             return overlayParameters.bSplineDegreeVisible;
         }
-        else if constexpr ( calculation == Calculation::ControlPolygon ) {
+        else if constexpr ( calculation == Calculation::BSplineControlPolygon ) {
             return overlayParameters.bSplineControlPolygonVisible;
         }
-        else if constexpr ( calculation == Calculation::CurvatureComb ) {
+        else if constexpr ( calculation == Calculation::BSplineCurvatureComb ) {
             return overlayParameters.bSplineCombVisible;
         }
-        else if constexpr ( calculation == Calculation::KnotMultiplicity ) {
+        else if constexpr ( calculation == Calculation::BSplineKnotMultiplicity ) {
             return overlayParameters.bSplineKnotMultiplicityVisible;
         }
-        else if constexpr ( calculation == Calculation::PoleWeight ) {
+        else if constexpr ( calculation == Calculation::BSplinePoleWeight ) {
             return overlayParameters.bSplinePoleWeightVisible;
         }
     }
@@ -837,7 +875,7 @@ private:
                 // therefore be output the weight in a second line
                 //
                 // This could be made into a more generic form, but it is probably not worth the effort at this time.
-                if constexpr ( calculation == Calculation::PoleWeight )
+                if constexpr ( calculation == Calculation::BSplinePoleWeight )
                     setText<2>(result.strings[i], text);
                 else
                     setText(result.strings[i], text);
@@ -908,7 +946,7 @@ private:
                 // therefore be output the weight in a second line
                 //
                 // This could be made into a more generic form, but it is probably not worth the effort at this time.
-                if constexpr ( calculation == Calculation::PoleWeight )
+                if constexpr ( calculation == Calculation::BSplinePoleWeight )
                     setText<2>(result.strings[i], static_cast<SoText2 *>(sep->getChild(static_cast<int>(TextNodePosition::TextInformation))));
                 else
                     setText(result.strings[i], static_cast<SoText2 *>(sep->getChild(static_cast<int>(TextNodePosition::TextInformation))));
