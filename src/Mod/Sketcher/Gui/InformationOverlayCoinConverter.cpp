@@ -27,37 +27,27 @@
 # include <Inventor/nodes/SoSeparator.h>
 # include <Inventor/nodes/SoGroup.h>
 # include <Inventor/nodes/SoSwitch.h>
-# include <Gui/Inventor/SmSwitchboard.h>
 # include <Inventor/nodes/SoMaterial.h>
 # include <Inventor/nodes/SoCoordinate3.h>
 # include <Inventor/nodes/SoLineSet.h>
 # include <Inventor/nodes/SoFont.h>
 
-# include <Inventor/nodes/SoMarkerSet.h>
 # include <Inventor/nodes/SoTranslation.h>
 # include <Inventor/nodes/SoText2.h>
-# include <Inventor/nodes/SoPickStyle.h>
-# include <Inventor/nodes/SoDrawStyle.h>
-
-# include <memory>
 #endif  // #ifndef _PreComp_
 
-#include "CoinManagerParameters.h"
-
 #include <Mod/Part/App/Geometry.h>
-#include <Mod/Sketcher/App/GeometryFacade.h>
+#include <Base/Console.h>
 #include <Base/Exception.h>
-#include <Base/Tools2D.h>
+
 #include <Base/UnitsApi.h>
 
-#include <Gui/Inventor/MarkerBitmaps.h>
+#include "CoinManagerParameters.h"
 
 #include "InformationOverlayCoinConverter.h"
 
 
-
 using namespace SketcherGui;
-using namespace Sketcher;
 
 InformationOverlayCoinConverter::InformationOverlayCoinConverter(SoGroup * infogroup,
                                     OverlayParameters & overlayparameters,
@@ -70,26 +60,26 @@ InformationOverlayCoinConverter::InformationOverlayCoinConverter(SoGroup * infog
 
 void InformationOverlayCoinConverter::convert(const Part::Geometry * geometry) {
 
-        // at this point all calculations relate to BSplineCurves
-        assert(geometry->getTypeId() == Part::GeomBSplineCurve::getClassTypeId());
+    // at this point all calculations relate to BSplineCurves
+    assert(geometry->getTypeId() == Part::GeomBSplineCurve::getClassTypeId());
 
-        calculate<CalculationType::BSplineDegree>(geometry);
-        calculate<CalculationType::BSplineControlPolygon>(geometry);
-        calculate<CalculationType::BSplineCurvatureComb>(geometry);
-        calculate<CalculationType::BSplineKnotMultiplicity>(geometry);
-        calculate<CalculationType::BSplinePoleWeight>(geometry);
+    calculate<CalculationType::BSplineDegree>(geometry);
+    calculate<CalculationType::BSplineControlPolygon>(geometry);
+    calculate<CalculationType::BSplineCurvatureComb>(geometry);
+    calculate<CalculationType::BSplineKnotMultiplicity>(geometry);
+    calculate<CalculationType::BSplinePoleWeight>(geometry);
 
-        addUpdateNode(degree);
-        addUpdateNode(controlPolygon);
-        addUpdateNode(curvatureComb);
-        addUpdateNode(knotMultiplicity);
-        addUpdateNode(poleWeights);
+    addUpdateNode(degree);
+    addUpdateNode(controlPolygon);
+    addUpdateNode(curvatureComb);
+    addUpdateNode(knotMultiplicity);
+    addUpdateNode(poleWeights);
 
 };
 
 void InformationOverlayCoinConverter::addToInfoGroup(SoSwitch * sw) {
-        infoGroup->addChild(sw);
-        nodeId++;
+    infoGroup->addChild(sw);
+    nodeId++;
 }
 
 template < InformationOverlayCoinConverter::CalculationType calculation >
@@ -409,7 +399,7 @@ void InformationOverlayCoinConverter::addNode(const Result & result) {
 template < typename Result >
 void InformationOverlayCoinConverter::updateNode(const Result & result) {
 
-        if constexpr (Result::visualisationType == VisualisationType::Text ) {
+    if constexpr (Result::visualisationType == VisualisationType::Text ) {
 
         for(size_t i = 0; i < result.strings.size(); i++) {
             SoSwitch *sw = static_cast<SoSwitch *>(infoGroup->getChild(nodeId));

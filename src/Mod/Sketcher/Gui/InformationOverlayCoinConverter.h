@@ -26,9 +26,6 @@
 
 #include <vector>
 
-#include <Base/Parameter.h>
-#include <App/Application.h>
-
 namespace Base {
     template< typename T >
     class Vector3;
@@ -41,7 +38,6 @@ namespace Part {
 }
 
 namespace SketcherGui {
-    class CoinManager;
     struct OverlayParameters;
     struct DrawingParameters;
 
