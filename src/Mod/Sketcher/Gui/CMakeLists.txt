@@ -103,6 +103,10 @@ SET(SketcherGui_SRCS
     ShortcutListener.h
     EditData.cpp
     EditData.h
+    InformationOverlayCoinConverter.cpp
+    InformationOverlayCoinConverter.h
+    CoinManagerParameters.h
+    CoinManagerParameters.cpp
     CoinManager.cpp
     CoinManager.h
     ViewProviderSketch.cpp

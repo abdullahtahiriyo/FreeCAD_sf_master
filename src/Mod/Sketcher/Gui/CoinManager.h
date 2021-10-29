@@ -29,6 +29,8 @@
 #include <Base/Parameter.h>
 #include <App/Application.h>
 
+#include "CoinManagerParameters.h"
+
 
 namespace Base {
     template< typename T >
@@ -50,7 +52,6 @@ struct GeoList {
     int intGeoCount;
     int extGeoCount;
 };
-
 
 class SketcherGuiExport CoinManager
 {
@@ -94,35 +95,6 @@ class SketcherGuiExport CoinManager
         float boundingBoxMagnitudeOrder = 0;
         std::vector<int> bsplineGeoIds;
 
-    };
-
-public:
-    struct DrawingParameters {
-        int curvedEdgeCountSegments;
-        // Rendering Heights
-        const float zLowLines   = 0.005f;    //TODO: Fix zLowLines
-        const float zLowPoints  = 0.010f;    // TODO: Fix zLowPoints
-        const float zInfo       = 0.004f;
-        const float zEdit       = 0.001f;
-        const float zCross      = 0.001f;
-        // Rendering Colors
-        static SbColor InformationColor;
-        static SbColor CreateCurveColor;
-        // Rendering font information
-        int coinFontSize;
-    };
-
-    struct OverlayParameters {
-        bool rebuildInformationLayer;
-        bool visibleInformationChanged = true;
-        double currentBSplineCombRepresentationScale = 0;
-
-        // Parameters
-        bool bSplineDegreeVisible;
-        bool bSplineControlPolygonVisible;
-        bool bSplineCombVisible;
-        bool bSplineKnotMultiplicityVisible;
-        bool bSplinePoleWeightVisible;
     };
 
 public:
