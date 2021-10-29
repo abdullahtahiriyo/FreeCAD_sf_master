@@ -89,6 +89,15 @@ private:
     using Vector3d = Base::Vector3<double>;
 
 private:
+    // A Coin Node follows a VisualisationType, which defines how
+    // the information is represented, and which member must be
+    // filled into the struct for representation
+    //
+    // A struct containing the information to represent VisualisationType
+    // must be provided per CalculationType
+    //
+    // a struct Node template enables to define the VisualisationType and
+    // the CalculationType so that uniform treatment can be provided
     template< VisualisationType vtype, CalculationType ctype >
     struct Node {
         static constexpr VisualisationType visualisationType = vtype;
@@ -120,6 +129,16 @@ private:
     };
 
 public:
+    /** Constructs an InformationOverlayCoinConverter responsible for
+     * generating (calculating) the information of a full geometry layer
+     * overlay using the overlay and drawing parameters
+     *
+     * @param infogroup: The SoGroup to be populated with the coin nodes
+     * generated from the calculated information.
+     *
+     * @param overlayparameters: Parameters for controlling the overlay
+     * @param drawingparameters: Parameters for drawing the overlay information
+     */
     InformationOverlayCoinConverter(SoGroup * infogroup,
                                     OverlayParameters & overlayparameters,
                                     DrawingParameters & drawingparameters);
