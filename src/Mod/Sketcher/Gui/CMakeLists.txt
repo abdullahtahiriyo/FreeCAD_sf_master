@@ -105,6 +105,8 @@ SET(SketcherGui_SRCS
     EditData.h
     InformationOverlayCoinConverter.cpp
     InformationOverlayCoinConverter.h
+    GeometryCoinConverter.cpp
+    GeometryCoinConverter.h
     CoinManagerParameters.h
     CoinManagerParameters.cpp
     CoinManager.cpp

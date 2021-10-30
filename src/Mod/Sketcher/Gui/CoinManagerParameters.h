@@ -24,8 +24,20 @@
 #ifndef SKETCHERGUI_CoinManagerParameters_H
 #define SKETCHERGUI_CoinManagerParameters_H
 
+#ifndef _PreComp_
+# include <Inventor/nodes/SoMaterial.h>
+# include <Inventor/nodes/SoCoordinate3.h>
+# include <Inventor/nodes/SoLineSet.h>
+# include <Inventor/SbColor.h>
+#endif  // #ifndef _PreComp_
+
 #include <vector>
-#include <Inventor/SbColor.h>
+#include <map>
+
+
+namespace Part {
+    class Geometry;
+}
 
 namespace SketcherGui {
 
@@ -42,6 +54,19 @@ struct DrawingParameters {
     static SbColor CreateCurveColor;
     // Rendering font information
     int coinFontSize;
+};
+
+struct GeometryLayerNodes {
+    SoMaterial    *PointsMaterials;
+    SoMaterial    *CurvesMaterials;
+    SoCoordinate3 *PointsCoordinate;
+    SoCoordinate3 *CurvesCoordinate;
+    SoLineSet     *CurveSet;
+};
+
+struct GeometryLayer {
+    std::map<int, int> geoId2geomlist;
+    const std::vector<Part::Geometry *> & geomlist;
 };
 
 struct OverlayParameters {

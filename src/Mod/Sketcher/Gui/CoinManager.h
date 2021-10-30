@@ -56,7 +56,7 @@ struct GeoList {
 class SketcherGuiExport CoinManager
 {
     // Delegate Pattern (Attorney - Client)
-    // Monitor changes in parameters affecting drawing
+    // Monitor changes in parameters affecting drawing and coin node generation
     class ParameterObserver : public ParameterGrp::ObserverType
     {
     private:
@@ -90,7 +90,7 @@ class SketcherGuiExport CoinManager
         CoinManager *pClient;
     };
 
-    struct AnalysisResuls { // TODO: This needs to be refactored
+    struct AnalysisResults { // TODO: This needs to be refactored
         double combRepresentationScale = 0;
         float boundingBoxMagnitudeOrder = 0;
         std::vector<int> bsplineGeoIds;
@@ -129,7 +129,7 @@ private:
 private:
     EditData * edit;
     DrawingParameters drawingParameters;
-    AnalysisResuls analysisResults;
+    AnalysisResults analysisResults;
     OverlayParameters overlayParameters;
     std::unique_ptr<CoinManager::ParameterObserver> pObserver;
 };

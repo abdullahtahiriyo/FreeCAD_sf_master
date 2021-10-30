@@ -54,9 +54,9 @@
 
 #include "InformationOverlayCoinConverter.h"
 
+#include "GeometryCoinConverter.h"
+
 #include "CoinManager.h"
-
-
 
 using namespace SketcherGui;
 using namespace Sketcher;
@@ -155,187 +155,8 @@ void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCalle
         key->second();
 }
 
-//*************************** GeometryCoinConverter ***************************
-
-class GeometryCoinConverter {
-public:
-    enum class PointsMode {
-    InsertSingle,
-    InsertStartEnd,
-    InsertStartEndMid,
-    InsertMidOnly
-    };
-
-enum class CurveMode {
-    NoCurve,
-    StartEndPointsOnly,
-    ClosedCurve,
-    OpenCurve
-    };
-
-enum class AnalyseMode {
-    BoundingBoxMagnitude,
-    BoundingBoxMagnitudeAndBSplineCurvature
-    };
-
-public:
-    GeometryCoinConverter(std::vector<Base::Vector3d> & points,
-                          std::vector<Base::Vector3d> & coords,
-                          std::vector<unsigned int> & index,
-                          int curvedEdgeCountSegments
-                         ): Points(points), Coords(coords), Index(index), CurvedEdgeCountSegments(curvedEdgeCountSegments){}
-
-    template < typename GeoType, PointsMode pointmode, CurveMode curvemode, AnalyseMode analysemode >
-    void convert(const Part::Geometry * geometry) {
-        auto geo = static_cast<const GeoType *>(geometry);
-
-        auto addPoint = [&dMg = boundingBoxMaxMagnitude] (auto & pushvector, Base::Vector3d point) {
-
-            if constexpr (analysemode == AnalyseMode::BoundingBoxMagnitude || analysemode == AnalyseMode::BoundingBoxMagnitudeAndBSplineCurvature) {
-                dMg = dMg>std::abs(point.x)?dMg:std::abs(point.x);
-                dMg = dMg>std::abs(point.y)?dMg:std::abs(point.y);
-                pushvector.push_back(point);
-            }
-        };
-
-        // Points
-        if constexpr (pointmode == PointsMode::InsertSingle) {
-            addPoint(Points, geo->getPoint());
-        }
-        else if constexpr (pointmode == PointsMode::InsertStartEnd) {
-            addPoint(Points, geo->getStartPoint());
-            addPoint(Points, geo->getEndPoint());
-        }
-        else if constexpr (pointmode == PointsMode::InsertStartEndMid) {
-            // All in this group are Trimmed Curves (see Geometry.h)
-            addPoint(Points, geo->getStartPoint(/*emulateCCW=*/true));
-            addPoint(Points, geo->getEndPoint(/*emulateCCW=*/true));
-            addPoint(Points, geo->getCenter());
-        }
-        else if constexpr (pointmode == PointsMode::InsertMidOnly) {
-            addPoint(Points, geo->getCenter());
-        }
-
-        // Curves
-        if constexpr (curvemode == CurveMode::StartEndPointsOnly) {
-            addPoint(Coords, geo->getStartPoint());
-            addPoint(Coords, geo->getEndPoint());
-            Index.push_back(2);
-        }
-        else if constexpr (curvemode == CurveMode::ClosedCurve) {
-            double segment = (geo->getLastParameter() - geo->getFirstParameter()) / CurvedEdgeCountSegments;
-
-            for (int i=0; i < CurvedEdgeCountSegments; i++) {
-                Base::Vector3d pnt = geo->value(i*segment);
-                addPoint(Coords, pnt);
-            }
-
-            Base::Vector3d pnt = geo->value(0);
-            addPoint(Coords, pnt);
-
-            Index.push_back(CurvedEdgeCountSegments+1);
-        }
-        else if constexpr (curvemode == CurveMode::OpenCurve) {
-
-            double segment = (geo->getLastParameter() - geo->getFirstParameter()) / CurvedEdgeCountSegments;
-
-            for (int i=0; i < CurvedEdgeCountSegments; i++) {
-                Base::Vector3d pnt = geo->value(geo->getFirstParameter() + i*segment);
-                addPoint(Coords, pnt);
-            }
-
-            Base::Vector3d pnt = geo->value(geo->getLastParameter());
-                addPoint(Coords, pnt);
-
-            Index.push_back(CurvedEdgeCountSegments+1);
-
-            if constexpr (analysemode == AnalyseMode::BoundingBoxMagnitudeAndBSplineCurvature) {
-                //***************************************************************************************************************
-                // global information gathering for geometry information layer
-
-                std::vector<Base::Vector3d> poles = geo->getPoles();
-
-                Base::Vector3d midp = Base::Vector3d(0,0,0);
-
-                for (std::vector<Base::Vector3d>::iterator it = poles.begin(); it != poles.end(); ++it) {
-                    midp += (*it);
-                }
-
-                midp /= poles.size();
-
-                double firstparam = geo->getFirstParameter();
-                double lastparam =  geo->getLastParameter();
-
-                const int ndiv = poles.size()>4?poles.size()*16:64;
-                double step = (lastparam - firstparam ) / (ndiv -1);
-
-                std::vector<double> paramlist(ndiv);
-                std::vector<Base::Vector3d> pointatcurvelist(ndiv);
-                std::vector<double> curvaturelist(ndiv);
-                std::vector<Base::Vector3d> normallist(ndiv);
-
-                double maxcurv = 0;
-                double maxdisttocenterofmass = 0;
-
-                for (int i = 0; i < ndiv; i++) {
-                    paramlist[i] = firstparam + i * step;
-                    pointatcurvelist[i] = geo->pointAtParameter(paramlist[i]);
-
-                    try {
-                        curvaturelist[i] = geo->curvatureAt(paramlist[i]);
-                    }
-                    catch(Base::CADKernelError &e) {
-                        // it is "just" a visualisation matter OCC could not calculate the curvature
-                        // terminating here would mean that the other shapes would not be drawn.
-                        // Solution: Report the issue and set dummy curvature to 0
-                        e.ReportException();
-                        Base::Console().Error("Curvature graph for B-Spline with GeoId=%d could not be calculated.\n", 666); // TODO: Fix identification of curve.
-                        curvaturelist[i] = 0;
-                    }
-
-                    if (curvaturelist[i] > maxcurv)
-                        maxcurv = curvaturelist[i];
-
-                    double tempf = ( pointatcurvelist[i] - midp ).Length();
-
-                    if (tempf > maxdisttocenterofmass)
-                        maxdisttocenterofmass = tempf;
-
-                }
-
-                double temprepscale = 0;
-                if (maxcurv > 0)
-                    temprepscale = (0.5 * maxdisttocenterofmass) / maxcurv; // just a factor to make a comb reasonably visible
-
-                if (temprepscale > combrepscale)
-                    combrepscale = temprepscale;
-
-            }
-
-        }
-
-    }
-
-    float getBoundingBoxMaxMagnitude() {return boundingBoxMaxMagnitude;}
-    double getCombRepresentationScale() {return combrepscale;}
-
-private:
-    std::vector<Base::Vector3d> & Points;
-    std::vector<Base::Vector3d> & Coords;
-    std::vector<unsigned int> & Index;
-
-    // drawing parameters
-    int CurvedEdgeCountSegments;
-
-    // measurements
-    float boundingBoxMaxMagnitude = 100;
-    double combrepscale = 0; // the repscale that would correspond to this comb based only on this calculation.
-
-};
-
-
-
 //**************************** CoinManager class ******************************
+
 CoinManager::CoinManager(EditData * editdata):edit(editdata) {
     // Create parameter observer and initialise watched parameters
     pObserver = std::make_unique<CoinManager::ParameterObserver>(this);
@@ -350,150 +171,50 @@ void CoinManager::processGeometry(const GeoList & geolist)
     const std::vector<Part::Geometry *> *geomlist;
     geomlist = &geolist.geomlist;
 
+    // Init structures and define layer
+
     edit->CurvIdToGeoId.clear();
     edit->PointIdToGeoId.clear();
 
-    edit->PointIdToGeoId.push_back(-1); // root point
-
-    std::vector<int> bsplineGeoIds;
-
-    // end information layer
-
-    std::vector<Base::Vector3d> Coords;
-    std::vector<Base::Vector3d> Points;
-    std::vector<unsigned int> Index;
-
-    GeometryCoinConverter gcconv(Points, Coords, Index, drawingParameters.curvedEdgeCountSegments);
-
-    // RootPoint
-    Points.emplace_back(0.,0.,0.);
-
-    // Design decision 1
-    //
-    // I considered refactoring this if-else below into a map of lambdas (dictionary). However, the geometry TypeId is only valid at
-    // runtime (at compile time is bad type, as registration is during runtime). This forces to construct the map on each
-    // execution, which is not a good trade off.
-    //
-    // Design decision 2
-    //
-    // I also considered to move the information about the conversion template parameters to the GeometryCoinConverter class. However,
-    // I would also have to move the responsibility to maintain the mapping between GeoIds and coin geometry there. However, I believe
-    // the responsibility is of this class under the Single Responsibility Principle.
-    auto pushToEdit = [edit = edit] (int geoId, int numberPoints, int numberCurves) {
-        for(int i = 0; i < numberPoints; i++)
-            edit->PointIdToGeoId.push_back(geoId);
-
-        for(int i = 0; i < numberCurves; i++)
-            edit->CurvIdToGeoId.push_back(geoId);
-
-    };
-
-    analysisResults.bsplineGeoIds.clear();
+    // Define the geometry layer to convert
+    GeometryLayer geolayer { {}, geolist.geomlist };
 
     int GeoId = 0;
-    for (std::vector<Part::Geometry *>::const_iterator it = geomlist->begin(); it != geomlist->end()-2; ++it, GeoId++) {
+    for (size_t i = 0 ; i < geomlist->size()- 2; i++, GeoId++) {
         if (GeoId >= geolist.intGeoCount)
             GeoId = -geolist.extGeoCount;
 
-        if ((*it)->getTypeId() == Part::GeomPoint::getClassTypeId()) { // add a point
-            gcconv.convert< Part::GeomPoint,
-                            GeometryCoinConverter::PointsMode::InsertSingle,
-                            GeometryCoinConverter::CurveMode::NoCurve,
-                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
-            pushToEdit(GeoId, 1, 0);
-        }
-        else if ((*it)->getTypeId() == Part::GeomLineSegment::getClassTypeId()) { // add a line
-            gcconv.convert< Part::GeomLineSegment,
-                            GeometryCoinConverter::PointsMode::InsertStartEnd,
-                            GeometryCoinConverter::CurveMode::StartEndPointsOnly,
-                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
-            pushToEdit(GeoId, 2, 1);
-        }
-        else if ((*it)->getTypeId() == Part::GeomCircle::getClassTypeId()) { // add a circle
-            gcconv.convert< Part::GeomCircle,
-                            GeometryCoinConverter::PointsMode::InsertMidOnly,
-                            GeometryCoinConverter::CurveMode::ClosedCurve,
-                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
-            pushToEdit(GeoId, 1, 1);
-        }
-        else if ((*it)->getTypeId() == Part::GeomEllipse::getClassTypeId()) { // add an ellipse
-            gcconv.convert< Part::GeomEllipse,
-                            GeometryCoinConverter::PointsMode::InsertMidOnly,
-                            GeometryCoinConverter::CurveMode::ClosedCurve,
-                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
-            pushToEdit(GeoId, 1, 1);
-        }
-        else if ((*it)->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) { // add an arc
-            gcconv.convert< Part::GeomArcOfCircle,
-                            GeometryCoinConverter::PointsMode::InsertStartEndMid,
-                            GeometryCoinConverter::CurveMode::OpenCurve,
-                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
-            pushToEdit(GeoId, 3, 1);
-        }
-        else if ((*it)->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) { // add an arc
-            gcconv.convert< Part::GeomArcOfEllipse,
-                            GeometryCoinConverter::PointsMode::InsertStartEndMid,
-                            GeometryCoinConverter::CurveMode::OpenCurve,
-                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
-            pushToEdit(GeoId, 3, 1);
-        }
-        else if ((*it)->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
-            gcconv.convert< Part::GeomArcOfHyperbola,
-                            GeometryCoinConverter::PointsMode::InsertStartEndMid,
-                            GeometryCoinConverter::CurveMode::OpenCurve,
-                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
-            pushToEdit(GeoId, 3, 1);
-        }
-        else if ((*it)->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
-            gcconv.convert< Part::GeomArcOfParabola,
-                            GeometryCoinConverter::PointsMode::InsertStartEndMid,
-                            GeometryCoinConverter::CurveMode::OpenCurve,
-                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>((*it));
-            pushToEdit(GeoId, 3, 1);
-        }
-        else if ((*it)->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) { // add a bspline
-            gcconv.convert< Part::GeomBSplineCurve,
-                            GeometryCoinConverter::PointsMode::InsertStartEnd,
-                            GeometryCoinConverter::CurveMode::OpenCurve,
-                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitudeAndBSplineCurvature>((*it));
-            pushToEdit(GeoId, 2, 1);
-            analysisResults.bsplineGeoIds.push_back(GeoId);
-        }
+        geolayer.geoId2geomlist[GeoId] = i;
     }
 
-    edit->CurvesCoordinate->point.setNum(Coords.size());
-    edit->CurveSet->numVertices.setNum(Index.size());
-    edit->CurvesMaterials->diffuseColor.setNum(Index.size());
-    edit->PointsCoordinate->point.setNum(Points.size());
-    edit->PointsMaterials->diffuseColor.setNum(Points.size());
+    // Define the coin nodes that will be filled in
+    GeometryLayerNodes geometryLayerNodes {
+        edit->PointsMaterials,
+        edit->CurvesMaterials,
+        edit->PointsCoordinate,
+        edit->CurvesCoordinate,
+        edit->CurveSet
+    };
 
-    SbVec3f *verts = edit->CurvesCoordinate->point.startEditing();
-    int32_t *index = edit->CurveSet->numVertices.startEditing();
-    SbVec3f *pverts = edit->PointsCoordinate->point.startEditing();
 
-    int i=0; // setting up the line set
-    for (std::vector<Base::Vector3d>::const_iterator it = Coords.begin(); it != Coords.end(); ++it,i++)
-        verts[i].setValue(it->x,it->y,drawingParameters.zLowLines);
+    // process geometry layer
+    // TODO: Root is set by GeometryCoinConverter which is ok for one layer only.
+    GeometryCoinConverter gcconv(geometryLayerNodes, drawingParameters);
 
-    i=0; // setting up the indexes of the line set
-    for (std::vector<unsigned int>::const_iterator it = Index.begin(); it != Index.end(); ++it,i++)
-        index[i] = *it;
-
-    i=0; // setting up the point set
-    for (std::vector<Base::Vector3d>::const_iterator it = Points.begin(); it != Points.end(); ++it,i++)
-        pverts[i].setValue(it->x,it->y,drawingParameters.zLowPoints);
-
-    edit->CurvesCoordinate->point.finishEditing();
-    edit->CurveSet->numVertices.finishEditing();
-    edit->PointsCoordinate->point.finishEditing();
+    gcconv.convert(geolayer);
 
     // set cross coordinates
     edit->RootCrossSet->numVertices.set1Value(0,2);
     edit->RootCrossSet->numVertices.set1Value(1,2);
 
+    edit->CurvIdToGeoId = gcconv.getCurveMap();
+    edit->PointIdToGeoId = gcconv.getPointMap();
+
+
     // TODO: THIS NEEDS REFACTORING
     analysisResults.combRepresentationScale = gcconv.getCombRepresentationScale();
     analysisResults.boundingBoxMagnitudeOrder = exp(ceil(log(std::abs(gcconv.getBoundingBoxMaxMagnitude()))));
+    analysisResults.bsplineGeoIds = gcconv.getBSplineGeoIds();
 }
 
 void CoinManager::updateAxesLength()
@@ -503,9 +224,6 @@ void CoinManager::updateAxesLength()
     edit->RootCrossCoordinate->point.set1Value(2,SbVec3f(0.0f, -analysisResults.boundingBoxMagnitudeOrder, drawingParameters.zCross));
     edit->RootCrossCoordinate->point.set1Value(3,SbVec3f(0.0f, analysisResults.boundingBoxMagnitudeOrder, drawingParameters.zCross));
 }
-
-
-
 
 void CoinManager::processGeometryInformationOverlay(const GeoList & geolist)
 {
