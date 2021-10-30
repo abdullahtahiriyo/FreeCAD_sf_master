@@ -171,12 +171,7 @@ void CoinManager::processGeometry(const GeoList & geolist)
     const std::vector<Part::Geometry *> *geomlist;
     geomlist = &geolist.geomlist;
 
-    // Init structures and define layer
-
-    edit->CurvIdToGeoId.clear();
-    edit->PointIdToGeoId.clear();
-
-    // Define the geometry layer to convert
+    // Define a single layer processing to be converted to coin
     GeometryLayer geolayer { {}, geolist.geomlist };
 
     int GeoId = 0;
@@ -187,7 +182,7 @@ void CoinManager::processGeometry(const GeoList & geolist)
         geolayer.geoId2geomlist[GeoId] = i;
     }
 
-    // Define the coin nodes that will be filled in
+    // Define the coin nodes that will be filled in with the single layer
     GeometryLayerNodes geometryLayerNodes {
         edit->PointsMaterials,
         edit->CurvesMaterials,
@@ -195,7 +190,6 @@ void CoinManager::processGeometry(const GeoList & geolist)
         edit->CurvesCoordinate,
         edit->CurveSet
     };
-
 
     // process geometry layer
     // TODO: Root is set by GeometryCoinConverter which is ok for one layer only.

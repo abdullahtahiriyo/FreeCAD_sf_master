@@ -64,8 +64,12 @@ struct GeometryLayerNodes {
     SoLineSet     *CurveSet;
 };
 
+// geomlist is the list of all sketcher geometry (including all layers)
+// geoId2geomlist has two responsibilities:
+//  - The keys [GeoId] are the GeoIds of this layer (so the ones that will be processed)
+//  - The mapping allows to get from the GeoId the
 struct GeometryLayer {
-    std::map<int, int> geoId2geomlist;
+    std::map<int /*GeoId*/, int /* geomlist index */> geoId2geomlist;
     const std::vector<Part::Geometry *> & geomlist;
 };
 

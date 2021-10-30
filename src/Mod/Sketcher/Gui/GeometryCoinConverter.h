@@ -43,6 +43,30 @@ namespace SketcherGui {
     struct DrawingParameters;
 
 /** @brief      Class for creating the Geometry layer into coin nodes
+ *  @details
+ * Responsibility:
+ * To create and update the SoGroup provided as a constructor parameter,
+ * taking into account the drawing and overlay parameters provided as
+ * constructor parameters.
+ *
+ * Interface:
+ * A single entry point convert(), performing the following flow:
+ *
+ * [Geometry] => Calculate => addUpdateNode
+ *
+ * Calculate is responsible for generating information directly usable by Coin (but with standard types that
+ * would enable portability) in a predetermined internal Node structure format (e.g. StringNode, PolygonNode)
+ * that can generically be used by the addUpdateNode.
+ *
+ * addUpdateNode is responsible for creating or updating the node structure (depending on overlayParameters.rebuildInformationLayer)
+ *
+ * Supported:
+ * Currently it only supports information of Part::Geometry objects and implements calculations only for GeomBSplineCurve.
+ *
+ * Caveats:
+ * - This class relies on the order of creation to perform the update. Any parallel execution that does not deterministically
+ * maintain the order will result in undefined behaviour. This provides a reasonable tradeoff between complexity and the fact that
+ * currently the information layer is generally so small that no parallel execution would actually result in a performance gain.
  */
 class GeometryCoinConverter {
     enum class PointsMode {
