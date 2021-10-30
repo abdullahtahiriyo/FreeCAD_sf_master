@@ -45,7 +45,6 @@ namespace SketcherGui {
 /** @brief      Class for creating the Geometry layer into coin nodes
  */
 class GeometryCoinConverter {
-public:
     enum class PointsMode {
     InsertSingle,
     InsertStartEnd,
