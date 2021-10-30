@@ -56,6 +56,8 @@
 
 #include "GeometryCoinConverter.h"
 
+#include "GeoList.h"
+
 #include "CoinManager.h"
 
 using namespace SketcherGui;

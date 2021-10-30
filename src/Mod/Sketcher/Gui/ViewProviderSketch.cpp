@@ -120,6 +120,7 @@
 #include "ViewProviderSketchGeometryExtension.h"
 #include <Mod/Sketcher/App/SolverGeometryExtension.h>
 
+#include "GeoList.h"
 #include "EditData.h"
 #include "CoinManager.h"
 
@@ -166,17 +167,6 @@ SbVec2s ViewProviderSketch::prvClickPos;
 SbVec2s ViewProviderSketch::prvCursorPos;
 SbVec2s ViewProviderSketch::newCursorPos;
 
-
-
-
-// this function is used to simulate cyclic periodic negative geometry indices (for external geometry)
-const Part::Geometry* GeoById(const std::vector<Part::Geometry*> GeoList, int Id)
-{
-    if (Id >= 0)
-        return GeoList[Id];
-    else
-        return GeoList[GeoList.size()+Id];
-}
 
 //**************************************************************************
 // Construction/Destruction
@@ -1286,7 +1276,7 @@ void ViewProviderSketch::moveConstraint(int constNum, const Base::Vector2d &toPo
             p2 = getSolvedSketch().getPoint(Constr->Second, Constr->SecondPos);
         } else if (Constr->Second != Constraint::GeoUndef) { // point to line distance
             p1 = getSolvedSketch().getPoint(Constr->First, Constr->FirstPos);
-            const Part::Geometry *geo = GeoById(geomlist, Constr->Second);
+            const Part::Geometry *geo = GeoList::getGeometryFromGeoId (geomlist, Constr->Second);
             if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                 const Part::GeomLineSegment *lineSeg = static_cast<const Part::GeomLineSegment *>(geo);
                 Base::Vector3d l2p1 = lineSeg->getStartPoint();
@@ -1299,7 +1289,7 @@ void ViewProviderSketch::moveConstraint(int constNum, const Base::Vector2d &toPo
         } else if (Constr->FirstPos != Sketcher::none) {
             p2 = getSolvedSketch().getPoint(Constr->First, Constr->FirstPos);
         } else if (Constr->First != Constraint::GeoUndef) {
-            const Part::Geometry *geo = GeoById(geomlist, Constr->First);
+            const Part::Geometry *geo = GeoList::getGeometryFromGeoId (geomlist, Constr->First);
             if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                 const Part::GeomLineSegment *lineSeg = static_cast<const Part::GeomLineSegment *>(geo);
                 p1 = lineSeg->getStartPoint();
@@ -1392,8 +1382,8 @@ void ViewProviderSketch::moveConstraint(int constNum, const Base::Vector2d &toPo
         if (Constr->Second != Constraint::GeoUndef) { // line to line angle
             Base::Vector3d dir1, dir2;
             if(Constr->Third == Constraint::GeoUndef) { //angle between two lines
-                const Part::Geometry *geo1 = GeoById(geomlist, Constr->First);
-                const Part::Geometry *geo2 = GeoById(geomlist, Constr->Second);
+                const Part::Geometry *geo1 = GeoList::getGeometryFromGeoId (geomlist, Constr->First);
+                const Part::Geometry *geo2 = GeoList::getGeometryFromGeoId (geomlist, Constr->Second);
                 if (geo1->getTypeId() != Part::GeomLineSegment::getClassTypeId() ||
                     geo2->getTypeId() != Part::GeomLineSegment::getClassTypeId())
                     return;
@@ -1435,7 +1425,7 @@ void ViewProviderSketch::moveConstraint(int constNum, const Base::Vector2d &toPo
             }
 
         } else if (Constr->First != Constraint::GeoUndef) { // line/arc angle
-            const Part::Geometry *geo = GeoById(geomlist, Constr->First);
+            const Part::Geometry *geo = GeoList::getGeometryFromGeoId (geomlist, Constr->First);
             if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                 const Part::GeomLineSegment *lineSeg = static_cast<const Part::GeomLineSegment *>(geo);
                 p0 = (lineSeg->getEndPoint()+lineSeg->getStartPoint())/2;
@@ -4033,7 +4023,7 @@ Restart:
                         bool alignment = Constr->Type!=Block && Constr->Second != Constraint::GeoUndef;
 
                         // get the geometry
-                        const Part::Geometry *geo = GeoById(*geomlist, Constr->First);
+                        const Part::Geometry *geo = GeoList::getGeometryFromGeoId (*geomlist, Constr->First);
 
                         if (!alignment) {
                             // Vertical & Horiz can only be a GeomLineSegment, but Blocked can be anything.
@@ -4193,8 +4183,8 @@ Restart:
                         assert(Constr->First >= -extGeoCount && Constr->First < intGeoCount);
                         assert(Constr->Second >= -extGeoCount && Constr->Second < intGeoCount);
                         // get the geometry
-                        const Part::Geometry *geo1 = GeoById(*geomlist, Constr->First);
-                        const Part::Geometry *geo2 = GeoById(*geomlist, Constr->Second);
+                        const Part::Geometry *geo1 = GeoList::getGeometryFromGeoId (*geomlist, Constr->First);
+                        const Part::Geometry *geo2 = GeoList::getGeometryFromGeoId (*geomlist, Constr->Second);
 
                         Base::Vector3d midpos1, dir1, norm1;
                         Base::Vector3d midpos2, dir2, norm2;
@@ -4293,8 +4283,8 @@ Restart:
                         assert(Constr->First >= -extGeoCount && Constr->First < intGeoCount);
                         assert(Constr->Second >= -extGeoCount && Constr->Second < intGeoCount);
                         // get the geometry
-                        const Part::Geometry *geo1 = GeoById(*geomlist, Constr->First);
-                        const Part::Geometry *geo2 = GeoById(*geomlist, Constr->Second);
+                        const Part::Geometry *geo1 = GeoList::getGeometryFromGeoId (*geomlist, Constr->First);
+                        const Part::Geometry *geo2 = GeoList::getGeometryFromGeoId (*geomlist, Constr->Second);
 
                         Base::Vector3d midpos1, dir1, norm1;
                         Base::Vector3d midpos2, dir2, norm2;
@@ -4499,7 +4489,7 @@ Restart:
                             } else {
                                 pnt1 = getSketchObject()->getPoint(Constr->First, Constr->FirstPos);
                             }
-                            const Part::Geometry *geo = GeoById(*geomlist, Constr->Second);
+                            const Part::Geometry *geo = GeoList::getGeometryFromGeoId (*geomlist, Constr->Second);
                             if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                                 const Part::GeomLineSegment *lineSeg = static_cast<const Part::GeomLineSegment *>(geo);
                                 Base::Vector3d l2p1 = lineSeg->getStartPoint();
@@ -4516,7 +4506,7 @@ Restart:
                                 pnt2 = getSketchObject()->getPoint(Constr->First, Constr->FirstPos);
                             }
                         } else if (Constr->First != Constraint::GeoUndef) {
-                            const Part::Geometry *geo = GeoById(*geomlist, Constr->First);
+                            const Part::Geometry *geo = GeoList::getGeometryFromGeoId (*geomlist, Constr->First);
                             if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                                 const Part::GeomLineSegment *lineSeg = static_cast<const Part::GeomLineSegment *>(geo);
                                 pnt1 = lineSeg->getStartPoint();
@@ -4594,8 +4584,8 @@ Restart:
                         }
                         else if (Constr->Type == Tangent) {
                             // get the geometry
-                            const Part::Geometry *geo1 = GeoById(*geomlist, Constr->First);
-                            const Part::Geometry *geo2 = GeoById(*geomlist, Constr->Second);
+                            const Part::Geometry *geo1 = GeoList::getGeometryFromGeoId (*geomlist, Constr->First);
+                            const Part::Geometry *geo2 = GeoList::getGeometryFromGeoId (*geomlist, Constr->Second);
 
                             if (geo1->getTypeId() == Part::GeomLineSegment::getClassTypeId() &&
                                 geo2->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
@@ -4744,8 +4734,8 @@ Restart:
                         if (Constr->Second != Constraint::GeoUndef) {
                             Base::Vector3d dir1, dir2;
                             if(Constr->Third == Constraint::GeoUndef) { //angle between two lines
-                                const Part::Geometry *geo1 = GeoById(*geomlist, Constr->First);
-                                const Part::Geometry *geo2 = GeoById(*geomlist, Constr->Second);
+                                const Part::Geometry *geo1 = GeoList::getGeometryFromGeoId (*geomlist, Constr->First);
+                                const Part::Geometry *geo2 = GeoList::getGeometryFromGeoId (*geomlist, Constr->Second);
                                 if (geo1->getTypeId() != Part::GeomLineSegment::getClassTypeId() ||
                                     geo2->getTypeId() != Part::GeomLineSegment::getClassTypeId())
                                     break;
@@ -4809,7 +4799,7 @@ Restart:
                             endangle = startangle + range;
 
                         } else if (Constr->First != Constraint::GeoUndef) {
-                            const Part::Geometry *geo = GeoById(*geomlist, Constr->First);
+                            const Part::Geometry *geo = GeoList::getGeometryFromGeoId (*geomlist, Constr->First);
                             if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                                 const Part::GeomLineSegment *lineSeg = static_cast<const Part::GeomLineSegment *>(geo);
                                 p0 = Base::convertTo<SbVec3f>((lineSeg->getEndPoint()+lineSeg->getStartPoint())/2);
@@ -4854,7 +4844,7 @@ Restart:
 
                         Base::Vector3d pnt1(0.,0.,0.), pnt2(0.,0.,0.);
                         if (Constr->First != Constraint::GeoUndef) {
-                            const Part::Geometry *geo = GeoById(*geomlist, Constr->First);
+                            const Part::Geometry *geo = GeoList::getGeometryFromGeoId (*geomlist, Constr->First);
 
                             if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
                                 const Part::GeomArcOfCircle *arc = static_cast<const Part::GeomArcOfCircle *>(geo);
@@ -4914,7 +4904,7 @@ Restart:
                         Base::Vector3d pnt1(0.,0.,0.), pnt2(0.,0.,0.);
 
                         if (Constr->First != Constraint::GeoUndef) {
-                            const Part::Geometry *geo = GeoById(*geomlist, Constr->First);
+                            const Part::Geometry *geo = GeoList::getGeometryFromGeoId (*geomlist, Constr->First);
 
                             if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
                                 const Part::GeomArcOfCircle *arc = static_cast<const Part::GeomArcOfCircle *>(geo);

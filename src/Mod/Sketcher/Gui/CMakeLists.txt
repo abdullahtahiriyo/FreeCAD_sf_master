@@ -103,6 +103,8 @@ SET(SketcherGui_SRCS
     ShortcutListener.h
     EditData.cpp
     EditData.h
+    GeoList.cpp
+    GeoList.h
     InformationOverlayCoinConverter.cpp
     InformationOverlayCoinConverter.h
     GeometryCoinConverter.cpp

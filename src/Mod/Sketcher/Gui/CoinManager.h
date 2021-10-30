@@ -46,12 +46,9 @@ namespace Part {
 namespace SketcherGui {
 
 struct EditData;
+class GeoList;
 
-struct GeoList {
-    const std::vector<Part::Geometry *> & geomlist;
-    int intGeoCount;
-    int extGeoCount;
-};
+
 
 class SketcherGuiExport CoinManager
 {
