@@ -75,17 +75,18 @@ void GeometryCoinConverter::convert(const GeometryLayer & geolayer)
     Points.emplace_back(0.,0.,0.);
     PointIdToGeoId.push_back(-1); // root point
 
-    // Design decision 1
+    // Design decisions:
     //
-    // I considered refactoring this if-else below into a map of lambdas (dictionary). However, the geometry TypeId is only valid at
-    // runtime (at compile time is bad type, as registration is during runtime). This forces to construct the map on each
-    // execution, which is not a good trade off.
+    // GeometryCoinConverter takes the responsibility of mapping a GeoID to the index of the geometry in the layer order. However
+    // this is a local responsibility (information is kept in local storage). It is the responsibility of CoinManager to retrieve this information
+    // and build an appropriate general mapping if necessary (SRP).
     //
-    // Design decision 2
+    // GeometryCoinConverter takes the responsibility of updating the coin nodes passed as parameter with new geometry values. (SRP)
     //
-    // I also considered to move the information about the conversion template parameters to the GeometryCoinConverter class. However,
-    // I would also have to move the responsibility to maintain the mapping between GeoIds and coin geometry there. However, I believe
-    // the responsibility is of this class under the Single Responsibility Principle.
+    // GeometryCoinConverter takes ther responsibility of running geometric analysis on the geometry it is provided. However, this
+    // is a local reponsibility too. It is the resonsability of CoinManager to retrieve this information and build general analysis
+    // as neceesary(SRP).
+
     auto setTracking = [this] (int geoId, int numberPoints, int numberCurves) {
         // TODO: This routine only works for one layer, for multiple layers the tracking is yet TBD
         for(int i = 0; i < numberPoints; i++)
@@ -116,49 +117,21 @@ void GeometryCoinConverter::convert(const GeometryLayer & geolayer)
                             GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>(geom);
             setTracking(GeoId, 2, 1);
         }
-        else if (geom->getTypeId() == Part::GeomCircle::getClassTypeId()) { // add a circle
-            convert< Part::GeomCircle,
+        else if (geom->getTypeId() == Part::GeomConic::getClassTypeId()) { // add a closed curve conic
+            convert< Part::GeomConic,
                             GeometryCoinConverter::PointsMode::InsertMidOnly,
                             GeometryCoinConverter::CurveMode::ClosedCurve,
                             GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>(geom);
             setTracking(GeoId, 1, 1);
         }
-        else if (geom->getTypeId() == Part::GeomEllipse::getClassTypeId()) { // add an ellipse
-            convert< Part::GeomEllipse,
-                            GeometryCoinConverter::PointsMode::InsertMidOnly,
-                            GeometryCoinConverter::CurveMode::ClosedCurve,
-                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>(geom);
-            setTracking(GeoId, 1, 1);
-        }
-        else if (geom->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) { // add an arc
-            convert< Part::GeomArcOfCircle,
+        else if (geom->getTypeId() == Part::GeomArcOfConic::getClassTypeId()) { // add an arc of conic
+            convert< Part::GeomArcOfConic,
                             GeometryCoinConverter::PointsMode::InsertStartEndMid,
                             GeometryCoinConverter::CurveMode::OpenCurve,
                             GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>(geom);
             setTracking(GeoId, 3, 1);
         }
-        else if (geom->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) { // add an arc
-            convert< Part::GeomArcOfEllipse,
-                            GeometryCoinConverter::PointsMode::InsertStartEndMid,
-                            GeometryCoinConverter::CurveMode::OpenCurve,
-                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>(geom);
-            setTracking(GeoId, 3, 1);
-        }
-        else if (geom->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
-            convert< Part::GeomArcOfHyperbola,
-                            GeometryCoinConverter::PointsMode::InsertStartEndMid,
-                            GeometryCoinConverter::CurveMode::OpenCurve,
-                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>(geom);
-            setTracking(GeoId, 3, 1);
-        }
-        else if (geom->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
-            convert< Part::GeomArcOfParabola,
-                            GeometryCoinConverter::PointsMode::InsertStartEndMid,
-                            GeometryCoinConverter::CurveMode::OpenCurve,
-                            GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>(geom);
-            setTracking(GeoId, 3, 1);
-        }
-        else if (geom->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) { // add a bspline
+        else if (geom->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) { // add a bspline (a bounded curve that is not a conic)
             convert< Part::GeomBSplineCurve,
                             GeometryCoinConverter::PointsMode::InsertStartEnd,
                             GeometryCoinConverter::CurveMode::OpenCurve,
@@ -168,6 +141,7 @@ void GeometryCoinConverter::convert(const GeometryLayer & geolayer)
         }
     }
 
+    // Coin Nodes Editing
     geometryLayerNodes.CurvesCoordinate->point.setNum(Coords.size());
     geometryLayerNodes.CurveSet->numVertices.setNum(Index.size());
     geometryLayerNodes.CurvesMaterials->diffuseColor.setNum(Index.size());
