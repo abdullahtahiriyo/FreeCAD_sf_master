@@ -96,10 +96,11 @@ void GeometryCoinConverter::convert(const GeometryLayer & geolayer)
 
     };
 
-    for (auto k : geolayer.geoId2geomlist) {
+    // currently the whole geometrylist is processed in a single layer
+    for (size_t i = 0 ; i < geolayer.geolist.geomlist.size()- 2; i++) {
 
-        const auto GeoId = k.first;
-        const auto geom = geolayer.geomlist[k.second];
+        const auto GeoId = geolayer.geolist.getGeoIdFromGeomListIndex(i);
+        const auto geom = geolayer.geolist.getGeometryFromGeoId(GeoId);
 
         if (geom->getTypeId() == Part::GeomPoint::getClassTypeId()) { // add a point
             convert< Part::GeomPoint,

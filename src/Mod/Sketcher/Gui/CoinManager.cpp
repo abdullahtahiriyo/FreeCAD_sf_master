@@ -170,17 +170,8 @@ CoinManager::~CoinManager() {}
 
 void CoinManager::processGeometry(const GeoList & geolist)
 {
-    const std::vector<Part::Geometry *> *geomlist;
-    geomlist = &geolist.geomlist;
-
-    // Define a single layer processing to be converted to coin
-    GeometryLayer geolayer { {}, geolist.geomlist };
-
-    for (size_t i = 0 ; i < geomlist->size()- 2; i++) {
-        int geoid = geolist.getGeoIdFromGeomListIndex(i);
-
-        geolayer.geoId2geomlist[geoid] = i;
-    }
+    // Define a single layer processing to be converted to coin (currently it is the whole geometry)
+    GeometryLayer geolayer { geolist };
 
     // Define the coin nodes that will be filled in with the single layer
     GeometryLayerNodes geometryLayerNodes {

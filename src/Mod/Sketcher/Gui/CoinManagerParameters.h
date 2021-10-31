@@ -31,6 +31,8 @@
 # include <Inventor/SbColor.h>
 #endif  // #ifndef _PreComp_
 
+#include "GeoList.h"
+
 #include <vector>
 #include <map>
 
@@ -64,13 +66,16 @@ struct GeometryLayerNodes {
     SoLineSet     *CurveSet;
 };
 
-// geomlist is the list of all sketcher geometry (including all layers)
-// geoId2geomlist has two responsibilities:
-//  - The keys [GeoId] are the GeoIds of this layer (so the ones that will be processed)
-//  - The mapping allows to get from the GeoId the
+// - geolist is the list of all sketcher geometry (including all layers)
+// - layerId has the responsibility to define which geoids belong and need to be processed
+// in this layer. This is included here as a place holder, to define the responsibility of
+// this object.
+//
+//  N.B.: Note that the index of the geomlist (all layers) and the GeoId can be converted
+//  from each other at needed using the member fuctions (and sometimes the statics).
 struct GeometryLayer {
-    std::map<int /*GeoId*/, int /* geomlist index */> geoId2geomlist;
-    const std::vector<Part::Geometry *> & geomlist;
+    //int layerId = 0;  // currently unused
+    const GeoList & geolist;
 };
 
 struct OverlayParameters {
