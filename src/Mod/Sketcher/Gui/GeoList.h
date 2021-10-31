@@ -45,23 +45,25 @@ namespace SketcherGui {
 class GeoList {
 
 public:
-    explicit GeoList( const std::vector<Part::Geometry *> & geometrylist,
-                      int intgeocount,
-                      int extgeocount );
+    explicit GeoList( const std::vector<Part::Geometry *> & geometrylist, int intgeocount);
 
     /// returns the geometry given by the GeoId
-    const Part::Geometry* getGeometryFromGeoId(int geoId);
+    const Part::Geometry* getGeometryFromGeoId(int geoId) const;
+
+    int getGeoIdFromGeomListIndex(int index) const;
 
     /// returns the geometry given by the GeoId from the given geometrylist vector containing internal and
     /// external geometry in a geomlist type of structure
     static const Part::Geometry* getGeometryFromGeoId(const std::vector<Part::Geometry*> geometrylist, int geoId);
 
+    int getInternalCount() const { return intGeoCount;}
+
+    int getExternalCount() const { return int(geomlist.size()) - intGeoCount;}
 
 public:
     const std::vector<Part::Geometry *> & geomlist;
+private:
     int intGeoCount;
-    int extGeoCount;
-
 };
 
 } // namespace SketcherGui

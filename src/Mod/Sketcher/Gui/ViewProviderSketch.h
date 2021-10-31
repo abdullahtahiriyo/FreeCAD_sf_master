@@ -80,6 +80,7 @@ namespace SketcherGui {
 struct EditData;
 class CoinManager;
 class DrawSketchHandler;
+class GeoList;
 
 /** The Sketch ViewProvider
   * This class handles mainly the drawing and editing of the sketch.
@@ -312,9 +313,7 @@ protected:
 
 private:
     void scaleBSplinePoleCirclesAndUpdateSolverAndSketchObjectGeometry(
-                        std::vector<Part::Geometry *> & tempGeo,
-                        int intGeoCount,
-                        int extGeoCount,
+                        GeoList & geolist,
                         bool geometrywithmemoryallocation,
                         std::vector<std::unique_ptr<Part::Geometry>> &deepCopiesToDelete);
 

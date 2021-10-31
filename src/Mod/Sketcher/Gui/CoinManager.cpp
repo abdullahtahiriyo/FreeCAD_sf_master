@@ -176,12 +176,10 @@ void CoinManager::processGeometry(const GeoList & geolist)
     // Define a single layer processing to be converted to coin
     GeometryLayer geolayer { {}, geolist.geomlist };
 
-    int GeoId = 0;
-    for (size_t i = 0 ; i < geomlist->size()- 2; i++, GeoId++) {
-        if (GeoId >= geolist.intGeoCount)
-            GeoId = -geolist.extGeoCount;
+    for (size_t i = 0 ; i < geomlist->size()- 2; i++) {
+        int geoid = geolist.getGeoIdFromGeomListIndex(i);
 
-        geolayer.geoId2geomlist[GeoId] = i;
+        geolayer.geoId2geomlist[geoid] = i;
     }
 
     // Define the coin nodes that will be filled in with the single layer

@@ -3801,16 +3801,22 @@ void ViewProviderSketch::initItemsSizes()
 //
 // This function takes a reference to a vector of deep copies to delete. These deep copies are necessary to transparently perform (1) while doing (2).
 void ViewProviderSketch::scaleBSplinePoleCirclesAndUpdateSolverAndSketchObjectGeometry(
-        std::vector<Part::Geometry *> & tempGeo,
-        int intGeoCount,
-        int extGeoCount,
+        GeoList & geolist,
         bool geometrywithmemoryallocation,
         std::vector<std::unique_ptr<Part::Geometry>> &deepCopiesToDelete )
 {
+    // In order to allow to tweak geometry and insert scaling factors, this function needs to
+    // change the geometry vector. This is highly exceptional for a drawing function and special
+    // care needs to be taken. This is valid because:
+    // 1. The treatment is exceptional and no other appropriate place is available to perform this tweak
+    // 2. The original object needs to remain const for the benefit of all other class hierarchy of drawing functions
+    // 3. When referring to actual geometry, the modified pointers are short lived, as they are destroyed after drawing
+    auto tempGeo = const_cast< std::vector< Part::Geometry *> &>(geolist.geomlist);
+
     int GeoId = 0;
     for (std::vector<Part::Geometry *>::const_iterator it = tempGeo.begin(); it != tempGeo.end()-2; ++it, GeoId++) {
-        if (GeoId >= intGeoCount)
-            GeoId = -extGeoCount;
+        if (GeoId >= geolist.getInternalCount())
+            GeoId = -geolist.getExternalCount();
 
         if ((*it)->getTypeId() == Part::GeomCircle::getClassTypeId()) { // circle
             const Part::GeomCircle *circle = static_cast<const Part::GeomCircle *>(*it);
@@ -3926,12 +3932,12 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
         tempGeo = getSketchObject()->getCompleteGeometry(); // without memory allocation
 
     int intGeoCount = getSketchObject()->getHighestCurveIndex() + 1;
-    int extGeoCount = getSketchObject()->getExternalGeometryCount();
 
-    assert(int(tempGeo.size()) == extGeoCount + intGeoCount);
+    GeoList geolist {tempGeo, intGeoCount};
+
+    assert(int(tempGeo.size()) == geolist.getExternalCount() + intGeoCount);
     assert(int(tempGeo.size()) >= 2);
 
-    GeoList geolist {tempGeo, intGeoCount, extGeoCount};
     // ************ Manage BSpline pole circle scaling  ****************************
 
     // memory management of deep copies necessary for drawing which are destroyed when the vector gets out of scope (i.e. at the end of this function).
@@ -3947,9 +3953,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
     // This function takes a reference to a vector of deep copies to delete. These deep copies are necessary to transparently perform (1) while doing (2).
 
     scaleBSplinePoleCirclesAndUpdateSolverAndSketchObjectGeometry(
-        tempGeo,
-        intGeoCount,
-        extGeoCount,
+        geolist,
         temp,
         deepCopiesToDelete);
 
@@ -3970,6 +3974,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
     const std::vector<Part::Geometry *> *geomlist;
     geomlist = &geolist.geomlist;
 
+    int extGeoCount = getSketchObject()->getExternalGeometryCount();
 
     const std::vector<Sketcher::Constraint *> &constrlist = getSketchObject()->Constraints.getValues();
     // After an undo/redo it can happen that we have an empty geometry list but a non-empty constraint list

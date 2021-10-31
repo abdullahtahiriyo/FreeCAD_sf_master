@@ -27,20 +27,30 @@
 
 #endif  // #ifndef _PreComp_
 
+#include <assert.h>
+
 #include "GeoList.h"
 
 using namespace SketcherGui;
 
 GeoList::GeoList(   const std::vector<Part::Geometry *> & geometrylist,
-                    int intgeocount,
-                    int extgeocount ):  geomlist(geometrylist),
-                                        intGeoCount(intgeocount),
-                                        extGeoCount(extgeocount){
+                    int intgeocount ):  geomlist(geometrylist),
+                                        intGeoCount(intgeocount){
 
 }
 
+int GeoList::getGeoIdFromGeomListIndex(int index) const
+{
+    assert(index < int(geomlist.size()));
+
+    if(index < intGeoCount)
+        return index;
+    else
+        return -( index - intGeoCount);
+}
+
 // this function is used to simulate cyclic periodic negative geometry indices (for external geometry)
-const Part::Geometry* GeoList::getGeometryFromGeoId(int geoId)
+const Part::Geometry* GeoList::getGeometryFromGeoId(int geoId) const
 {
     return GeoList::getGeometryFromGeoId (geomlist,geoId);
 }
