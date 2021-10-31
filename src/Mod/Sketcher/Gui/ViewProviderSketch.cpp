@@ -3922,7 +3922,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 {
     assert(edit);
 
-    // Render Geometry ===================================================
+    // ============== Retrieve geometry to be represented =================================
 
     std::vector<Part::Geometry *> tempGeo;
 
@@ -3937,6 +3937,8 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 
     assert(int(tempGeo.size()) == geolist.getExternalCount() + intGeoCount);
     assert(int(tempGeo.size()) >= 2);
+
+    // ============== Prepare geometry for representation ==================================
 
     // ************ Manage BSpline pole circle scaling  ****************************
 
@@ -3957,7 +3959,8 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
         temp,
         deepCopiesToDelete);
 
-    // ************ Process geometry and geometry information overlays ****************************
+    // ============== Render geometry and geometry information overlays ==================================
+
     if(rebuildinformationoverlay) {
         // every time we start with empty information overlay
         Gui::coinRemoveAllChildren(edit->infoGroup);
@@ -3965,12 +3968,14 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 
     coinManager->processGeometryAndInformationOverlay(geolist, rebuildinformationoverlay);
 
-    // ************ Visualisation Management - Grid Extent *********
+    // ============== Visualisation Management - Grid Extent ==================================
+
     float dMagF = coinManager->getboundingBoxMagnitudeOrder();
 
     updateGridExtent(-dMagF, dMagF, -dMagF, dMagF);
 
-    // Render Constraints ===================================================
+    // ============== Render geometry and geometry information overlays ==================================
+
     const std::vector<Part::Geometry *> *geomlist;
     geomlist = &geolist.geomlist;
 
