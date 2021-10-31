@@ -3974,7 +3974,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 
     updateGridExtent(-dMagF, dMagF, -dMagF, dMagF);
 
-    // ============== Render geometry and geometry information overlays ==================================
+    // ============== Render constraints ==================================
 
     const std::vector<Part::Geometry *> *geomlist;
     geomlist = &geolist.geomlist;
