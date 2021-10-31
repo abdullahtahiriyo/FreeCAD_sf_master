@@ -240,6 +240,11 @@ void CoinManager::updateOverlayParameters()
         overlayParameters.currentBSplineCombRepresentationScale = analysisResults.combRepresentationScale ;
 }
 
+void CoinManager::processConstraints()
+{
+
+}
+
 void CoinManager::processGeometryAndInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer)
 {
     drawingParameters.coinFontSize = edit->coinFontSize; // TODO: Evaluate refactoring this after constraints are migrated.
@@ -252,6 +257,8 @@ void CoinManager::processGeometryAndInformationOverlay(const GeoList & geolist, 
     processGeometryInformationOverlay(geolist);
 
     updateAxesLength();
+
+    processConstraints();
 }
 
 void CoinManager::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel)

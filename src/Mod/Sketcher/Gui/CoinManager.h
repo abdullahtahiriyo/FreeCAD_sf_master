@@ -116,6 +116,8 @@ private:
     // This function populates the coin nodes with the information of the current geometry
     void processGeometry(const GeoList & geolist);
 
+    void processConstraints();
+
     // This function populates the geometry information layer of coin. It requires the analysis information
     // gathered during the processGeometry step, so it is not possible to run both in parallel.
     void processGeometryInformationOverlay(const GeoList & geolist);

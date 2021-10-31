@@ -105,6 +105,8 @@ SET(SketcherGui_SRCS
     EditData.h
     GeoList.cpp
     GeoList.h
+    ConstraintCoinConverter.cpp
+    ConstraintCoinConverter.h
     InformationOverlayCoinConverter.cpp
     InformationOverlayCoinConverter.h
     GeometryCoinConverter.cpp
