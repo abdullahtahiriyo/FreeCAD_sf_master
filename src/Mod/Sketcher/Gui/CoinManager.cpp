@@ -257,8 +257,6 @@ void CoinManager::processGeometryAndInformationOverlay(const GeoList & geolist, 
     processGeometryInformationOverlay(geolist);
 
     updateAxesLength();
-
-    processConstraints();
 }
 
 void CoinManager::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel)
