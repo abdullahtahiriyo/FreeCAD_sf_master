@@ -54,39 +54,78 @@ namespace SketcherGui {
  *
  * [Geometry] => Analysis => construct drawing elements => Create mappings GeoId coin => populate coin nodes
  *
- * Analysis perform analysis such as maximum boundingbox magnitude of all geometries and maximum curvature of BSplines
+ * Analysis performs analysis such as maximum boundingbox magnitude of all geometries and maximum curvature of BSplines
  */
 class GeometryCoinConverter {
+// These internal private classes are used to parametrize the conversion of geometry into points and line sets (see template method convert)
+private:
     enum class PointsMode {
-    InsertSingle,
-    InsertStartEnd,
-    InsertStartEndMid,
-    InsertMidOnly
-    };
+        InsertSingle,
+        InsertStartEnd,
+        InsertStartEndMid,
+        InsertMidOnly
+        };
 
-enum class CurveMode {
-    NoCurve,
-    StartEndPointsOnly,
-    ClosedCurve,
-    OpenCurve
-    };
+    enum class CurveMode {
+        NoCurve,
+        StartEndPointsOnly,
+        ClosedCurve,
+        OpenCurve
+        };
 
-enum class AnalyseMode {
-    BoundingBoxMagnitude,
-    BoundingBoxMagnitudeAndBSplineCurvature
-    };
+    enum class AnalyseMode {
+        BoundingBoxMagnitude,
+        BoundingBoxMagnitudeAndBSplineCurvature
+        };
 
 public:
+    /** Constructs an GeometryCoinConverter responsible for
+     * generating the points and line sets for drawing the geometry
+     * defined by a GeometryLayer into the coin nodes provided by
+     * GeometryLayerNodes.
+     *
+     * @param geometrylayernodes: The coin nodes to be populated with
+     * the geometry
+     *
+     * @param drawingparameters: Parameters for drawing the overlay information
+     */
     GeometryCoinConverter(  GeometryLayerNodes & geometrylayernodes,
                             DrawingParameters & drawingparameters );
 
+    /**
+    * converts the geometry defined by GeometryLayer into the coin nodes.
+    *
+    * @param geometry: the geometry to be processed
+    */
     void convert(const GeometryLayer & geolayer);
 
+    /**
+    * returns the maximum of the vertical and horizontal magnitudes of the
+    * coordinates of the points and lines added to coin by this layer (local responsibility).
+    */
     float getBoundingBoxMaxMagnitude();
+
+    /**
+    * returns the Comb representation scale that should be used to represent
+    * the B-Splines of this layer (local responsibility).
+    */
     double getCombRepresentationScale();
+
+    /**
+    * returns the GeoIds of BSpline geometries
+    */
     auto getBSplineGeoIds(){ return std::move(bsplineGeoIds);}
 
+    /**
+    * returns the local mapping of CurveIds of this layer and GeoIds.
+    * CurveIds are the position in the layer occupied by the curves.
+    */
     auto getCurveMap(){ return std::move(CurvIdToGeoId);}
+
+    /**
+    * returns the local mapping of PointIds of this layer and GeoIds.
+    * PointIds are the position in the layer occupied by the points.
+    */
     auto getPointMap(){ return std::move(PointIdToGeoId);}
 
 

@@ -43,6 +43,8 @@ namespace Part {
 
 namespace SketcherGui {
 
+/** @brief      Struct for storing local drawing parameters
+ */
 struct DrawingParameters {
     int curvedEdgeCountSegments;
     // Rendering Heights
@@ -58,6 +60,8 @@ struct DrawingParameters {
     int coinFontSize;
 };
 
+/** @brief      Struct for storing the nodes that need to be edited to represent a geometry layer
+ */
 struct GeometryLayerNodes {
     SoMaterial    *PointsMaterials;
     SoMaterial    *CurvesMaterials;
@@ -66,18 +70,25 @@ struct GeometryLayerNodes {
     SoLineSet     *CurveSet;
 };
 
-// - geolist is the list of all sketcher geometry (including all layers)
-// - layerId has the responsibility to define which geoids belong and need to be processed
-// in this layer. This is included here as a place holder, to define the responsibility of
-// this object.
-//
-//  N.B.: Note that the index of the geomlist (all layers) and the GeoId can be converted
-//  from each other at needed using the member fuctions (and sometimes the statics).
+/** @brief      Struct adapted to store the input information defining a layer.
+ *  @details
+ *  It has the responsibility to define which geoids belong and need to be processed
+ *  in this layer.
+ *
+ * - geolist is the list of all sketcher geometry (including all layers)
+ * - other parameters such as layerId are necessary
+ *
+ * N.B.: Note that the index of the geomlist (all layers) and the GeoId can be converted
+ * from each other at needed using the member fuctions (and sometimes the statics).
+ */
 struct GeometryLayer {
     //int layerId = 0;  // currently unused
     const GeoList & geolist;
 };
 
+/** @brief      Struct adapted to store the parameters necessary to create and update
+ *  the information overlay layer.
+ */
 struct OverlayParameters {
     bool rebuildInformationLayer;
     bool visibleInformationChanged = true;

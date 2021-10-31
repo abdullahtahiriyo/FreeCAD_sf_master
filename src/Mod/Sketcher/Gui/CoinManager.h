@@ -49,7 +49,10 @@ struct EditData;
 class GeoList;
 
 
-
+/** @brief      Class for managing the Coin nodes of ViewProviderSketch.
+ *  @details    To be documented.
+ *
+ */
 class SketcherGuiExport CoinManager
 {
     // Delegate Pattern (Attorney - Client)
