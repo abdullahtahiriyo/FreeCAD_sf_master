@@ -42,16 +42,10 @@
 
 #include "SketchGeometryExtension.h"
 
+#include "GeoEnum.h"
+
 namespace Sketcher
 {
-
-struct SketcherExport GeoEnum
-{
-    static const int RtPnt;
-    static const int HAxis;
-    static const int VAxis;
-    static const int RefExt;
-};
 
 class SketchAnalysis;
 
@@ -199,6 +193,8 @@ public:
 
     /// retrieves a vector containing both normal and external Geometry (including the sketch axes)
     std::vector<Part::Geometry*> getCompleteGeometry(void) const;
+
+    std::vector<std::unique_ptr<const GeometryFacade>> getCompleteGeometryFacade(void) const;
 
     /// converts a GeoId index into an index of the CompleteGeometry vector
     int getCompleteGeometryIndex(int GeoId) const;

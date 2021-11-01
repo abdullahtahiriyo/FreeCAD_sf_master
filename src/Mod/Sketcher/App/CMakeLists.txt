@@ -77,6 +77,7 @@ SET(Datatypes_SRCS
     GeometryFacade.h
     ExternalGeometryFacade.cpp
     ExternalGeometryFacade.h
+    GeoEnum.h
 )
 SOURCE_GROUP("Datatypes" FILES ${Datatypes_SRCS})
 
