@@ -97,12 +97,6 @@ namespace bp = boost::placeholders;
 
 FC_LOG_LEVEL_INIT("Sketch",true,true)
 
-const int GeoEnum::RtPnt  = -1;
-const int GeoEnum::HAxis  = -1;
-const int GeoEnum::VAxis  = -2;
-const int GeoEnum::RefExt = -3;
-
-
 PROPERTY_SOURCE(Sketcher::SketchObject, Part::Part2DObject)
 
 
@@ -7041,9 +7035,23 @@ void SketchObject::rebuildExternalGeometry(void)
 
 std::vector<Part::Geometry*> SketchObject::getCompleteGeometry(void) const
 {
-    std::vector<Part::Geometry*> vals=getInternalGeometry();
+    std::vector<Part::Geometry*> vals = getInternalGeometry();
     vals.insert(vals.end(), ExternalGeo.rbegin(), ExternalGeo.rend()); // in reverse order
     return vals;
+}
+
+std::vector<std::unique_ptr<const GeometryFacade>> SketchObject::getCompleteGeometryFacade(void) const
+{
+    std::vector<std::unique_ptr<const GeometryFacade>> facade;
+    facade.reserve( Geometry.getSize() + ExternalGeo.size() );
+
+    for(auto geo : Geometry.getValues())
+        facade.push_back(GeometryFacade::getFacade(geo));
+
+    for(auto rit = ExternalGeo.rbegin(); rit != ExternalGeo.rend(); rit++)
+        facade.push_back(GeometryFacade::getFacade(*rit));
+
+    return facade;
 }
 
 void SketchObject::rebuildVertexIndex(void)
