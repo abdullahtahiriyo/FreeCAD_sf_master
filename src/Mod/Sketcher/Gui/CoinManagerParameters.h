@@ -48,14 +48,52 @@ namespace SketcherGui {
 struct DrawingParameters {
     int curvedEdgeCountSegments;
     // Rendering Heights
-    const float zLowLines   = 0.005f;    //TODO: Fix zLowLines
-    const float zLowPoints  = 0.010f;    // TODO: Fix zLowPoints
-    const float zInfo       = 0.004f;
     const float zEdit       = 0.001f;
     const float zCross      = 0.001f;
+    const float zInfo       = 0.004f;
+    const float zLowLines   = 0.005f;    //TODO: Fix zLowLines
+    const float zMidLines   = 0.006f;
+    const float zHighLines  = 0.007f;  // Lines that are somehow selected to be in the high position (higher than other line categories)
+    const float zLowPoints  = 0.010f;    // TODO: Fix zLowPoints
+    const float zHighPoints = 0.011f;
+    const float zHighlight  = 0.012f;   // Highlighted rendering height for points
+    const float zHighLine   = 0.008f;   // highlighted rendering height for lines
+
+    // Rendering Order
+    enum class GeometryRendering {
+        NormalGeometry = 1,
+        Construction = 2,
+        ExternalGeometry = 3
+    };
+
+    GeometryRendering topRenderingGeometry = GeometryRendering::NormalGeometry;
+    GeometryRendering midRenderingGeometry = GeometryRendering::Construction;
+
     // Rendering Colors
     static SbColor InformationColor;
     static SbColor CreateCurveColor;
+    static SbColor CrossColorH;
+    static SbColor CrossColorV;
+    static SbColor InvalidSketchColor;
+    static SbColor FullyConstrainedColor;
+    static SbColor FullyConstraintInternalAlignmentColor;
+    static SbColor InternalAlignedGeoColor;
+    static SbColor FullyConstraintConstructionPointColor;
+    static SbColor VertexColor;
+    static SbColor FullyConstraintElementColor;
+    static SbColor CurveColor;
+    static SbColor PreselectColor;
+    static SbColor PreselectSelectedColor;
+    static SbColor SelectColor;
+    static SbColor CurveExternalColor;
+    static SbColor CurveDraftColor;
+    static SbColor FullyConstraintConstructionElementColor;
+    static SbColor ConstrDimColor;
+    static SbColor ConstrIcoColor;
+    static SbColor NonDrivingConstrDimColor;
+    static SbColor ExprBasedConstrDimColor;
+    static SbColor DeactivatedConstrDimColor;
+
     // Rendering font information
     int coinFontSize;
 };

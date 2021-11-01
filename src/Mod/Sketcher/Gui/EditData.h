@@ -45,6 +45,7 @@ class SoDrawStyle;
 
 namespace Sketcher {
     enum ConstraintType : int;
+    enum PointPos : int;
 }
 
 namespace SketcherGui {
@@ -89,6 +90,7 @@ struct EditData {
     std::set<int> SelConstraintSet;
     std::vector<int> CurvIdToGeoId; // conversion of SoLineSet index to GeoId
     std::vector<int> PointIdToGeoId; // conversion of SoCoordinate3 index to GeoId
+    std::map<std::pair<int, Sketcher::PointPos>, int> GeoIdPointPosToPointId; // conversion of [GeoId,Pos] to PointId
 
     // helper data structures for the constraint rendering
     std::vector<Sketcher::ConstraintType> vConstrType;

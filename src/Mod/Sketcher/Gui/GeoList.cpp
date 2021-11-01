@@ -29,17 +29,21 @@
 
 #include <assert.h>
 
+#include <Mod/Sketcher/App/GeometryFacade.h>
+
 #include "GeoList.h"
 
 using namespace SketcherGui;
 
-GeoList::GeoList(   const std::vector<Part::Geometry *> & geometrylist,
-                    int intgeocount ):  geomlist(geometrylist),
-                                        intGeoCount(intgeocount){
+template <typename T>
+GeoListModel<T>::GeoListModel(  const std::vector<T> & geometrylist,
+                                    int intgeocount ):  geomlist(geometrylist),
+                                                        intGeoCount(intgeocount){
 
 }
 
-int GeoList::getGeoIdFromGeomListIndex(int index) const
+template <typename T>
+int GeoListModel<T>::getGeoIdFromGeomListIndex(int index) const
 {
     assert(index < int(geomlist.size()));
 
@@ -49,16 +53,42 @@ int GeoList::getGeoIdFromGeomListIndex(int index) const
         return -( index - intGeoCount);
 }
 
-// this function is used to simulate cyclic periodic negative geometry indices (for external geometry)
-const Part::Geometry* GeoList::getGeometryFromGeoId(int geoId) const
-{
-    return GeoList::getGeometryFromGeoId (geomlist,geoId);
-}
-
-const Part::Geometry* GeoList::getGeometryFromGeoId(const std::vector<Part::Geometry*> geometrylist, int geoId)
+template <typename T>
+const T GeoListModel<T>::getGeometryFromGeoId(const std::vector<T> & geometrylist, int geoId)
 {
     if (geoId >= 0)
         return geometrylist[geoId];
     else
         return geometrylist[geometrylist.size()+geoId];
 }
+
+// this function is used to simulate cyclic periodic negative geometry indices (for external geometry)
+template <typename T>
+const T GeoListModel<T>::getGeometryFromGeoId(int geoId) const
+{
+    return GeoListModel<T>::getGeometryFromGeoId(geomlist, geoId);
+}
+
+
+namespace SketcherGui {
+
+// Template specialisations
+
+template < >
+const std::unique_ptr<const Sketcher::GeometryFacade>
+GeoListModel<std::unique_ptr<const Sketcher::GeometryFacade>>::getGeometryFromGeoId
+    (const std::vector<std::unique_ptr<const Sketcher::GeometryFacade>> & geometrylist, int geoId)
+{
+    if (geoId >= 0)
+        return Sketcher::GeometryFacade::getFacade(geometrylist[geoId]->getGeometry());
+    else
+        return Sketcher::GeometryFacade::getFacade(geometrylist[geometrylist.size()+geoId]->getGeometry());
+}
+
+
+// instantiate the types so that other translation units can access template constructors
+template class GeoListModel<Part::Geometry *>;
+template class GeoListModel<std::unique_ptr<const Sketcher::GeometryFacade>>;
+
+
+} // namespace SketcherGui

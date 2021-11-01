@@ -33,6 +33,11 @@ namespace Base {
     class Vector2d;
 }
 
+namespace Sketcher {
+    enum ConstraintType : int;
+    enum PointPos : int;
+}
+
 namespace Part {
     class Geometry;
 }
@@ -128,6 +133,7 @@ public:
     */
     auto getPointMap(){ return std::move(PointIdToGeoId);}
 
+    auto getReversePointMap() { return std::move(GeoIdPointPosToPointId);}
 
 private:
     template < typename GeoType, PointsMode pointmode, CurveMode curvemode, AnalyseMode analysemode >
@@ -151,6 +157,7 @@ private:
     // Mappings coin geoId
     std::vector<int> CurvIdToGeoId;
     std::vector<int> PointIdToGeoId;
+    std::map<std::pair<int, Sketcher::PointPos>, int> GeoIdPointPosToPointId;
 
 };
 

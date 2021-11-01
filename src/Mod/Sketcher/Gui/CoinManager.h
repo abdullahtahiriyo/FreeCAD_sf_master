@@ -25,6 +25,7 @@
 #define SKETCHERGUI_CoinManager_H
 
 #include <vector>
+#include <functional>
 
 #include <Base/Parameter.h>
 #include <App/Application.h>
@@ -43,10 +44,17 @@ namespace Part {
     class Geometry;
 }
 
+namespace Sketcher {
+    class Constraint;
+    class PropertyConstraintList;
+};
+
 namespace SketcherGui {
 
 struct EditData;
-class GeoList;
+
+template < typename T >
+class GeoListModel;
 
 
 /** @brief      Class for managing the Coin nodes of ViewProviderSketch.
@@ -82,6 +90,7 @@ class SketcherGuiExport CoinManager
     private:
         void initParameters();
         void updateCurvedEdgeCountSegmentsParameter();
+        void updateLineRenderingOrderParameters();
 
         template<OverlayVisibilityParameter visibilityparameter>
         void updateOverlayVisibilityParameter();
@@ -97,6 +106,18 @@ class SketcherGuiExport CoinManager
 
     };
 
+private:
+    // TODO: This should probably go in ConstraintCoinConverter, but then updateColor should go there TODO
+    enum class ConstraintNodePosition {
+        MaterialIndex = 0,
+        DatumLabelIndex = 0,
+        FirstTranslationIndex = 1,
+        FirstIconIndex = 2,
+        FirstConstraintIdIndex = 3,
+        SecondTranslationIndex = 4,
+        SecondIconIndex = 5,
+        SecondConstraintIdIndex = 6
+    };
 public:
     explicit CoinManager(EditData * editdata);
     ~CoinManager();
@@ -111,6 +132,14 @@ public:
     void updateCoinManagerColors();
 
     float getboundingBoxMagnitudeOrder() { return analysisResults.boundingBoxMagnitudeOrder;}
+
+    void createEditModeInventorNodes();
+
+    void updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid);
+
+    void updateConstraintColor(std::vector<Sketcher::Constraint *> constraints,
+                               int maxNumberOfConstraints,
+                               std::function<bool(int)> constrainthasexpression);
 
 private:
     // This function populates the coin nodes with the information of the current geometry

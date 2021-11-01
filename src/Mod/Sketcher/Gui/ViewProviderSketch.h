@@ -80,7 +80,11 @@ namespace SketcherGui {
 struct EditData;
 class CoinManager;
 class DrawSketchHandler;
-class GeoList;
+
+template < typename T >
+class GeoListModel;
+
+using GeoList = GeoListModel<Part::Geometry *>;
 
 /** The Sketch ViewProvider
   * This class handles mainly the drawing and editing of the sketch.

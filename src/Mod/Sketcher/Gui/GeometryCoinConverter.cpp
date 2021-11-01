@@ -44,6 +44,8 @@
 
 #include "CoinManagerParameters.h"
 
+#include "Mod/Sketcher/App/Constraint.h"
+
 #include "GeometryCoinConverter.h"
 
 
@@ -87,14 +89,39 @@ void GeometryCoinConverter::convert(const GeometryLayer & geolayer)
     // is a local reponsibility too. It is the resonsability of CoinManager to retrieve this information and build general analysis
     // as neceesary(SRP).
 
-    auto setTracking = [this] (int geoId, int numberPoints, int numberCurves) {
+    auto setTracking = [this] (int geoId, GeometryCoinConverter::PointsMode pointmode, int numberCurves) {
         // TODO: This routine only works for one layer, for multiple layers the tracking is yet TBD
+        int numberPoints = 0;
+
+        if(pointmode == PointsMode::InsertSingle) {
+            numberPoints = 1;
+
+            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::start), PointIdToGeoId.size()));
+        }
+        else if (pointmode == PointsMode::InsertStartEnd) {
+            numberPoints = 2;
+
+            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::start), PointIdToGeoId.size()));
+            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::end), PointIdToGeoId.size()+1));
+        }
+        else if (pointmode == PointsMode::InsertMidOnly) {
+            numberPoints = 1;
+
+            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::mid), PointIdToGeoId.size()));
+        }
+        else if (pointmode == PointsMode::InsertStartEndMid) {
+            numberPoints = 3;
+            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::start), PointIdToGeoId.size()));
+            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::end), PointIdToGeoId.size()+1));
+
+            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::mid), PointIdToGeoId.size()+2));
+        }
+
         for(int i = 0; i < numberPoints; i++)
             PointIdToGeoId.push_back(geoId);
 
         for(int i = 0; i < numberCurves; i++)
             CurvIdToGeoId.push_back(geoId);
-
     };
 
     // currently the whole geometrylist is processed in a single layer
@@ -108,35 +135,35 @@ void GeometryCoinConverter::convert(const GeometryLayer & geolayer)
                             GeometryCoinConverter::PointsMode::InsertSingle,
                             GeometryCoinConverter::CurveMode::NoCurve,
                             GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>(geom);
-            setTracking(GeoId, 1, 0);
+            setTracking(GeoId, GeometryCoinConverter::PointsMode::InsertSingle, 0);
         }
         else if (geom->getTypeId() == Part::GeomLineSegment::getClassTypeId()) { // add a line
             convert< Part::GeomLineSegment,
                             GeometryCoinConverter::PointsMode::InsertStartEnd,
                             GeometryCoinConverter::CurveMode::StartEndPointsOnly,
                             GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>(geom);
-            setTracking(GeoId, 2, 1);
+            setTracking(GeoId, GeometryCoinConverter::PointsMode::InsertStartEnd, 1);
         }
-        else if (geom->getTypeId() == Part::GeomConic::getClassTypeId()) { // add a closed curve conic
+        else if (geom->getTypeId().isDerivedFrom(Part::GeomConic::getClassTypeId())) { // add a closed curve conic
             convert< Part::GeomConic,
                             GeometryCoinConverter::PointsMode::InsertMidOnly,
                             GeometryCoinConverter::CurveMode::ClosedCurve,
                             GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>(geom);
-            setTracking(GeoId, 1, 1);
+            setTracking(GeoId, GeometryCoinConverter::PointsMode::InsertMidOnly, 1);
         }
-        else if (geom->getTypeId() == Part::GeomArcOfConic::getClassTypeId()) { // add an arc of conic
+        else if (geom->getTypeId().isDerivedFrom(Part::GeomArcOfConic::getClassTypeId())) { // add an arc of conic
             convert< Part::GeomArcOfConic,
                             GeometryCoinConverter::PointsMode::InsertStartEndMid,
                             GeometryCoinConverter::CurveMode::OpenCurve,
                             GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitude>(geom);
-            setTracking(GeoId, 3, 1);
+            setTracking(GeoId, GeometryCoinConverter::PointsMode::InsertStartEndMid, 1);
         }
         else if (geom->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) { // add a bspline (a bounded curve that is not a conic)
             convert< Part::GeomBSplineCurve,
                             GeometryCoinConverter::PointsMode::InsertStartEnd,
                             GeometryCoinConverter::CurveMode::OpenCurve,
                             GeometryCoinConverter::AnalyseMode::BoundingBoxMagnitudeAndBSplineCurvature>(geom);
-            setTracking (GeoId, 2, 1);
+            setTracking (GeoId, GeometryCoinConverter::PointsMode::InsertStartEnd, 1);
             bsplineGeoIds.push_back(GeoId);
         }
     }

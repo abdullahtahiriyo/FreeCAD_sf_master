@@ -29,10 +29,15 @@
 #endif  // #ifndef _PreComp_
 
 #include <vector>
+#include <memory>
 
 
 namespace Part {
     class Geometry;
+}
+
+namespace Sketcher {
+    class GeometryFacade;
 }
 
 namespace SketcherGui {
@@ -44,7 +49,8 @@ namespace SketcherGui {
  * N.B.: Note that the index of the geomlist (all layers) and the GeoId can be converted
  * from each other at needed using the member fuctions (and sometimes the statics).
  */
-class GeoList {
+template <typename T>
+class GeoListModel {
 
 public:
     /**
@@ -53,12 +59,12 @@ public:
     *
     * @param geometrylist: the geometry in geomlist format (external after internal in a single vector).
     */
-    explicit GeoList( const std::vector<Part::Geometry *> & geometrylist, int intgeocount);
+    explicit GeoListModel( const std::vector<T> & geometrylist, int intgeocount);
 
     /**
     * returns the geometry given by the GeoId
     */
-    const Part::Geometry* getGeometryFromGeoId(int geoId) const;
+    const T getGeometryFromGeoId(int geoId) const;
 
     /**
     * returns the GeoId index from the index in the geometry in geomlist format with which it was constructed.
@@ -74,7 +80,7 @@ public:
     *
     * @param index: the index of the list of geometry in geomlist format.
     */
-    static const Part::Geometry* getGeometryFromGeoId(const std::vector<Part::Geometry*> geometrylist, int geoId);
+    static const T getGeometryFromGeoId(const std::vector<T> & geometrylist, int geoId);
 
     /**
     * returns the amount of internal geometry objects.
@@ -87,10 +93,13 @@ public:
     int getExternalCount() const { return int(geomlist.size()) - intGeoCount;}
 
 public:
-    const std::vector<Part::Geometry *> & geomlist;
+    const std::vector<T> & geomlist;
 private:
     int intGeoCount;
 };
+
+using GeoList = GeoListModel<Part::Geometry *>;
+using GeoListFacade = GeoListModel<std::unique_ptr<const Sketcher::GeometryFacade>>;
 
 } // namespace SketcherGui
 

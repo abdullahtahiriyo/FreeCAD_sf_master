@@ -222,7 +222,7 @@ ViewProviderSketch::ViewProviderSketch()
 
     zLowLines=0.005f;
     //zLines=0.005f;    // ZLines removed in favour of 3 height groups intended for NormalLines, ConstructionLines, ExternalLines
-    zMidLines=0.006f;
+    //zMidLines=0.006f;
     zHighLines=0.007f;  // Lines that are somehow selected to be in the high position (higher than other line categories)
     zHighLine=0.008f;   // highlighted line (of any group)
     zConstr=0.009f; // constraint not construction
@@ -2639,365 +2639,32 @@ void ViewProviderSketch::doBoxSelection(const SbVec2s &startPos, const SbVec2s &
 void ViewProviderSketch::updateColor(void)
 {
     assert(edit);
-    //Base::Console().Log("Draw preseletion\n");
 
-    int PtNum = edit->PointsMaterials->diffuseColor.getNum();
-    SbColor *pcolor = edit->PointsMaterials->diffuseColor.startEditing();
-    int CurvNum = edit->CurvesMaterials->diffuseColor.getNum();
-    SbColor *color = edit->CurvesMaterials->diffuseColor.startEditing();
-    SbColor *crosscolor = edit->RootCrossMaterials->diffuseColor.startEditing();
+    auto tempGeoFacade = getSketchObject()->getCompleteGeometryFacade();
 
-    SbVec3f *verts = edit->CurvesCoordinate->point.startEditing();
-  //int32_t *index = edit->CurveSet->numVertices.startEditing();
-    SbVec3f *pverts = edit->PointsCoordinate->point.startEditing();
+    int intGeoCount = getSketchObject()->getHighestCurveIndex() + 1;
 
-    ParameterGrp::handle hGrpp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+    GeoListFacade geolistfacade {tempGeoFacade, intGeoCount};
 
-    // 1->Normal Geometry, 2->Construction, 3->External
-    int topid = hGrpp->GetInt("TopRenderGeometryId",1);
-    int midid = hGrpp->GetInt("MidRenderGeometryId",2);
-
-    float zNormPoint = (topid==1?zHighPoints:(midid==1 && topid!=2)?zHighPoints:zLowPoints);
-    float zConstrPoint = (topid==2?zHighPoints:(midid==2 && topid!=1)?zHighPoints:zLowPoints);
-
-    float x,y,z;
-
-    // use a lambda function to only access the geometry when needed
-    // and properly handle the case where it's null
-    auto isConstructionGeom = [](Sketcher::SketchObject* obj, int GeoId) -> bool {
-        const Part::Geometry* geom = obj->getGeometry(GeoId);
-        if (geom)
-            return Sketcher::GeometryFacade::getConstruction(geom);
-        return false;
-    };
-
-    auto isDefinedGeomPoint = [](Sketcher::SketchObject* obj, int GeoId) -> bool {
-        const Part::Geometry* geom = obj->getGeometry(GeoId);
-        if (geom)
-            return geom->getTypeId() == Part::GeomPoint::getClassTypeId() && !Sketcher::GeometryFacade::getConstruction(geom);
-        return false;
-    };
-
-    auto isInternalAlignedGeom = [](Sketcher::SketchObject* obj, int GeoId) -> bool {
-        const Part::Geometry* geom = obj->getGeometry(GeoId);
-        if (geom) {
-            auto gf = Sketcher::GeometryFacade::getFacade(geom);
-            return gf->isInternalAligned();
-        }
-        return false;
-    };
-
-    auto isFullyConstraintElement = [](Sketcher::SketchObject* obj, int GeoId) -> bool {
-
-        const Part::Geometry* geom = obj->getGeometry(GeoId);
-
-        if(geom) {
-            if(geom->hasExtension(Sketcher::SolverGeometryExtension::getClassTypeId())) {
-
-                auto solvext = std::static_pointer_cast<const Sketcher::SolverGeometryExtension>(
-                                    geom->getExtension(Sketcher::SolverGeometryExtension::getClassTypeId()).lock());
-
-                return (solvext->getGeometry() == Sketcher::SolverGeometryExtension::FullyConstraint);
-            }
-        }
-        return false;
-    };
-
-    bool invalidSketch =    getSketchObject()->getLastHasRedundancies()           ||
+    bool sketchinvalid =    getSketchObject()->getLastHasRedundancies()           ||
                             getSketchObject()->getLastHasConflicts()              ||
                             getSketchObject()->getLastHasMalformedConstraints();
 
-    // colors of the point set
-    if( invalidSketch ) {
-        for (int  i=0; i < PtNum; i++)
-            pcolor[i] = InvalidSketchColor;
-    }
-    else if (edit->FullyConstrained) {
-        for (int  i=0; i < PtNum; i++)
-            pcolor[i] = FullyConstrainedColor;
-    }
-    else {
-        for (int  i=0; i < PtNum; i++) {
-            int GeoId = edit->PointIdToGeoId[i];
+    coinManager->updateGeometryColor(geolistfacade, sketchinvalid);
 
-            bool constrainedElement = isFullyConstraintElement(getSketchObject(), GeoId);
-
-            if(isInternalAlignedGeom(getSketchObject(), GeoId)) {
-                if(constrainedElement)
-                    pcolor[i] = FullyConstraintInternalAlignmentColor;
-                else
-                    pcolor[i] = InternalAlignedGeoColor;
-            }
-            else {
-                if(!isDefinedGeomPoint(getSketchObject(), GeoId)) {
-
-                    if(constrainedElement)
-                        pcolor[i] = FullyConstraintConstructionPointColor;
-                    else
-                        pcolor[i] = VertexColor;
-                }
-                else { // this is a defined GeomPoint
-                    if(constrainedElement)
-                        pcolor[i] = FullyConstraintElementColor;
-                    else
-                        pcolor[i] = CurveColor;
-                }
-            }
-        }
-    }
-
-    for (int  i=0; i < PtNum; i++) { // 0 is the origin
-        pverts[i].getValue(x,y,z);
-        const Part::Geometry * tmp = getSketchObject()->getGeometry(edit->PointIdToGeoId[i]);
-        if(tmp && z < zHighlight) {
-            if(Sketcher::GeometryFacade::getConstruction(tmp))
-                pverts[i].setValue(x,y,zConstrPoint);
-            else
-                pverts[i].setValue(x,y,zNormPoint);
-        }
-    }
-
-
-    if (edit->PreselectCross == 0) {
-        pcolor[0] = PreselectColor;
-    }
-    else if (edit->PreselectPoint != -1) {
-        if (edit->PreselectPoint + 1 < PtNum)
-            pcolor[edit->PreselectPoint + 1] = PreselectColor;
-    }
-
-    for (std::set<int>::iterator it = edit->SelPointSet.begin(); it != edit->SelPointSet.end(); ++it) {
-        if (*it < PtNum) {
-            pcolor[*it] = (*it==(edit->PreselectPoint + 1) && (edit->PreselectPoint != -1))
-                ? PreselectSelectedColor : SelectColor;
-        }
-    }
-
-    // colors of the curves
-  //int intGeoCount = getSketchObject()->getHighestCurveIndex() + 1;
-  //int extGeoCount = getSketchObject()->getExternalGeometryCount();
-
-
-
-    float zNormLine = (topid==1?zHighLines:midid==1?zMidLines:zLowLines);
-    float zConstrLine = (topid==2?zHighLines:midid==2?zMidLines:zLowLines);
-    float zExtLine = (topid==3?zHighLines:midid==3?zMidLines:zLowLines);
-
-    int j=0; // vertexindex
-
-    for (int  i=0; i < CurvNum; i++) {
-        int GeoId = edit->CurvIdToGeoId[i];
-        // CurvId has several vertices associated to 1 material
-        //edit->CurveSet->numVertices => [i] indicates number of vertex for line i.
-        int indexes = (edit->CurveSet->numVertices[i]);
-
-        bool selected = (edit->SelCurvSet.find(GeoId) != edit->SelCurvSet.end());
-        bool preselected = (edit->PreselectCurve == GeoId);
-
-        bool constrainedElement = isFullyConstraintElement(getSketchObject(), GeoId);
-
-        if (selected && preselected) {
-            color[i] = PreselectSelectedColor;
-            for (int k=j; j<k+indexes; j++) {
-                verts[j].getValue(x,y,z);
-                verts[j] = SbVec3f(x,y,zHighLine);
-            }
-        }
-        else if (selected){
-            color[i] = SelectColor;
-            for (int k=j; j<k+indexes; j++) {
-                verts[j].getValue(x,y,z);
-                verts[j] = SbVec3f(x,y,zHighLine);
-            }
-        }
-        else if (preselected){
-            color[i] = PreselectColor;
-            for (int k=j; j<k+indexes; j++) {
-                verts[j].getValue(x,y,z);
-                verts[j] = SbVec3f(x,y,zHighLine);
-            }
-        }
-        else if (GeoId <= Sketcher::GeoEnum::RefExt) {  // external Geometry
-            color[i] = CurveExternalColor;
-            for (int k=j; j<k+indexes; j++) {
-                verts[j].getValue(x,y,z);
-                verts[j] = SbVec3f(x,y,zExtLine);
-            }
-        }
-        else if ( invalidSketch ) {
-            color[i] = InvalidSketchColor;
-            for (int k=j; j<k+indexes; j++) {
-                verts[j].getValue(x,y,z);
-                verts[j] = SbVec3f(x,y,zNormLine);
-            }
-        }
-        else if (isConstructionGeom(getSketchObject(), GeoId)) {
-            if(isInternalAlignedGeom(getSketchObject(), GeoId)) {
-                if(constrainedElement)
-                    color[i] = FullyConstraintInternalAlignmentColor;
-                else
-                    color[i] = InternalAlignedGeoColor;
-            }
-            else {
-                if(constrainedElement)
-                    color[i] = FullyConstraintConstructionElementColor;
-                else
-                    color[i] = CurveDraftColor;
-            }
-
-            for (int k=j; j<k+indexes; j++) {
-                verts[j].getValue(x,y,z);
-                verts[j] = SbVec3f(x,y,zConstrLine);
-            }
-        }
-        else if (edit->FullyConstrained) {
-            color[i] = FullyConstrainedColor;
-            for (int k=j; j<k+indexes; j++) {
-                verts[j].getValue(x,y,z);
-                verts[j] = SbVec3f(x,y,zNormLine);
-            }
-        }
-        else if (isFullyConstraintElement(getSketchObject(), GeoId)) {
-            color[i] = FullyConstraintElementColor;
-            for (int k=j; j<k+indexes; j++) {
-                verts[j].getValue(x,y,z);
-                verts[j] = SbVec3f(x,y,zNormLine);
-            }
-        }
-        else {
-            color[i] = CurveColor;
-            for (int k=j; j<k+indexes; j++) {
-                verts[j].getValue(x,y,z);
-                verts[j] = SbVec3f(x,y,zNormLine);
-            }
-        }
-    }
-
-    // colors of the cross
-    if (edit->SelCurvSet.find(-1) != edit->SelCurvSet.end())
-        crosscolor[0] = SelectColor;
-    else if (edit->PreselectCross == 1)
-        crosscolor[0] = PreselectColor;
-    else
-        crosscolor[0] = CrossColorH;
-
-    if (edit->SelCurvSet.find(Sketcher::GeoEnum::VAxis) != edit->SelCurvSet.end())
-        crosscolor[1] = SelectColor;
-    else if (edit->PreselectCross == 2)
-        crosscolor[1] = PreselectColor;
-    else
-        crosscolor[1] = CrossColorV;
+    auto constraints = getSketchObject()->Constraints.getValues();
 
     int count = std::min(edit->constrGroup->getNumChildren(), getSketchObject()->Constraints.getSize());
     if(getSketchObject()->Constraints.hasInvalidGeometry())
         count = 0;
 
-    // colors of the constraints
-    for (int i=0; i < count; i++) {
-        SoSeparator *s = static_cast<SoSeparator *>(edit->constrGroup->getChild(i));
+    auto constrainthasexpression = [this](int constrid) {
+        return getSketchObject()->constraintHasExpression(constrid);
+    };
 
-        // Check Constraint Type
-        Sketcher::Constraint* constraint = getSketchObject()->Constraints.getValues()[i];
-        ConstraintType type = constraint->Type;
-        bool hasDatumLabel  = (type == Sketcher::Angle ||
-                               type == Sketcher::Radius ||
-                               type == Sketcher::Diameter ||
-                               type == Sketcher::Weight ||
-                               type == Sketcher::Symmetric ||
-                               type == Sketcher::Distance ||
-                               type == Sketcher::DistanceX ||
-                               type == Sketcher::DistanceY);
+    if(count > 0)
+        coinManager->updateConstraintColor(constraints, count, constrainthasexpression);
 
-        // Non DatumLabel Nodes will have a material excluding coincident
-        bool hasMaterial = false;
-
-        SoMaterial *m = 0;
-        if (!hasDatumLabel && type != Sketcher::Coincident && type != Sketcher::InternalAlignment) {
-            hasMaterial = true;
-            m = static_cast<SoMaterial *>(s->getChild(CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL));
-        }
-
-        if (edit->SelConstraintSet.find(i) != edit->SelConstraintSet.end()) {
-            if (hasDatumLabel) {
-                SoDatumLabel *l = static_cast<SoDatumLabel *>(s->getChild(CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL));
-                l->textColor = SelectColor;
-            } else if (hasMaterial) {
-                m->diffuseColor = SelectColor;
-            } else if (type == Sketcher::Coincident) {
-                auto selectpoint = [this, pcolor, PtNum](int geoid, Sketcher::PointPos pos){
-                    if(geoid >= 0) {
-                        int index = getSolvedSketch().getPointId(geoid, pos) + 1;
-                        if (index >= 0 && index < PtNum)
-                            pcolor[index] = SelectColor;
-                    }
-                };
-
-                selectpoint(constraint->First, constraint->FirstPos);
-                selectpoint(constraint->Second, constraint->SecondPos);
-            } else if (type == Sketcher::InternalAlignment) {
-                switch(constraint->AlignmentType) {
-                    case EllipseMajorDiameter:
-                    case EllipseMinorDiameter:
-                    {
-                        // color line
-                        int CurvNum = edit->CurvesMaterials->diffuseColor.getNum();
-                        for (int  i=0; i < CurvNum; i++) {
-                            int cGeoId = edit->CurvIdToGeoId[i];
-
-                            if(cGeoId == constraint->First) {
-                                color[i] = SelectColor;
-                                break;
-                            }
-                        }
-                    }
-                    break;
-                    case EllipseFocus1:
-                    case EllipseFocus2:
-                    {
-                        int index = getSolvedSketch().getPointId(constraint->First, constraint->FirstPos) + 1;
-                        if (index >= 0 && index < PtNum) pcolor[index] = SelectColor;
-                    }
-                    break;
-                    default:
-                    break;
-                }
-            }
-        } else if (edit->PreselectConstraintSet.count(i)) {
-            if (hasDatumLabel) {
-                SoDatumLabel *l = static_cast<SoDatumLabel *>(s->getChild(CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL));
-                l->textColor = PreselectColor;
-            } else if (hasMaterial) {
-                m->diffuseColor = PreselectColor;
-            }
-        }
-        else {
-            if (hasDatumLabel) {
-                SoDatumLabel *l = static_cast<SoDatumLabel *>(s->getChild(CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL));
-
-                l->textColor = constraint->isActive ?
-                                    (getSketchObject()->constraintHasExpression(i) ?
-                                        ExprBasedConstrDimColor
-                                        :(constraint->isDriving ?
-                                            ConstrDimColor
-                                            : NonDrivingConstrDimColor))
-                                    :DeactivatedConstrDimColor;
-
-            } else if (hasMaterial) {
-                m->diffuseColor = constraint->isActive ?
-                                    (constraint->isDriving ?
-                                        ConstrDimColor
-                                        :NonDrivingConstrDimColor)
-                                    :DeactivatedConstrDimColor;
-            }
-        }
-    }
-
-    // end editing
-    edit->CurvesMaterials->diffuseColor.finishEditing();
-    edit->PointsMaterials->diffuseColor.finishEditing();
-    edit->RootCrossMaterials->diffuseColor.finishEditing();
-    edit->CurvesCoordinate->point.finishEditing();
-    edit->CurveSet->numVertices.finishEditing();
 }
 
 bool ViewProviderSketch::isPointOnSketch(const SoPickedPoint *pp) const
@@ -3976,11 +3643,6 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 
     // ============== Render constraints ==================================
 
-    const std::vector<Part::Geometry *> *geomlist;
-    geomlist = &geolist.geomlist;
-
-    int extGeoCount = getSketchObject()->getExternalGeometryCount();
-
     const std::vector<Sketcher::Constraint *> &constrlist = getSketchObject()->Constraints.getValues();
     // After an undo/redo it can happen that we have an empty geometry list but a non-empty constraint list
     // In this case just ignore the constraints. (See bug #0000421)
@@ -3988,6 +3650,13 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
         rebuildConstraintsVisual();
         return;
     }
+
+
+    const std::vector<Part::Geometry *> *geomlist;
+    geomlist = &geolist.geomlist;
+
+    int extGeoCount = getSketchObject()->getExternalGeometryCount();
+
     // reset point if the constraint type has changed
 Restart:
     // check if a new constraint arrived
@@ -5595,200 +5264,15 @@ void ViewProviderSketch::createEditInventorNodes(void)
 {
     assert(edit);
 
+    // 1 - Create the edit root node
     edit->EditRoot = new SoSeparator;
     edit->EditRoot->ref();
     edit->EditRoot->setName("Sketch_EditRoot");
     pcRoot->addChild(edit->EditRoot);
     edit->EditRoot->renderCaching = SoSeparator::OFF ;
 
-    // stuff for the points ++++++++++++++++++++++++++++++++++++++
-    SoSeparator* pointsRoot = new SoSeparator;
-    edit->EditRoot->addChild(pointsRoot);
-    edit->PointsMaterials = new SoMaterial;
-    edit->PointsMaterials->setName("PointsMaterials");
-    pointsRoot->addChild(edit->PointsMaterials);
-
-    SoMaterialBinding *MtlBind = new SoMaterialBinding;
-    MtlBind->setName("PointsMaterialBinding");
-    MtlBind->value = SoMaterialBinding::PER_VERTEX;
-    pointsRoot->addChild(MtlBind);
-
-    edit->PointsCoordinate = new SoCoordinate3;
-    edit->PointsCoordinate->setName("PointsCoordinate");
-    pointsRoot->addChild(edit->PointsCoordinate);
-
-    edit->PointsDrawStyle = new SoDrawStyle;
-    edit->PointsDrawStyle->setName("PointsDrawStyle");
-    edit->PointsDrawStyle->pointSize = 8 * edit->pixelScalingFactor;
-    pointsRoot->addChild(edit->PointsDrawStyle);
-
-    edit->PointSet = new SoMarkerSet;
-    edit->PointSet->setName("PointSet");
-    edit->PointSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_FILLED", edit->MarkerSize);
-    pointsRoot->addChild(edit->PointSet);
-
-    // stuff for the Curves +++++++++++++++++++++++++++++++++++++++
-    SoSeparator* curvesRoot = new SoSeparator;
-    edit->EditRoot->addChild(curvesRoot);
-    edit->CurvesMaterials = new SoMaterial;
-    edit->CurvesMaterials->setName("CurvesMaterials");
-    curvesRoot->addChild(edit->CurvesMaterials);
-
-    MtlBind = new SoMaterialBinding;
-    MtlBind->setName("CurvesMaterialsBinding");
-    MtlBind->value = SoMaterialBinding::PER_FACE;
-    curvesRoot->addChild(MtlBind);
-
-    edit->CurvesCoordinate = new SoCoordinate3;
-    edit->CurvesCoordinate->setName("CurvesCoordinate");
-    curvesRoot->addChild(edit->CurvesCoordinate);
-
-    edit->CurvesDrawStyle = new SoDrawStyle;
-    edit->CurvesDrawStyle->setName("CurvesDrawStyle");
-    edit->CurvesDrawStyle->lineWidth = 3 * edit->pixelScalingFactor;
-    curvesRoot->addChild(edit->CurvesDrawStyle);
-
-    edit->CurveSet = new SoLineSet;
-    edit->CurveSet->setName("CurvesLineSet");
-    curvesRoot->addChild(edit->CurveSet);
-
-    // stuff for the RootCross lines +++++++++++++++++++++++++++++++++++++++
-    SoGroup* crossRoot = new Gui::SoSkipBoundingGroup;
-    edit->pickStyleAxes = new SoPickStyle();
-    edit->pickStyleAxes->style = SoPickStyle::SHAPE;
-    crossRoot->addChild(edit->pickStyleAxes);
-    edit->EditRoot->addChild(crossRoot);
-    MtlBind = new SoMaterialBinding;
-    MtlBind->setName("RootCrossMaterialBinding");
-    MtlBind->value = SoMaterialBinding::PER_FACE;
-    crossRoot->addChild(MtlBind);
-
-    edit->RootCrossDrawStyle = new SoDrawStyle;
-    edit->RootCrossDrawStyle->setName("RootCrossDrawStyle");
-    edit->RootCrossDrawStyle->lineWidth = 2 * edit->pixelScalingFactor;
-    crossRoot->addChild(edit->RootCrossDrawStyle);
-
-    edit->RootCrossMaterials = new SoMaterial;
-    edit->RootCrossMaterials->setName("RootCrossMaterials");
-    edit->RootCrossMaterials->diffuseColor.set1Value(0,CrossColorH);
-    edit->RootCrossMaterials->diffuseColor.set1Value(1,CrossColorV);
-    crossRoot->addChild(edit->RootCrossMaterials);
-
-    edit->RootCrossCoordinate = new SoCoordinate3;
-    edit->RootCrossCoordinate->setName("RootCrossCoordinate");
-    crossRoot->addChild(edit->RootCrossCoordinate);
-
-    edit->RootCrossSet = new SoLineSet;
-    edit->RootCrossSet->setName("RootCrossLineSet");
-    crossRoot->addChild(edit->RootCrossSet);
-
-    // stuff for the EditCurves +++++++++++++++++++++++++++++++++++++++
-    SoSeparator* editCurvesRoot = new SoSeparator;
-    edit->EditRoot->addChild(editCurvesRoot);
-    edit->EditCurvesMaterials = new SoMaterial;
-    edit->EditCurvesMaterials->setName("EditCurvesMaterials");
-    editCurvesRoot->addChild(edit->EditCurvesMaterials);
-
-    edit->EditCurvesCoordinate = new SoCoordinate3;
-    edit->EditCurvesCoordinate->setName("EditCurvesCoordinate");
-    editCurvesRoot->addChild(edit->EditCurvesCoordinate);
-
-    edit->EditCurvesDrawStyle = new SoDrawStyle;
-    edit->EditCurvesDrawStyle->setName("EditCurvesDrawStyle");
-    edit->EditCurvesDrawStyle->lineWidth = 3 * edit->pixelScalingFactor;
-    editCurvesRoot->addChild(edit->EditCurvesDrawStyle);
-
-    edit->EditCurveSet = new SoLineSet;
-    edit->EditCurveSet->setName("EditCurveLineSet");
-    editCurvesRoot->addChild(edit->EditCurveSet);
-
-    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-    float transparency;
-    SbColor cursorTextColor(0,0,1);
-    cursorTextColor.setPackedValue((uint32_t)hGrp->GetUnsigned("CursorTextColor", cursorTextColor.getPackedValue()), transparency);
-
-    // stuff for the EditMarkers +++++++++++++++++++++++++++++++++++++++
-    SoSeparator* editMarkersRoot = new SoSeparator;
-    edit->EditRoot->addChild(editMarkersRoot);
-    edit->EditMarkersMaterials = new SoMaterial;
-    edit->EditMarkersMaterials->setName("EditMarkersMaterials");
-    editMarkersRoot->addChild(edit->EditMarkersMaterials);
-
-    edit->EditMarkersCoordinate = new SoCoordinate3;
-    edit->EditMarkersCoordinate->setName("EditMarkersCoordinate");
-    editMarkersRoot->addChild(edit->EditMarkersCoordinate);
-
-    edit->EditMarkersDrawStyle = new SoDrawStyle;
-    edit->EditMarkersDrawStyle->setName("EditMarkersDrawStyle");
-    edit->EditMarkersDrawStyle->pointSize = 8 * edit->pixelScalingFactor;
-    editMarkersRoot->addChild(edit->EditMarkersDrawStyle);
-
-    edit->EditMarkerSet = new SoMarkerSet;
-    edit->EditMarkerSet->setName("EditMarkerSet");
-    edit->EditMarkerSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_LINE", edit->MarkerSize);
-    editMarkersRoot->addChild(edit->EditMarkerSet);
-
-    // stuff for the edit coordinates ++++++++++++++++++++++++++++++++++++++
-    SoSeparator *Coordsep = new SoSeparator();
-    SoPickStyle* ps = new SoPickStyle();
-    ps->style.setValue(SoPickStyle::UNPICKABLE);
-    Coordsep->addChild(ps);
-    Coordsep->setName("CoordSeparator");
-    // no caching for frequently-changing data structures
-    Coordsep->renderCaching = SoSeparator::OFF;
-
-    SoMaterial *CoordTextMaterials = new SoMaterial;
-    CoordTextMaterials->setName("CoordTextMaterials");
-    CoordTextMaterials->diffuseColor = cursorTextColor;
-    Coordsep->addChild(CoordTextMaterials);
-
-    SoFont *font = new SoFont();
-    font->size.setValue(edit->coinFontSize);
-
-    Coordsep->addChild(font);
-
-    edit->textPos = new SoTranslation();
-    Coordsep->addChild(edit->textPos);
-
-    edit->textX = new SoText2();
-    edit->textX->justification = SoText2::LEFT;
-    edit->textX->string = "";
-    Coordsep->addChild(edit->textX);
-    edit->EditRoot->addChild(Coordsep);
-
-    // group node for the Constraint visual +++++++++++++++++++++++++++++++++++
-    MtlBind = new SoMaterialBinding;
-    MtlBind->setName("ConstraintMaterialBinding");
-    MtlBind->value = SoMaterialBinding::OVERALL ;
-    edit->EditRoot->addChild(MtlBind);
-
-    // use small line width for the Constraints
-    edit->ConstraintDrawStyle = new SoDrawStyle;
-    edit->ConstraintDrawStyle->setName("ConstraintDrawStyle");
-    edit->ConstraintDrawStyle->lineWidth = 1 * edit->pixelScalingFactor;
-    edit->EditRoot->addChild(edit->ConstraintDrawStyle);
-
-    // add the group where all the constraints has its SoSeparator
-    edit->constrGroup = new SmSwitchboard();
-    edit->constrGroup->setName("ConstraintGroup");
-    edit->EditRoot->addChild(edit->constrGroup);
-
-    // group node for the Geometry information visual +++++++++++++++++++++++++++++++++++
-    MtlBind = new SoMaterialBinding;
-    MtlBind->setName("InformationMaterialBinding");
-    MtlBind->value = SoMaterialBinding::OVERALL ;
-    edit->EditRoot->addChild(MtlBind);
-
-    // use small line width for the information visual
-    edit->InformationDrawStyle = new SoDrawStyle;
-    edit->InformationDrawStyle->setName("InformationDrawStyle");
-    edit->InformationDrawStyle->lineWidth = 1 * edit->pixelScalingFactor;
-    edit->EditRoot->addChild(edit->InformationDrawStyle);
-
-    // add the group where all the information entity has its SoSeparator
-    edit->infoGroup = new SoGroup();
-    edit->infoGroup->setName("InformationGroup");
-    edit->EditRoot->addChild(edit->infoGroup);
+    // 2 - Delegate coin node management
+    coinManager->createEditModeInventorNodes();
 }
 
 void ViewProviderSketch::unsetEdit(int ModNum)
