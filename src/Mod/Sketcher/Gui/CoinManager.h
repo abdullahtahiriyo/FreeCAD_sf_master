@@ -138,7 +138,6 @@ public:
     void updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid);
 
     void updateConstraintColor(std::vector<Sketcher::Constraint *> constraints,
-                               int maxNumberOfConstraints,
                                std::function<bool(int)> constrainthasexpression);
 
 private:

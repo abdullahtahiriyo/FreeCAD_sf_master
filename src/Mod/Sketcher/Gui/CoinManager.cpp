@@ -633,13 +633,14 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
 }
 
 void CoinManager::updateConstraintColor(std::vector<Sketcher::Constraint *> constraints,
-                                        int maxNumberOfConstraints,
                                         std::function<bool(int)> constrainthasexpression)
 {
     // Because coincident constraints are selected using the point color, we need to edit the point materials.
     // TODO: Review this
     int PtNum = edit->PointsMaterials->diffuseColor.getNum();
     SbColor *pcolor = edit->PointsMaterials->diffuseColor.startEditing();
+
+    int maxNumberOfConstraints = std::min(edit->constrGroup->getNumChildren(), static_cast<int>(constraints.size()));
 
     // colors of the constraints
     for (int i = 0; i < maxNumberOfConstraints; i++) {

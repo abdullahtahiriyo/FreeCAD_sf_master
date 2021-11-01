@@ -2640,6 +2640,8 @@ void ViewProviderSketch::updateColor(void)
 {
     assert(edit);
 
+    // update geometry color
+
     auto tempGeoFacade = getSketchObject()->getCompleteGeometryFacade();
 
     int intGeoCount = getSketchObject()->getHighestCurveIndex() + 1;
@@ -2652,18 +2654,18 @@ void ViewProviderSketch::updateColor(void)
 
     coinManager->updateGeometryColor(geolistfacade, sketchinvalid);
 
-    auto constraints = getSketchObject()->Constraints.getValues();
+    // update constraint color
 
-    int count = std::min(edit->constrGroup->getNumChildren(), getSketchObject()->Constraints.getSize());
     if(getSketchObject()->Constraints.hasInvalidGeometry())
-        count = 0;
+        return;
+
+    auto constraints = getSketchObject()->Constraints.getValues();
 
     auto constrainthasexpression = [this](int constrid) {
         return getSketchObject()->constraintHasExpression(constrid);
     };
 
-    if(count > 0)
-        coinManager->updateConstraintColor(constraints, count, constrainthasexpression);
+    coinManager->updateConstraintColor(constraints, constrainthasexpression);
 
 }
 
