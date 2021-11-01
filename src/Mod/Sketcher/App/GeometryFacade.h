@@ -160,7 +160,7 @@ public:
                     std::is_base_of<Part::Geometry, typename std::decay<GeometryT>::type>::value
              >::type
     >
-    GeometryT * getGeometry() const {return dynamic_cast<GeometryT *>(Geo);}
+    const GeometryT * getGeometry() const {return dynamic_cast<const GeometryT *>(Geo);}
 
     virtual PyObject *getPyObject(void) override;
 
