@@ -31,7 +31,10 @@
 # include <Inventor/SbColor.h>
 #endif  // #ifndef _PreComp_
 
-#include "GeoList.h"
+#include <qstring.h>
+#include <qcolor.h>
+
+#include <Mod/Sketcher/App/GeoList.h>
 
 #include <vector>
 #include <map>
@@ -54,10 +57,13 @@ struct DrawingParameters {
     const float zLowLines   = 0.005f;    //TODO: Fix zLowLines
     const float zMidLines   = 0.006f;
     const float zHighLines  = 0.007f;  // Lines that are somehow selected to be in the high position (higher than other line categories)
+    const float zHighLine   = 0.008f;   // highlighted rendering height for lines
+    const float zConstr     = 0.009f; // constraint not construction
     const float zLowPoints  = 0.010f;    // TODO: Fix zLowPoints
     const float zHighPoints = 0.011f;
     const float zHighlight  = 0.012f;   // Highlighted rendering height for points
-    const float zHighLine   = 0.008f;   // highlighted rendering height for lines
+    const float zText       = 0.012f;
+
 
     // Rendering Order
     enum class GeometryRendering {
@@ -96,6 +102,13 @@ struct DrawingParameters {
 
     // Rendering font information
     int coinFontSize;
+
+    // Icon colors
+    static QColor constrIcoColor;
+    static QColor nonDrivingConstrIcoColor;
+    static QColor constrIconSelColor;
+    static QColor constrIconPreselColor;
+    static QColor constrIconDisabledColor;
 };
 
 /** @brief      Struct for storing the nodes that need to be edited to represent a geometry layer
@@ -121,7 +134,7 @@ struct GeometryLayerNodes {
  */
 struct GeometryLayer {
     //int layerId = 0;  // currently unused
-    const GeoList & geolist;
+    const Sketcher::GeoList & geolist;
 };
 
 /** @brief      Struct adapted to store the parameters necessary to create and update
@@ -138,6 +151,12 @@ struct OverlayParameters {
     bool bSplineCombVisible;
     bool bSplineKnotMultiplicityVisible;
     bool bSplinePoleWeightVisible;
+};
+
+struct ConstraintParameters {
+    bool bHideUnits;
+    bool bShowDimensionalName;
+    QString sDimensionalStringFormat;
 };
 
 } // namespace SketcherGui
