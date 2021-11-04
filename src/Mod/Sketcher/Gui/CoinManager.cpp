@@ -67,13 +67,21 @@
 
 #include "GeoList.h"
 
+#include "ViewProviderSketch.h"
+
 #include "CoinManager.h"
 
 using namespace SketcherGui;
 using namespace Sketcher;
 
+
+inline bool ViewProviderSketchCoinAttorney::constraintHasExpression(ViewProviderSketch & vp, int constrid) {
+    return vp.constraintHasExpression(constrid);
+};
+
+
 //**************************** ParameterObserver nested class ******************************
-CoinManager::ParameterObserver::ParameterObserver(CoinManager * pclient): pClient(pclient)
+CoinManager::ParameterObserver::ParameterObserver(CoinManager &client): Client(client)
 {
     initParameters();
     subscribeToParameters();
@@ -99,24 +107,21 @@ void CoinManager::ParameterObserver::initParameters()
 
 void CoinManager::ParameterObserver::updateCurvedEdgeCountSegmentsParameter()
 {
-    if(!pClient)
-        return;
-
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
     int stdcountsegments = hGrp->GetInt("SegmentsPerGeometry", 50);
     // value cannot be smaller than 6
     if (stdcountsegments < 6)
         stdcountsegments = 6;
 
-    pClient->drawingParameters.curvedEdgeCountSegments = stdcountsegments;
+    Client.drawingParameters.curvedEdgeCountSegments = stdcountsegments;
 }
 
 void CoinManager::ParameterObserver::updateLineRenderingOrderParameters()
 {
     ParameterGrp::handle hGrpp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
 
-    pClient->drawingParameters.topRenderingGeometry = DrawingParameters::GeometryRendering (hGrpp->GetInt("TopRenderGeometryId",1));
-    pClient->drawingParameters.midRenderingGeometry = DrawingParameters::GeometryRendering (hGrpp->GetInt("MidRenderGeometryId",2));
+    Client.drawingParameters.topRenderingGeometry = DrawingParameters::GeometryRendering (hGrpp->GetInt("TopRenderGeometryId",1));
+    Client.drawingParameters.midRenderingGeometry = DrawingParameters::GeometryRendering (hGrpp->GetInt("MidRenderGeometryId",2));
 }
 
 template<CoinManager::ParameterObserver::OverlayVisibilityParameter visibilityparameter>
@@ -125,17 +130,17 @@ void CoinManager::ParameterObserver::updateOverlayVisibilityParameter()
     ParameterGrp::handle hGrpsk = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
 
     if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplineDegree)
-        pClient->overlayParameters.bSplineDegreeVisible = hGrpsk->GetBool("BSplineDegreeVisible", true);
+        Client.overlayParameters.bSplineDegreeVisible = hGrpsk->GetBool("BSplineDegreeVisible", true);
     else if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplineControlPolygonVisible)
-        pClient->overlayParameters.bSplineControlPolygonVisible = hGrpsk->GetBool("BSplineControlPolygonVisible", true);
+        Client.overlayParameters.bSplineControlPolygonVisible = hGrpsk->GetBool("BSplineControlPolygonVisible", true);
     else if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplineCombVisible)
-        pClient->overlayParameters.bSplineCombVisible = hGrpsk->GetBool("BSplineCombVisible", true);
+        Client.overlayParameters.bSplineCombVisible = hGrpsk->GetBool("BSplineCombVisible", true);
     else if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplineKnotMultiplicityVisible)
-        pClient->overlayParameters.bSplineKnotMultiplicityVisible = hGrpsk->GetBool("BSplineKnotMultiplicityVisible", true);
+        Client.overlayParameters.bSplineKnotMultiplicityVisible = hGrpsk->GetBool("BSplineKnotMultiplicityVisible", true);
     else if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplinePoleWeightVisible)
-        pClient->overlayParameters.bSplinePoleWeightVisible = hGrpsk->GetBool("BSplinePoleWeightVisible", true);
+        Client.overlayParameters.bSplinePoleWeightVisible = hGrpsk->GetBool("BSplinePoleWeightVisible", true);
 
-    pClient->overlayParameters.visibleInformationChanged = true;
+    Client.overlayParameters.visibleInformationChanged = true;
 }
 
 void CoinManager::ParameterObserver::subscribeToParameters()
@@ -166,27 +171,44 @@ void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCalle
 {
     (void) rCaller;
 
+    // static map to avoid substantial if/else branching
+    //
+    // key->first               => String of parameter,
+    // key->second              => Update function to be called for the parameter,
     static std::map<std::string, std::function<void()>> str2updatefunction {
-        {"SegmentsPerGeometry", [this](){updateCurvedEdgeCountSegmentsParameter();}},
-        {"BSplineDegreeVisible", [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineDegree>();}},
-        {"BSplineControlPolygonVisible", [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineControlPolygonVisible>();}},
-        {"BSplineCombVisible", [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineCombVisible>();}},
-        {"BSplineKnotMultiplicityVisible", [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineKnotMultiplicityVisible>();}},
-        {"BSplinePoleWeightVisible", [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplinePoleWeightVisible>();}},
-        {"TopRenderGeometryId", [this](){updateLineRenderingOrderParameters();}},
-        {"MidRenderGeometryId", [this](){updateLineRenderingOrderParameters();}}
+        {"SegmentsPerGeometry",
+            [this](){updateCurvedEdgeCountSegmentsParameter();}},
+        {"BSplineDegreeVisible",
+            [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineDegree>();}},
+        {"BSplineControlPolygonVisible",
+            [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineControlPolygonVisible>();}},
+        {"BSplineCombVisible",
+            [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineCombVisible>();}},
+        {"BSplineKnotMultiplicityVisible",
+            [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineKnotMultiplicityVisible>();}},
+        {"BSplinePoleWeightVisible",
+            [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplinePoleWeightVisible>();}},
+        {"TopRenderGeometryId",
+            [this](){updateLineRenderingOrderParameters();}},
+        {"MidRenderGeometryId",
+            [this](){updateLineRenderingOrderParameters();}}
     };
 
     auto key = str2updatefunction.find(sReason);
-    if( key != str2updatefunction.end() )
+    if( key != str2updatefunction.end() ) {
         key->second();
+
+        Client.redrawViewProvider(); // redraw with non-temporal geometry
+    }
+
+
 }
 
 //**************************** CoinManager class ******************************
 
-CoinManager::CoinManager(EditData * editdata):edit(editdata) {
+CoinManager::CoinManager(ViewProviderSketch &vp, EditData * editdata):viewProvider(vp),edit(editdata) {
     // Create parameter observer and initialise watched parameters
-    pObserver = std::make_unique<CoinManager::ParameterObserver>(this);
+    pObserver = std::make_unique<CoinManager::ParameterObserver>(*this);
 
 }
 
@@ -238,20 +260,16 @@ void CoinManager::updateAxesLength()
 
 void CoinManager::processGeometryInformationOverlay(const GeoList & geolist)
 {
-    auto GeoById = [](const std::vector<Part::Geometry*> GeoList, int Id){
-    {
-        if (Id >= 0)
-            return GeoList[Id];
-        else
-            return GeoList[GeoList.size()+Id];
-        }
-    };
+    if(overlayParameters.rebuildInformationLayer) {
+        // every time we start with empty information overlay
+        Gui::coinRemoveAllChildren(edit->infoGroup);
+    }
 
     auto ioconv = InformationOverlayCoinConverter(edit->infoGroup, overlayParameters, drawingParameters);
 
     // geometry information layer for bsplines, as they need a second round now that max curvature is known
     for (auto geoid : analysisResults.bsplineGeoIds) {
-        const Part::Geometry *geo = GeoById(geolist.geomlist, geoid);
+        const Part::Geometry *geo = geolist.getGeometryFromGeoId(geoid);
 
         ioconv.convert(geo);
     }
@@ -632,8 +650,7 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
     edit->CurveSet->numVertices.finishEditing();
 }
 
-void CoinManager::updateConstraintColor(std::vector<Sketcher::Constraint *> constraints,
-                                        std::function<bool(int)> constrainthasexpression)
+void CoinManager::updateConstraintColor(std::vector<Sketcher::Constraint *> constraints)
 {
     // Because coincident constraints are selected using the point color, we need to edit the point materials.
     // TODO: Review this
@@ -743,7 +760,7 @@ void CoinManager::updateConstraintColor(std::vector<Sketcher::Constraint *> cons
                 SoDatumLabel *l = static_cast<SoDatumLabel *>(s->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex)));
 
                 l->textColor = constraint->isActive ?
-                                    constrainthasexpression(i) ?
+                                    ViewProviderSketchCoinAttorney::constraintHasExpression(viewProvider, i) ?
                                         drawingParameters.ExprBasedConstrDimColor
                                         :(constraint->isDriving ?
                                             drawingParameters.ConstrDimColor
@@ -957,4 +974,9 @@ void CoinManager::createEditModeInventorNodes()
     edit->infoGroup = new SoGroup();
     edit->infoGroup->setName("InformationGroup");
     edit->EditRoot->addChild(edit->infoGroup);
+}
+
+void CoinManager::redrawViewProvider()
+{
+    viewProvider.draw(false,false);
 }

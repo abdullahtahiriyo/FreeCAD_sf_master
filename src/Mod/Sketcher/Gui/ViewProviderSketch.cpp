@@ -2636,6 +2636,11 @@ void ViewProviderSketch::doBoxSelection(const SbVec2s &startPos, const SbVec2s &
     }
 }
 
+bool ViewProviderSketch::constraintHasExpression(int constrid)
+{
+    return getSketchObject()->constraintHasExpression(constrid);
+}
+
 void ViewProviderSketch::updateColor(void)
 {
     assert(edit);
@@ -2661,11 +2666,7 @@ void ViewProviderSketch::updateColor(void)
 
     auto constraints = getSketchObject()->Constraints.getValues();
 
-    auto constrainthasexpression = [this](int constrid) {
-        return getSketchObject()->constraintHasExpression(constrid);
-    };
-
-    coinManager->updateConstraintColor(constraints, constrainthasexpression);
+    coinManager->updateConstraintColor(constraints);
 
 }
 
@@ -3629,11 +3630,6 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
         deepCopiesToDelete);
 
     // ============== Render geometry and geometry information overlays ==================================
-
-    if(rebuildinformationoverlay) {
-        // every time we start with empty information overlay
-        Gui::coinRemoveAllChildren(edit->infoGroup);
-    }
 
     coinManager->processGeometryAndInformationOverlay(geolist, rebuildinformationoverlay);
 
@@ -4675,7 +4671,19 @@ void ViewProviderSketch::rebuildConstraintsVisual(void)
     const std::vector<Sketcher::Constraint *> &constrlist = getSketchObject()->Constraints.getValues();
     // clean up
     Gui::coinRemoveAllChildren(edit->constrGroup);
+
     edit->vConstrType.clear();
+
+    // Get sketch normal
+    Base::Vector3d RN(0,0,1);
+
+    // move to position of Sketch
+    Base::Placement Plz = getEditingPlacement();
+    Base::Rotation tmp(Plz.getRotation());
+    tmp.multVec(RN,RN);
+    Plz.setRotation(tmp);
+
+    SbVec3f norm(RN.x, RN.y, RN.z);
 
     for (std::vector<Sketcher::Constraint *>::const_iterator it=constrlist.begin(); it != constrlist.end(); ++it) {
         // root separator for one constraint
@@ -4692,16 +4700,7 @@ void ViewProviderSketch::rebuildConstraintsVisual(void)
                                     ConstrDimColor
                                     :NonDrivingConstrDimColor)
                                 :DeactivatedConstrDimColor;
-        // Get sketch normal
-        Base::Vector3d RN(0,0,1);
 
-        // move to position of Sketch
-        Base::Placement Plz = getEditingPlacement();
-        Base::Rotation tmp(Plz.getRotation());
-        tmp.multVec(RN,RN);
-        Plz.setRotation(tmp);
-
-        SbVec3f norm(RN.x, RN.y, RN.z);
 
         // distinguish different constraint types to build up
         switch ((*it)->Type) {
@@ -5000,7 +4999,7 @@ bool ViewProviderSketch::setEdit(int ModNum)
     // create the container for the additional edit data
     assert(!edit);
     edit = new EditData();
-    coinManager = std::make_unique<CoinManager>(edit);
+    coinManager = std::make_unique<CoinManager>(*this, edit);
 
     // Init icon, font and marker sizes
     initItemsSizes();
@@ -5748,10 +5747,6 @@ bool ViewProviderSketch::onDelete(const std::vector<std::string> &subList)
     }
     // if not in edit delete the whole object
     return PartGui::ViewProviderPart::onDelete(subList);
-}
-
-void ViewProviderSketch::showRestoreInformationLayer() {
-    draw(false,false);
 }
 
 QIcon ViewProviderSketch::mergeColorfulOverlayIcons (const QIcon & orig) const

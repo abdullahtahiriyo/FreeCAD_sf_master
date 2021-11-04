@@ -126,10 +126,6 @@ public:
     App::PropertyBool SectionView;
     App::PropertyString EditingWorkbench;
 
-    /// Draw all constraint icons
-    /*! Except maybe the radius and lock ones? */
-    void drawConstraintIcons();
-
     /// draw the sketch in the inventor nodes
     /// temp => use temporary solver solution in SketchObject
     /// recreateinformationscenography => forces a rebuild of the information overlay scenography
@@ -145,9 +141,6 @@ public:
     bool isSelectable(void) const override;
     /// Observer message from the Selection
     virtual void onSelectionChanged(const Gui::SelectionChanges& msg) override;
-
-    /// Show/Hide nodes from information layer
-    void showRestoreInformationLayer();
 
     /** @name handler control */
     //@{
@@ -276,6 +269,7 @@ public:
     virtual QIcon mergeColorfulOverlayIcons (const QIcon & orig) const override;
 
     friend class DrawSketchHandler;
+    friend class ViewProviderSketchCoinAttorney;
 
     /// signals if the constraints list has changed
     boost::signals2::signal<void ()> signalConstraintsChanged;
@@ -320,6 +314,12 @@ private:
                         GeoList & geolist,
                         bool geometrywithmemoryallocation,
                         std::vector<std::unique_ptr<Part::Geometry>> &deepCopiesToDelete);
+
+    bool constraintHasExpression(int constrid);
+
+    /// Draw all constraint icons
+    /*! Except maybe the radius and lock ones? */
+    void drawConstraintIcons();
 
 protected:
     boost::signals2::connection connectUndoDocument;

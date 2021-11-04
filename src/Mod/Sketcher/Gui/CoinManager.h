@@ -56,6 +56,18 @@ struct EditData;
 template < typename T >
 class GeoListModel;
 
+class ViewProviderSketch;
+
+
+class ViewProviderSketchCoinAttorney {
+private:
+    static inline bool constraintHasExpression(ViewProviderSketch &vp, int constrid);
+
+    friend class CoinManager;
+};
+
+
+
 
 /** @brief      Class for managing the Coin nodes of ViewProviderSketch.
  *  @details    To be documented.
@@ -63,7 +75,6 @@ class GeoListModel;
  */
 class SketcherGuiExport CoinManager
 {
-    // Delegate Pattern (Attorney - Client)
     // Monitor changes in parameters affecting drawing and coin node generation
     class ParameterObserver : public ParameterGrp::ObserverType
     {
@@ -77,7 +88,7 @@ class SketcherGuiExport CoinManager
         };
 
     public:
-        ParameterObserver(CoinManager * pclient);
+        ParameterObserver(CoinManager & client);
         ~ParameterObserver();
 
         void subscribeToParameters();
@@ -96,7 +107,7 @@ class SketcherGuiExport CoinManager
         void updateOverlayVisibilityParameter();
 
     private:
-        CoinManager *pClient;
+        CoinManager &Client;
     };
 
     struct AnalysisResults { // TODO: This needs to be refactored
@@ -119,7 +130,7 @@ private:
         SecondConstraintIdIndex = 6
     };
 public:
-    explicit CoinManager(EditData * editdata);
+    explicit CoinManager(ViewProviderSketch &vp, EditData * editdata);
     ~CoinManager();
 
     using Vector3d = Base::Vector3<double>;
@@ -137,8 +148,7 @@ public:
 
     void updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid);
 
-    void updateConstraintColor(std::vector<Sketcher::Constraint *> constraints,
-                               std::function<bool(int)> constrainthasexpression);
+    void updateConstraintColor(std::vector<Sketcher::Constraint *> constraints);
 
 private:
     // This function populates the coin nodes with the information of the current geometry
@@ -156,12 +166,18 @@ private:
     // updates the parameters to be used for the Overlay information layer
     void updateOverlayParameters();
 
+    // causes the ViewProvider to draw
+    void redrawViewProvider();
+
 private:
+    ViewProviderSketch & viewProvider;
+    std::unique_ptr<CoinManager::ParameterObserver> pObserver;
+
     EditData * edit;
     DrawingParameters drawingParameters;
     AnalysisResults analysisResults;
     OverlayParameters overlayParameters;
-    std::unique_ptr<CoinManager::ParameterObserver> pObserver;
+
 };
 
 
