@@ -140,6 +140,16 @@ public:
     void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel);
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
 
+    /** @name handle preselection and selection of points */
+    //@{
+    //
+    void setPreselectPoint(int PreselectPoint);
+    void resetPreselectPoint(void);
+    void addSelectPoint(int SelectPoint);
+    void removeSelectPoint(int SelectPoint);
+    void clearSelectPoints(void);
+    //@}
+
     void updateCoinManagerColors();
 
     float getboundingBoxMagnitudeOrder() { return analysisResults.boundingBoxMagnitudeOrder;}

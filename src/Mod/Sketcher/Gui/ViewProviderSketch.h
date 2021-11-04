@@ -429,13 +429,6 @@ protected:
     void setPositionText(const Base::Vector2d &Pos);
     void resetPositionText(void);
 
-    // handle preselection and selection of points
-    void setPreselectPoint(int PreselectPoint);
-    void resetPreselectPoint(void);
-    void addSelectPoint(int SelectPoint);
-    void removeSelectPoint(int SelectPoint);
-    void clearSelectPoints(void);
-
     // modes while sketching
     SketchMode Mode;
 

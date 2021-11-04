@@ -366,6 +366,97 @@ void CoinManager::drawEdit(const std::vector<Base::Vector2d> &EditCurve)
     edit->EditCurvesMaterials->diffuseColor.finishEditing();
 }
 
+void CoinManager::setPreselectPoint(int PreselectPoint)
+{
+    if (edit) {
+        int oldPtId = -1;
+        if (edit->PreselectPoint != -1)
+            oldPtId = edit->PreselectPoint + 1;
+        else if (edit->PreselectCross == 0)
+            oldPtId = 0;
+        int newPtId = PreselectPoint + 1;
+        SbVec3f *pverts = edit->PointsCoordinate->point.startEditing();
+        float x,y,z;
+        if (oldPtId != -1 &&
+            edit->SelPointSet.find(oldPtId) == edit->SelPointSet.end()) {
+            // send to background
+            pverts[oldPtId].getValue(x,y,z);
+            pverts[oldPtId].setValue(x,y,drawingParameters.zLowPoints);
+        }
+        // bring to foreground
+        pverts[newPtId].getValue(x,y,z);
+        pverts[newPtId].setValue(x,y,drawingParameters.zHighlight);
+        edit->PreselectPoint = PreselectPoint;
+        edit->PointsCoordinate->point.finishEditing();
+    }
+}
+
+void CoinManager::resetPreselectPoint(void)
+{
+    if (edit) {
+        int oldPtId = -1;
+        if (edit->PreselectPoint != -1)
+            oldPtId = edit->PreselectPoint + 1;
+        else if (edit->PreselectCross == 0)
+            oldPtId = 0;
+        if (oldPtId != -1 &&
+            edit->SelPointSet.find(oldPtId) == edit->SelPointSet.end()) {
+            // send to background
+            SbVec3f *pverts = edit->PointsCoordinate->point.startEditing();
+            float x,y,z;
+            pverts[oldPtId].getValue(x,y,z);
+            pverts[oldPtId].setValue(x,y,drawingParameters.zLowPoints);
+            edit->PointsCoordinate->point.finishEditing();
+        }
+        edit->PreselectPoint = -1;
+    }
+}
+
+void CoinManager::addSelectPoint(int SelectPoint)
+{
+    if (edit) {
+        int PtId = SelectPoint + 1;
+        SbVec3f *pverts = edit->PointsCoordinate->point.startEditing();
+        // bring to foreground
+        float x,y,z;
+        pverts[PtId].getValue(x,y,z);
+        pverts[PtId].setValue(x,y,drawingParameters.zHighlight);
+        edit->SelPointSet.insert(PtId);
+        edit->PointsCoordinate->point.finishEditing();
+    }
+}
+
+void CoinManager::removeSelectPoint(int SelectPoint)
+{
+    if (edit) {
+        int PtId = SelectPoint + 1;
+        SbVec3f *pverts = edit->PointsCoordinate->point.startEditing();
+        // send to background
+        float x,y,z;
+        pverts[PtId].getValue(x,y,z);
+        pverts[PtId].setValue(x,y,drawingParameters.zLowPoints);
+        edit->SelPointSet.erase(PtId);
+        edit->PointsCoordinate->point.finishEditing();
+    }
+}
+
+void CoinManager::clearSelectPoints(void)
+{
+    if (edit) {
+        SbVec3f *pverts = edit->PointsCoordinate->point.startEditing();
+        // send to background
+        float x,y,z;
+        for (std::set<int>::const_iterator it=edit->SelPointSet.begin();
+             it != edit->SelPointSet.end(); ++it) {
+            pverts[*it].getValue(x,y,z);
+            pverts[*it].setValue(x,y,drawingParameters.zLowPoints);
+        }
+        edit->PointsCoordinate->point.finishEditing();
+        edit->SelPointSet.clear();
+    }
+}
+
+
 void CoinManager::updateCoinManagerColors()
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
