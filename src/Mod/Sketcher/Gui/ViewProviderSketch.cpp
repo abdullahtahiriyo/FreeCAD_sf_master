@@ -349,10 +349,7 @@ void ViewProviderSketch::purgeHandler(void)
 void ViewProviderSketch::setAxisPickStyle(bool on)
 {
     assert(edit);
-    if (on)
-        edit->pickStyleAxes->style = SoPickStyle::SHAPE;
-    else
-        edit->pickStyleAxes->style = SoPickStyle::UNPICKABLE;
+    coinManager->setAxisPickStyle(on);
 }
 
 // **********************************************************************************
@@ -2636,11 +2633,6 @@ void ViewProviderSketch::doBoxSelection(const SbVec2s &startPos, const SbVec2s &
     }
 }
 
-bool ViewProviderSketch::constraintHasExpression(int constrid)
-{
-    return getSketchObject()->constraintHasExpression(constrid);
-}
-
 void ViewProviderSketch::updateColor(void)
 {
     assert(edit);
@@ -2801,7 +2793,12 @@ QString ViewProviderSketch::getPresentationString(const Constraint *constraint)
 
 QString ViewProviderSketch::iconTypeFromConstraint(Constraint *constraint)
 {
-    /*! TODO: Consider pushing this functionality up into Constraint */
+    /*! TODO: Consider pushing this functionality up into Constraint
+     *
+     Abdullah: Please, don't. An icon is visualisation information and
+     does not belong in App, but in Gui. Rather consider refactoring it
+     in a separate class dealing with visualisation of constraints.*/
+
     switch(constraint->Type) {
     case Horizontal:
         return QString::fromLatin1("Constraint_Horizontal");
@@ -3383,7 +3380,7 @@ void ViewProviderSketch::OnChange(Base::Subject<const char*> &rCaller, const cha
         if(edit) { // only if in edit mode, if not it gets updated when entering edit mode
             initItemsSizes();
             updateInventorNodeSizes();
-            rebuildConstraintsVisual();
+            coinManager->rebuildConstraintNodes();
             draw();
         }
     }
@@ -3635,9 +3632,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 
     // ============== Visualisation Management - Grid Extent ==================================
 
-    float dMagF = coinManager->getboundingBoxMagnitudeOrder();
-
-    updateGridExtent(-dMagF, dMagF, -dMagF, dMagF);
+    coinManager->updateGridExtent();
 
     // ============== Render constraints ==================================
 
@@ -3645,7 +3640,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
     // After an undo/redo it can happen that we have an empty geometry list but a non-empty constraint list
     // In this case just ignore the constraints. (See bug #0000421)
     if (geolist.geomlist.size() <= 2 && !constrlist.empty()) {
-        rebuildConstraintsVisual();
+        coinManager->rebuildConstraintNodes();
         return;
     }
 
@@ -3659,7 +3654,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 Restart:
     // check if a new constraint arrived
     if (constrlist.size() != edit->vConstrType.size())
-        rebuildConstraintsVisual();
+        coinManager->rebuildConstraintNodes();
     assert(int(constrlist.size()) == edit->constrGroup->getNumChildren());
     assert(int(edit->vConstrType.size()) == edit->constrGroup->getNumChildren());
     // update the virtual space
@@ -4666,194 +4661,6 @@ Restart:
     }
 }
 
-void ViewProviderSketch::rebuildConstraintsVisual(void)
-{
-    const std::vector<Sketcher::Constraint *> &constrlist = getSketchObject()->Constraints.getValues();
-    // clean up
-    Gui::coinRemoveAllChildren(edit->constrGroup);
-
-    edit->vConstrType.clear();
-
-    // Get sketch normal
-    Base::Vector3d RN(0,0,1);
-
-    // move to position of Sketch
-    Base::Placement Plz = getEditingPlacement();
-    Base::Rotation tmp(Plz.getRotation());
-    tmp.multVec(RN,RN);
-    Plz.setRotation(tmp);
-
-    SbVec3f norm(RN.x, RN.y, RN.z);
-
-    for (std::vector<Sketcher::Constraint *>::const_iterator it=constrlist.begin(); it != constrlist.end(); ++it) {
-        // root separator for one constraint
-        SoSeparator *sep = new SoSeparator();
-        sep->ref();
-        // no caching for frequently-changing data structures
-        sep->renderCaching = SoSeparator::OFF;
-
-        // every constrained visual node gets its own material for preselection and selection
-        SoMaterial *mat = new SoMaterial;
-        mat->ref();
-        mat->diffuseColor = (*it)->isActive ?
-                                ((*it)->isDriving ?
-                                    ConstrDimColor
-                                    :NonDrivingConstrDimColor)
-                                :DeactivatedConstrDimColor;
-
-
-        // distinguish different constraint types to build up
-        switch ((*it)->Type) {
-            case Distance:
-            case DistanceX:
-            case DistanceY:
-            case Radius:
-            case Diameter:
-            case Weight:
-            case Angle:
-            {
-                SoDatumLabel *text = new SoDatumLabel();
-                text->norm.setValue(norm);
-                text->string = "";
-                text->textColor = (*it)->isActive ?
-                                        ((*it)->isDriving ?
-                                            ConstrDimColor
-                                            :NonDrivingConstrDimColor)
-                                        :DeactivatedConstrDimColor;
-                text->size.setValue(edit->coinFontSize);
-                text->lineWidth = 2 * edit->pixelScalingFactor;
-                text->useAntialiasing = false;
-                SoAnnotation *anno = new SoAnnotation();
-                anno->renderCaching = SoSeparator::OFF;
-                anno->addChild(text);
-                // #define CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL 0
-                sep->addChild(text);
-                edit->constrGroup->addChild(anno);
-                edit->vConstrType.push_back((*it)->Type);
-                // nodes not needed
-                sep->unref();
-                mat->unref();
-                continue; // jump to next constraint
-            }
-            break;
-            case Horizontal:
-            case Vertical:
-            case Block:
-            {
-                // #define CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL 0
-                sep->addChild(mat);
-                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_TRANSLATION 1
-                sep->addChild(new SoZoomTranslation());
-                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_ICON 2
-                sep->addChild(new SoImage());
-                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_CONSTRAINTID 3
-                sep->addChild(new SoInfo());
-                // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_TRANSLATION 4
-                sep->addChild(new SoZoomTranslation());
-                // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_ICON 5
-                sep->addChild(new SoImage());
-                // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_CONSTRAINTID 6
-                sep->addChild(new SoInfo());
-
-                // remember the type of this constraint node
-                edit->vConstrType.push_back((*it)->Type);
-            }
-            break;
-            case Coincident: // no visual for coincident so far
-                edit->vConstrType.push_back(Coincident);
-                break;
-            case Parallel:
-            case Perpendicular:
-            case Equal:
-            {
-                // #define CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL 0
-                sep->addChild(mat);
-                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_TRANSLATION 1
-                sep->addChild(new SoZoomTranslation());
-                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_ICON 2
-                sep->addChild(new SoImage());
-                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_CONSTRAINTID 3
-                sep->addChild(new SoInfo());
-                // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_TRANSLATION 4
-                sep->addChild(new SoZoomTranslation());
-                // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_ICON 5
-                sep->addChild(new SoImage());
-                // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_CONSTRAINTID 6
-                sep->addChild(new SoInfo());
-
-                // remember the type of this constraint node
-                edit->vConstrType.push_back((*it)->Type);
-            }
-            break;
-            case PointOnObject:
-            case Tangent:
-            case SnellsLaw:
-            {
-                // #define CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL 0
-                sep->addChild(mat);
-                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_TRANSLATION 1
-                sep->addChild(new SoZoomTranslation());
-                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_ICON 2
-                sep->addChild(new SoImage());
-                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_CONSTRAINTID 3
-                sep->addChild(new SoInfo());
-
-                if ((*it)->Type == Tangent) {
-                    const Part::Geometry *geo1 = getSketchObject()->getGeometry((*it)->First);
-                    const Part::Geometry *geo2 = getSketchObject()->getGeometry((*it)->Second);
-                    if (!geo1 || !geo2) {
-                        Base::Console().Warning("Tangent constraint references non-existing geometry\n");
-                    }
-                    else if (geo1->getTypeId() == Part::GeomLineSegment::getClassTypeId() &&
-                             geo2->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
-                        // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_TRANSLATION 4
-                        sep->addChild(new SoZoomTranslation());
-                        // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_ICON 5
-                        sep->addChild(new SoImage());
-                        // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_CONSTRAINTID 6
-                        sep->addChild(new SoInfo());
-                    }
-                }
-
-                edit->vConstrType.push_back((*it)->Type);
-            }
-            break;
-            case Symmetric:
-            {
-                SoDatumLabel *arrows = new SoDatumLabel();
-                arrows->norm.setValue(norm);
-                arrows->string = "";
-                arrows->textColor = ConstrDimColor;
-                arrows->lineWidth = 2 * edit->pixelScalingFactor;
-
-                // #define CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL 0
-                sep->addChild(arrows);
-                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_TRANSLATION 1
-                sep->addChild(new SoTranslation());
-                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_ICON 2
-                sep->addChild(new SoImage());
-                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_CONSTRAINTID 3
-                sep->addChild(new SoInfo());
-
-                edit->vConstrType.push_back((*it)->Type);
-            }
-            break;
-            case InternalAlignment:
-            {
-                edit->vConstrType.push_back((*it)->Type);
-            }
-            break;
-            default:
-                edit->vConstrType.push_back((*it)->Type);
-        }
-
-        edit->constrGroup->addChild(sep);
-        // decrement ref counter again
-        sep->unref();
-        mat->unref();
-    }
-}
-
 void ViewProviderSketch::updateVirtualSpace(void)
 {
     const std::vector<Sketcher::Constraint *> &constrlist = getSketchObject()->Constraints.getValues();
@@ -5272,7 +5079,7 @@ void ViewProviderSketch::createEditInventorNodes(void)
     pcRoot->addChild(edit->EditRoot);
     edit->EditRoot->renderCaching = SoSeparator::OFF ;
 
-    // 2 - Delegate coin node management
+    // 2 - Delegate edit mode coin node creation and management
     coinManager->createEditModeInventorNodes();
 }
 
@@ -5689,4 +5496,29 @@ QIcon ViewProviderSketch::mergeColorfulOverlayIcons (const QIcon & orig) const
     }
 
     return Gui::ViewProvider::mergeColorfulOverlayIcons (mergedicon);
+}
+
+
+/* private functions to decouple Attorneys and Clients from the internal implementation of
+   the ViewProvider and its members, such as sketchObject */
+
+const std::vector<Sketcher::Constraint *> ViewProviderSketch::getConstraints() const
+{
+    return getSketchObject()->Constraints.getValues();
+}
+
+const GeoList ViewProviderSketch::getGeoList() const
+{
+    std::vector<Part::Geometry *> tempGeo = getSketchObject()->getCompleteGeometry(); // without memory allocation
+
+    int intGeoCount = getSketchObject()->getHighestCurveIndex() + 1;
+
+    GeoList geolist {tempGeo, intGeoCount};
+
+    return geolist;
+}
+
+bool ViewProviderSketch::constraintHasExpression(int constrid) const
+{
+    return getSketchObject()->constraintHasExpression(constrid);
 }

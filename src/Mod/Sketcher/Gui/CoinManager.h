@@ -32,12 +32,15 @@
 
 #include "CoinManagerParameters.h"
 
+class SbVec3f;
 
 namespace Base {
     template< typename T >
     class Vector3;
 
     class Vector2d;
+
+    class Placement;
 }
 
 namespace Part {
@@ -62,6 +65,10 @@ class ViewProviderSketch;
 class ViewProviderSketchCoinAttorney {
 private:
     static inline bool constraintHasExpression(ViewProviderSketch &vp, int constrid);
+    static inline const std::vector<Sketcher::Constraint *> getConstraints(ViewProviderSketch & vp);
+    static inline const GeoList getGeoList(ViewProviderSketch & vp);
+    static inline Base::Placement getEditingPlacement(ViewProviderSketch & vp);
+    static inline void updateGridExtent(ViewProviderSketch & vp, float minx, float maxx, float miny, float maxy);
 
     friend class CoinManager;
 };
@@ -160,6 +167,12 @@ public:
 
     void updateConstraintColor(std::vector<Sketcher::Constraint *> constraints);
 
+    void rebuildConstraintNodes(void);
+
+    void setAxisPickStyle(bool on);
+
+    void updateGridExtent();
+
 private:
     // This function populates the coin nodes with the information of the current geometry
     void processGeometry(const GeoList & geolist);
@@ -178,6 +191,8 @@ private:
 
     // causes the ViewProvider to draw
     void redrawViewProvider();
+
+    void rebuildConstraintNodes(const GeoList & geolist, const std::vector<Sketcher::Constraint *> constrlist, SbVec3f norm);
 
 private:
     ViewProviderSketch & viewProvider;

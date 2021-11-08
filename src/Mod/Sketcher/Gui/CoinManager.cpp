@@ -39,6 +39,10 @@
 # include <Inventor/nodes/SoPickStyle.h>
 # include <Inventor/nodes/SoDrawStyle.h>
 
+# include <Inventor/nodes/SoAnnotation.h>
+# include <Inventor/nodes/SoImage.h>
+# include <Inventor/nodes/SoInfo.h>
+
 # include <memory>
 #endif  // #ifndef _PreComp_
 
@@ -59,6 +63,7 @@
 
 #include <Gui/Inventor/MarkerBitmaps.h>
 
+#include "SoZoomTranslation.h"
 #include "SoDatumLabel.h"
 
 #include "InformationOverlayCoinConverter.h"
@@ -75,9 +80,30 @@ using namespace SketcherGui;
 using namespace Sketcher;
 
 
-inline bool ViewProviderSketchCoinAttorney::constraintHasExpression(ViewProviderSketch & vp, int constrid) {
+inline bool ViewProviderSketchCoinAttorney::constraintHasExpression(ViewProviderSketch & vp, int constrid)
+{
     return vp.constraintHasExpression(constrid);
 };
+
+inline const std::vector<Sketcher::Constraint *> ViewProviderSketchCoinAttorney::getConstraints(ViewProviderSketch & vp)
+{
+    return vp.getConstraints();
+}
+
+inline const GeoList ViewProviderSketchCoinAttorney::getGeoList(ViewProviderSketch & vp)
+{
+    return vp.getGeoList();
+}
+
+inline Base::Placement ViewProviderSketchCoinAttorney::getEditingPlacement(ViewProviderSketch & vp)
+{
+    return vp.getEditingPlacement();
+}
+
+inline void ViewProviderSketchCoinAttorney::updateGridExtent(ViewProviderSketch & vp, float minx, float maxx, float miny, float maxy)
+{
+    vp.updateGridExtent(minx, maxx, miny, maxy);
+}
 
 
 //**************************** ParameterObserver nested class ******************************
@@ -872,6 +898,202 @@ void CoinManager::updateConstraintColor(std::vector<Sketcher::Constraint *> cons
 
 }
 
+void CoinManager::rebuildConstraintNodes(void)
+{
+    const std::vector<Sketcher::Constraint *> &constrlist = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
+
+    auto geolist = ViewProviderSketchCoinAttorney::getGeoList(viewProvider);
+
+    // clean up
+    Gui::coinRemoveAllChildren(edit->constrGroup);
+
+    edit->vConstrType.clear();
+
+    // Get sketch normal
+    Base::Vector3d RN(0,0,1);
+
+    // move to position of Sketch
+    Base::Placement Plz = ViewProviderSketchCoinAttorney::getEditingPlacement(viewProvider);
+    Base::Rotation tmp(Plz.getRotation());
+    tmp.multVec(RN,RN);
+    Plz.setRotation(tmp);
+
+    SbVec3f norm(RN.x, RN.y, RN.z);
+
+    rebuildConstraintNodes(geolist, constrlist, norm);
+}
+
+void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vector<Sketcher::Constraint *> constrlist, SbVec3f norm)
+{
+
+    for (std::vector<Sketcher::Constraint *>::const_iterator it=constrlist.begin(); it != constrlist.end(); ++it) {
+        // root separator for one constraint
+        SoSeparator *sep = new SoSeparator();
+        sep->ref();
+        // no caching for frequently-changing data structures
+        sep->renderCaching = SoSeparator::OFF;
+
+        // every constrained visual node gets its own material for preselection and selection
+        SoMaterial *mat = new SoMaterial;
+        mat->ref();
+        mat->diffuseColor = (*it)->isActive ?
+                                ((*it)->isDriving ?
+                                    drawingParameters.ConstrDimColor
+                                    :drawingParameters.NonDrivingConstrDimColor)
+                                :drawingParameters.DeactivatedConstrDimColor;
+
+
+        // distinguish different constraint types to build up
+        switch ((*it)->Type) {
+            case Distance:
+            case DistanceX:
+            case DistanceY:
+            case Radius:
+            case Diameter:
+            case Weight:
+            case Angle:
+            {
+                SoDatumLabel *text = new SoDatumLabel();
+                text->norm.setValue(norm);
+                text->string = "";
+                text->textColor = (*it)->isActive ?
+                                        ((*it)->isDriving ?
+                                            drawingParameters.ConstrDimColor
+                                            :drawingParameters.NonDrivingConstrDimColor)
+                                        :drawingParameters.DeactivatedConstrDimColor;
+                text->size.setValue(edit->coinFontSize);
+                text->lineWidth = 2 * edit->pixelScalingFactor;
+                text->useAntialiasing = false;
+                SoAnnotation *anno = new SoAnnotation();
+                anno->renderCaching = SoSeparator::OFF;
+                anno->addChild(text);
+                // #define CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL 0
+                sep->addChild(text);
+                edit->constrGroup->addChild(anno);
+                edit->vConstrType.push_back((*it)->Type);
+                // nodes not needed
+                sep->unref();
+                mat->unref();
+                continue; // jump to next constraint
+            }
+            break;
+            case Horizontal:
+            case Vertical:
+            case Block:
+            {
+                // #define CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL 0
+                sep->addChild(mat);
+                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_TRANSLATION 1
+                sep->addChild(new SoZoomTranslation());
+                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_ICON 2
+                sep->addChild(new SoImage());
+                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_CONSTRAINTID 3
+                sep->addChild(new SoInfo());
+                // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_TRANSLATION 4
+                sep->addChild(new SoZoomTranslation());
+                // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_ICON 5
+                sep->addChild(new SoImage());
+                // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_CONSTRAINTID 6
+                sep->addChild(new SoInfo());
+
+                // remember the type of this constraint node
+                edit->vConstrType.push_back((*it)->Type);
+            }
+            break;
+            case Coincident: // no visual for coincident so far
+                edit->vConstrType.push_back(Coincident);
+                break;
+            case Parallel:
+            case Perpendicular:
+            case Equal:
+            {
+                // #define CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL 0
+                sep->addChild(mat);
+                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_TRANSLATION 1
+                sep->addChild(new SoZoomTranslation());
+                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_ICON 2
+                sep->addChild(new SoImage());
+                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_CONSTRAINTID 3
+                sep->addChild(new SoInfo());
+                // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_TRANSLATION 4
+                sep->addChild(new SoZoomTranslation());
+                // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_ICON 5
+                sep->addChild(new SoImage());
+                // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_CONSTRAINTID 6
+                sep->addChild(new SoInfo());
+
+                // remember the type of this constraint node
+                edit->vConstrType.push_back((*it)->Type);
+            }
+            break;
+            case PointOnObject:
+            case Tangent:
+            case SnellsLaw:
+            {
+                // #define CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL 0
+                sep->addChild(mat);
+                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_TRANSLATION 1
+                sep->addChild(new SoZoomTranslation());
+                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_ICON 2
+                sep->addChild(new SoImage());
+                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_CONSTRAINTID 3
+                sep->addChild(new SoInfo());
+
+                if ((*it)->Type == Tangent) {
+                    const Part::Geometry *geo1 = geolist.getGeometryFromGeoId((*it)->First);
+                    const Part::Geometry *geo2 = geolist.getGeometryFromGeoId((*it)->Second);
+                    if (!geo1 || !geo2) {
+                        Base::Console().Warning("Tangent constraint references non-existing geometry\n");
+                    }
+                    else if (geo1->getTypeId() == Part::GeomLineSegment::getClassTypeId() &&
+                             geo2->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                        // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_TRANSLATION 4
+                        sep->addChild(new SoZoomTranslation());
+                        // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_ICON 5
+                        sep->addChild(new SoImage());
+                        // #define CONSTRAINT_SEPARATOR_INDEX_SECOND_CONSTRAINTID 6
+                        sep->addChild(new SoInfo());
+                    }
+                }
+
+                edit->vConstrType.push_back((*it)->Type);
+            }
+            break;
+            case Symmetric:
+            {
+                SoDatumLabel *arrows = new SoDatumLabel();
+                arrows->norm.setValue(norm);
+                arrows->string = "";
+                arrows->textColor = drawingParameters.ConstrDimColor;
+                arrows->lineWidth = 2 * edit->pixelScalingFactor;
+
+                // #define CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL 0
+                sep->addChild(arrows);
+                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_TRANSLATION 1
+                sep->addChild(new SoTranslation());
+                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_ICON 2
+                sep->addChild(new SoImage());
+                // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_CONSTRAINTID 3
+                sep->addChild(new SoInfo());
+
+                edit->vConstrType.push_back((*it)->Type);
+            }
+            break;
+            case InternalAlignment:
+            {
+                edit->vConstrType.push_back((*it)->Type);
+            }
+            break;
+            default:
+                edit->vConstrType.push_back((*it)->Type);
+        }
+
+        edit->constrGroup->addChild(sep);
+        // decrement ref counter again
+        sep->unref();
+        mat->unref();
+    }
+}
 
 void CoinManager::createEditModeInventorNodes()
 {
@@ -1067,7 +1289,23 @@ void CoinManager::createEditModeInventorNodes()
     edit->EditRoot->addChild(edit->infoGroup);
 }
 
+void CoinManager::setAxisPickStyle(bool on)
+{
+    assert(edit);
+    if (on)
+        edit->pickStyleAxes->style = SoPickStyle::SHAPE;
+    else
+        edit->pickStyleAxes->style = SoPickStyle::UNPICKABLE;
+}
+
 void CoinManager::redrawViewProvider()
 {
     viewProvider.draw(false,false);
+}
+
+void CoinManager::updateGridExtent()
+{
+    float dMagF = analysisResults.boundingBoxMagnitudeOrder;
+
+    ViewProviderSketchCoinAttorney::updateGridExtent(viewProvider,-dMagF, dMagF, -dMagF, dMagF);
 }

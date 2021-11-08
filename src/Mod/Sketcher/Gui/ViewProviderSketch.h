@@ -282,7 +282,7 @@ public:
     void OnChange(Base::Subject<const char*> &rCaller, const char * sReason) override;
 
 protected:
-    Base::Placement getEditingPlacement() const;
+
 
     virtual bool setEdit(int ModNum) override;
     virtual void unsetEdit(int ModNum) override;
@@ -291,8 +291,6 @@ protected:
     void deactivateHandler();
     /// update solver information based on last solving at SketchObject
     void UpdateSolverInformation(void);
-    /// helper to detect whether the picked point lies on the sketch
-    bool isPointOnSketch(const SoPickedPoint *pp) const;
     /// get called by the container whenever a property has been changed
     virtual void onChanged(const App::Property *prop) override;
 
@@ -303,8 +301,6 @@ protected:
     void createEditInventorNodes(void);
     /// pointer to the edit data structure if the ViewProvider is in edit.
     EditData *edit;
-    /// build up the visual of the constraints
-    void rebuildConstraintsVisual(void);
 
     void slotUndoDocument(const Gui::Document&);
     void slotRedoDocument(const Gui::Document&);
@@ -315,11 +311,26 @@ private:
                         bool geometrywithmemoryallocation,
                         std::vector<std::unique_ptr<Part::Geometry>> &deepCopiesToDelete);
 
-    bool constraintHasExpression(int constrid);
-
     /// Draw all constraint icons
     /*! Except maybe the radius and lock ones? */
     void drawConstraintIcons();
+
+    /// helper to detect whether the picked point lies on the sketch
+    bool isPointOnSketch(const SoPickedPoint *pp) const;
+
+    /* private functions to decouple Attorneys and Clients from the internal implementation of
+    the ViewProvider and its members, such as sketchObject */
+
+    bool constraintHasExpression(int constrid) const;
+
+    const std::vector<Sketcher::Constraint *> getConstraints() const;
+
+    // gets the list of geometry of the sketchobject or of the solver instance
+    const GeoList getGeoList() const;
+
+    Base::Placement getEditingPlacement() const;
+
+
 
 protected:
     boost::signals2::connection connectUndoDocument;
