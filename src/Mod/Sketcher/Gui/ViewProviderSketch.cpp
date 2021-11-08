@@ -3632,7 +3632,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 
     // ============== Visualisation Management - Grid Extent ==================================
 
-    coinManager->updateGridExtent();
+    coinManager->updateGridExtent(); // with the information about the geometry drawn
 
     // ============== Render constraints ==================================
 

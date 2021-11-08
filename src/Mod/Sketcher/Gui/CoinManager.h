@@ -62,6 +62,21 @@ class GeoListModel;
 class ViewProviderSketch;
 
 
+/** @brief      Attorney class for limiting access to viewprovider
+ *  @details
+ *  ViewProviderSketch delegates a substantial part of coin related visualisation to
+ *  CoinManager during edit mode.
+ *
+ *  Sometimes CoinManager needs to access selected functionalities only available to ViewProviderSketch.
+ *
+ *  This attorney class regulates which specific functionalities CoinManager is able to access in
+ *  ViewProviderSketch.
+ *
+ *  The objective is:
+ *  - to preserve as much as possible ViewProviderSketch encapsulation
+ *  - to promote as much loose coupling as possible
+ *  - to keep control over the interactions between these classes and easily identify the cooperation interface.
+ */
 class ViewProviderSketchCoinAttorney {
 private:
     static inline bool constraintHasExpression(ViewProviderSketch &vp, int constrid);
@@ -82,7 +97,10 @@ private:
  */
 class SketcherGuiExport CoinManager
 {
-    // Monitor changes in parameters affecting drawing and coin node generation
+    /** @brief      Class for monitoring changes in parameters affecting drawing and coin node generation
+    *  @details    To be documented.
+    *
+    */
     class ParameterObserver : public ParameterGrp::ObserverType
     {
     private:
@@ -117,6 +135,10 @@ class SketcherGuiExport CoinManager
         CoinManager &Client;
     };
 
+    /** @brief     Struct to hold the results of analysis
+    *  @details    To be documented.
+    *
+    */
     struct AnalysisResults { // TODO: This needs to be refactored
         double combRepresentationScale = 0;
         float boundingBoxMagnitudeOrder = 0;
@@ -142,14 +164,14 @@ public:
 
     using Vector3d = Base::Vector3<double>;
 
-    void processGeometryAndInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer);
-
+     /** @name Temporary edit curves and markers */
+    //@{
     void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel);
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
+    //@}
 
     /** @name handle preselection and selection of points */
     //@{
-    //
     void setPreselectPoint(int PreselectPoint);
     void resetPreselectPoint(void);
     void addSelectPoint(int SelectPoint);
@@ -157,21 +179,37 @@ public:
     void clearSelectPoints(void);
     //@}
 
-    void updateCoinManagerColors();
+    /** @name update coin nodes*/
+    void processGeometryAndInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer);
+    //@}
 
-    float getboundingBoxMagnitudeOrder() { return analysisResults.boundingBoxMagnitudeOrder;}
-
+    /** @name coin nodes creation*/
     void createEditModeInventorNodes();
-
-    void updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid);
-
-    void updateConstraintColor(std::vector<Sketcher::Constraint *> constraints);
-
     void rebuildConstraintNodes(void);
+    //@}
 
+    /** @name update coin colors*/
+    //@{
+    void updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid);
+    void updateConstraintColor(std::vector<Sketcher::Constraint *> constraints);
+    //@}
+
+
+    /** @name change coin visualisation and behaviour*/
+    //@{
     void setAxisPickStyle(bool on);
-
     void updateGridExtent();
+    //@}
+
+    /** @name Configuration of the visualisation */
+    //@{
+    void updateCoinManagerColors();
+    //@}
+
+    /** @name Analysis Results */
+    //@{
+    float getboundingBoxMagnitudeOrder() { return analysisResults.boundingBoxMagnitudeOrder;}
+    //@}
 
 private:
     // This function populates the coin nodes with the information of the current geometry

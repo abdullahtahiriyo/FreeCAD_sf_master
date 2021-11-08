@@ -80,6 +80,8 @@ using namespace SketcherGui;
 using namespace Sketcher;
 
 
+//***** ViewProviderSketchCoinAttorney - Attorney to limit coupling and encapsulation to viewprovider ******************************
+
 inline bool ViewProviderSketchCoinAttorney::constraintHasExpression(ViewProviderSketch & vp, int constrid)
 {
     return vp.constraintHasExpression(constrid);
