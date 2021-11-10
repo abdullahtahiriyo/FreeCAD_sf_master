@@ -33,6 +33,7 @@
 #include "CoinManagerParameters.h"
 
 class SbVec3f;
+class SoRayPickAction;
 
 namespace Base {
     template< typename T >
@@ -74,7 +75,7 @@ class ViewProviderSketch;
  *
  *  The objective is:
  *  - to preserve as much as possible ViewProviderSketch encapsulation
- *  - to promote as much loose coupling as possible
+ *  - to promote as much loose coupling as possible.
  *  - to keep control over the interactions between these classes and easily identify the cooperation interface.
  */
 class ViewProviderSketchCoinAttorney {
@@ -84,6 +85,10 @@ private:
     static inline const GeoList getGeoList(ViewProviderSketch & vp);
     static inline Base::Placement getEditingPlacement(ViewProviderSketch & vp);
     static inline void updateGridExtent(ViewProviderSketch & vp, float minx, float maxx, float miny, float maxy);
+    static inline bool isShownVirtualSpace(ViewProviderSketch & vp);
+    static inline std::unique_ptr<SoRayPickAction> getRayPickAction(ViewProviderSketch & vp);
+
+    static float getScaleFactor(ViewProviderSketch & vp);
 
     friend class CoinManager;
 };
@@ -162,8 +167,6 @@ public:
     explicit CoinManager(ViewProviderSketch &vp, EditData * editdata);
     ~CoinManager();
 
-    using Vector3d = Base::Vector3<double>;
-
      /** @name Temporary edit curves and markers */
     //@{
     void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel);
@@ -180,7 +183,9 @@ public:
     //@}
 
     /** @name update coin nodes*/
-    void processGeometryAndInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer);
+    void processGeometryConstraintsInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer);
+
+    void updateVirtualSpace();
     //@}
 
     /** @name coin nodes creation*/
@@ -215,7 +220,8 @@ private:
     // This function populates the coin nodes with the information of the current geometry
     void processGeometry(const GeoList & geolist);
 
-    void processConstraints();
+    // geometry list to be used for constraints, which may be a temporal geometry
+    void processConstraints(const GeoList & geolist);
 
     // This function populates the geometry information layer of coin. It requires the analysis information
     // gathered during the processGeometry step, so it is not possible to run both in parallel.
@@ -231,6 +237,16 @@ private:
     void redrawViewProvider();
 
     void rebuildConstraintNodes(const GeoList & geolist, const std::vector<Sketcher::Constraint *> constrlist, SbVec3f norm);
+
+    /// finds a free position for placing a constraint icon
+    Base::Vector3d seekConstraintPosition(const Base::Vector3d &origPos,
+                                          const Base::Vector3d &norm,
+                                          const Base::Vector3d &dir, float step,
+                                          const SoNode *constraint);
+
+    /// Return display string for constraint including hiding units if
+    //requested.
+    QString getPresentationString(const Sketcher::Constraint *constraint);
 
 private:
     ViewProviderSketch & viewProvider;

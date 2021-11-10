@@ -51,6 +51,7 @@ class SoTransform;
 class SoLineSet;
 class SoMarkerSet;
 class SoPickedPoint;
+class SoRayPickAction;
 
 class SoImage;
 class QImage;
@@ -224,11 +225,7 @@ public:
 
     /// moves a selected constraint
     void moveConstraint(int constNum, const Base::Vector2d &toPos);
-    /// finds a free position for placing a constraint icon
-    Base::Vector3d seekConstraintPosition(const Base::Vector3d &origPos,
-                                          const Base::Vector3d &norm,
-                                          const Base::Vector3d &dir, float step,
-                                          const SoNode *constraint);
+
 
     float getScaleFactor();
     int getPreselectPoint(void) const;
@@ -330,7 +327,7 @@ private:
 
     Base::Placement getEditingPlacement() const;
 
-
+    std::unique_ptr<SoRayPickAction> getRayPickAction();
 
 protected:
     boost::signals2::connection connectUndoDocument;
@@ -351,10 +348,6 @@ protected:
     static QString appendConstraintMsg( const QString & singularmsg,
                                         const QString & pluralmsg,
                                         const std::vector<int> &vector);
-
-    /// Return display string for constraint including hiding units if
-    //requested.
-    QString getPresentationString(const Sketcher::Constraint *constraint);
 
     /** @name Protected helpers for drawing constraint icons*/
     //@{
