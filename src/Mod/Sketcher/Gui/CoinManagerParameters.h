@@ -31,6 +31,8 @@
 # include <Inventor/SbColor.h>
 #endif  // #ifndef _PreComp_
 
+#include <qstring.h>
+
 #include "GeoList.h"
 
 #include <vector>
@@ -139,6 +141,12 @@ struct OverlayParameters {
     bool bSplineCombVisible;
     bool bSplineKnotMultiplicityVisible;
     bool bSplinePoleWeightVisible;
+};
+
+struct ConstraintParameters {
+    bool bHideUnits;
+    bool bShowDimensionalName;
+    QString sDimensionalStringFormat;
 };
 
 } // namespace SketcherGui

@@ -155,6 +155,8 @@ void CoinManager::ParameterObserver::initParameters()
     updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineCombVisible>();
     updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineKnotMultiplicityVisible>();
     updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplinePoleWeightVisible>();
+
+    updateConstraintPresentationParameters();
 }
 
 void CoinManager::ParameterObserver::updateCurvedEdgeCountSegmentsParameter()
@@ -174,6 +176,15 @@ void CoinManager::ParameterObserver::updateLineRenderingOrderParameters()
 
     Client.drawingParameters.topRenderingGeometry = DrawingParameters::GeometryRendering (hGrpp->GetInt("TopRenderGeometryId",1));
     Client.drawingParameters.midRenderingGeometry = DrawingParameters::GeometryRendering (hGrpp->GetInt("MidRenderGeometryId",2));
+}
+
+void CoinManager::ParameterObserver::updateConstraintPresentationParameters()
+{
+    ParameterGrp::handle hGrpskg = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+
+    Client.constraintParameters.bHideUnits = hGrpskg->GetBool("HideUnits", false);
+    Client.constraintParameters.bShowDimensionalName = hGrpskg->GetBool("ShowDimensionalName", false);
+    Client.constraintParameters.sDimensionalStringFormat = QString::fromStdString(hGrpskg->GetASCII("DimensionalStringFormat", "%N = %V"));
 }
 
 template<CoinManager::ParameterObserver::OverlayVisibilityParameter visibilityparameter>
@@ -205,6 +216,9 @@ void CoinManager::ParameterObserver::subscribeToParameters()
 
     ParameterGrp::handle hGrpp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
     hGrpp->Attach(this);
+
+    ParameterGrp::handle hGrpskg = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+    hGrpskg->Attach(this);
 }
 
 void CoinManager::ParameterObserver::unsubscribeToParameters()
@@ -217,6 +231,9 @@ void CoinManager::ParameterObserver::unsubscribeToParameters()
 
     ParameterGrp::handle hGrpp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
     hGrpp->Detach(this);
+
+    ParameterGrp::handle hGrpskg = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+    hGrpskg->Detach(this);
 }
 
 void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCaller, const char * sReason)
@@ -243,7 +260,13 @@ void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCalle
         {"TopRenderGeometryId",
             [this](){updateLineRenderingOrderParameters();}},
         {"MidRenderGeometryId",
-            [this](){updateLineRenderingOrderParameters();}}
+            [this](){updateLineRenderingOrderParameters();}},
+        {"HideUnits",
+            [this](){updateConstraintPresentationParameters();}},
+        {"ShowDimensionalName",
+            [this](){updateConstraintPresentationParameters();}},
+        {"DimensionalStringFormat",
+            [this](){updateConstraintPresentationParameters();}}
     };
 
     auto key = str2updatefunction.find(sReason);
@@ -252,7 +275,6 @@ void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCalle
 
         Client.redrawViewProvider(); // redraw with non-temporal geometry
     }
-
 
 }
 
@@ -2453,29 +2475,16 @@ void CoinManager::updateGridExtent()
 
 QString CoinManager::getPresentationString(const Constraint *constraint)
 {
-    Base::Reference<ParameterGrp>   hGrpSketcher; // param group that includes HideUnits and ShowDimensionalName option
-    bool                            iHideUnits; // internal HideUnits setting
-    bool                            iShowDimName; // internal ShowDimensionalName setting
     QString                         nameStr; // name parameter string
     QString                         valueStr; // dimensional value string
     QString                         presentationStr; // final return string
     QString                         unitStr;  // the actual unit string
     QString                         baseUnitStr; // the expected base unit string
-    QString                         formatStr; // the user defined format for the representation string
     double                          factor; // unit scaling factor, currently not used
     Base::UnitSystem                unitSys; // current unit system
 
     if(!constraint->isActive)
         return QString::fromLatin1(" ");
-
-    // get parameter group for Sketcher display settings
-    hGrpSketcher = App::GetApplication().GetUserParameter().GetGroup("BaseApp")->GetGroup("Preferences")->GetGroup("Mod/Sketcher");
-    // Get value of HideUnits option. Default is false.
-    iHideUnits = hGrpSketcher->GetBool("HideUnits", 0);
-    // Get Value of ShowDimensionalName option. Default is true.
-    iShowDimName = hGrpSketcher->GetBool("ShowDimensionalName", false);
-    // Get the defined format string
-    formatStr = QString::fromStdString(hGrpSketcher->GetASCII("DimensionalStringFormat", "%N = %V"));
 
     // Get the current name parameter string of the constraint
     nameStr = QString::fromStdString(constraint->Name);
@@ -2486,7 +2495,7 @@ QString CoinManager::getPresentationString(const Constraint *constraint)
     // Hide units if user has requested it, is being displayed in the base
     // units, and the schema being used has a clear base unit in the first
     // place. Otherwise, display units.
-    if( iHideUnits )
+    if(constraintParameters.bHideUnits)
     {
         // Only hide the default length unit. Right now there is not an easy way
         // to get that from the Unit system so we have to manually add it here.
@@ -2544,11 +2553,12 @@ QString CoinManager::getPresentationString(const Constraint *constraint)
     %N - the constraint name parameter
     %V - the value of the dimensional constraint, including any unit characters
     */
-    if (iShowDimName && !nameStr.isEmpty())
+    if (constraintParameters.bShowDimensionalName && !nameStr.isEmpty())
     {
-        if (formatStr.contains(QLatin1String("%V")) || formatStr.contains(QLatin1String("%N")))
+        if (constraintParameters.sDimensionalStringFormat.contains(QLatin1String("%V")) ||
+            constraintParameters.sDimensionalStringFormat.contains(QLatin1String("%N")))
         {
-            presentationStr = formatStr;
+            presentationStr = constraintParameters.sDimensionalStringFormat;
             presentationStr.replace(QLatin1String("%N"), nameStr);
             presentationStr.replace(QLatin1String("%V"), valueStr);
         }

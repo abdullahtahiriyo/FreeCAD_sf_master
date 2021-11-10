@@ -132,6 +132,7 @@ class SketcherGuiExport CoinManager
         void initParameters();
         void updateCurvedEdgeCountSegmentsParameter();
         void updateLineRenderingOrderParameters();
+        void updateConstraintPresentationParameters();
 
         template<OverlayVisibilityParameter visibilityparameter>
         void updateOverlayVisibilityParameter();
@@ -256,6 +257,7 @@ private:
     DrawingParameters drawingParameters;
     AnalysisResults analysisResults;
     OverlayParameters overlayParameters;
+    ConstraintParameters constraintParameters;
 
 };
 
