@@ -31,6 +31,10 @@
 #include <vector>
 #include <memory>
 
+namespace Base {
+    template< typename T >
+    class Vector3;
+}
 
 namespace Part {
     class Geometry;
@@ -38,6 +42,7 @@ namespace Part {
 
 namespace Sketcher {
     class GeometryFacade;
+    enum PointPos : int;
 }
 
 namespace SketcherGui {
@@ -51,6 +56,7 @@ namespace SketcherGui {
  */
 template <typename T>
 class GeoListModel {
+    using Vector3d = Base::Vector3<double>;
 
 public:
     /**
@@ -82,6 +88,9 @@ public:
     */
     static const T getGeometryFromGeoId(const std::vector<T> & geometrylist, int geoId);
 
+
+    Vector3d getPoint(int geoId, Sketcher::PointPos pos) const;
+
     /**
     * returns the amount of internal geometry objects.
     */
@@ -94,6 +103,10 @@ public:
 
 public:
     const std::vector<T> & geomlist;
+
+private:
+    Vector3d getPoint(const Part::Geometry * geo, Sketcher::PointPos pos) const;
+
 private:
     int intGeoCount;
 };
