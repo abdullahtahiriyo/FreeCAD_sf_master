@@ -1013,7 +1013,9 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
         Mode != STATUS_SKETCH_DragConstraint &&
         Mode != STATUS_SKETCH_UseRubberBand) {
 
-        preselectChanged = detectPreselection(viewer, cursorPos);
+        std::unique_ptr<SoPickedPoint> Point(this->getPointOnRay(cursorPos, viewer));
+
+        preselectChanged = detectPreselection(Point.get(), cursorPos);
     }
 
     switch (Mode) {
@@ -1633,7 +1635,6 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
 }
 
 std::set<int> ViewProviderSketch::detectPreselectionConstr(const SoPickedPoint *Point,
-                                                           const Gui::View3DInventorViewer *viewer,
                                                            const SbVec2s &cursorPos)
 {
     std::set<int> constrIndices;
@@ -1702,44 +1703,9 @@ std::set<int> ViewProviderSketch::detectPreselectionConstr(const SoPickedPoint *
                             trans += static_cast<SoZoomTranslation *>(static_cast<SoSeparator *>(tailFather)->getChild(CONSTRAINT_SEPARATOR_INDEX_SECOND_TRANSLATION))->translation.getValue();
                         }
 
-                        Base::Placement sketchPlacement = getEditingPlacement();
-                        Base::Vector3d sketchPos(sketchPlacement.getPosition());
-                        Base::Rotation sketchRot(sketchPlacement.getRotation());
-
-                        // get global coordinates from sketcher coordinates
                         SbVec3f constrPos = absPos + trans*getScaleFactor();
-                        Base::Vector3d pos(constrPos[0],constrPos[1],0);
-                        sketchRot.multVec(pos,pos);
-                        pos = pos + sketchPos;
 
-                        SoCamera* pCam = viewer->getSoRenderManager()->getCamera();
-
-                        if (!pCam)
-                            continue;
-
-                        SbViewVolume vol = pCam->getViewVolume();
-                        Gui::ViewVolumeProjection proj(vol);
-
-                        // dimensionless [0 1] (or 1.5 see View3DInventorViewer.cpp )
-                        Base::Vector3d screencoords = proj(pos);
-
-                        int width = viewer->getGLWidget()->width(),
-                            height = viewer->getGLWidget()->height();
-
-                        if (width >= height) {
-                            // "Landscape" orientation, to square
-                            screencoords.x *= height;
-                            screencoords.x += (width-height) / 2.0;
-                            screencoords.y *= height;
-                        }
-                        else {
-                            // "Portrait" orientation
-                            screencoords.x *= width;
-                            screencoords.y *= width;
-                            screencoords.y += (height-width) / 2.0;
-                        }
-
-                        SbVec2f iconCoords(screencoords.x,screencoords.y);
+                        SbVec2f iconCoords = getScreenCoordinates(SbVec2f(constrPos[0],constrPos[1]));
 
                         // cursorPos is SbVec2s in screen coordinates coming from SoEvent in mousemove
                         //
@@ -1787,12 +1753,9 @@ std::set<int> ViewProviderSketch::detectPreselectionConstr(const SoPickedPoint *
     return constrIndices;
 }
 
-bool ViewProviderSketch::detectPreselection(const Gui::View3DInventorViewer *viewer,
-                                            const SbVec2s &cursorPos)
+bool ViewProviderSketch::detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos)
 {
     assert(edit);
-
-    std::unique_ptr<SoPickedPoint> Point(this->getPointOnRay(cursorPos, viewer));
 
     int PtIndex = -1;
     int GeoIndex = -1; // valid values are 0,1,2,... for normal geometry and -3,-4,-5,... for external geometry
@@ -1832,7 +1795,7 @@ bool ViewProviderSketch::detectPreselection(const Gui::View3DInventorViewer *vie
                 }
             } else {
                 // checking if a constraint is hit
-                constrIndices = detectPreselectionConstr(Point.get(), viewer, cursorPos);
+                constrIndices = detectPreselectionConstr(Point, cursorPos);
             }
         }
 
@@ -4333,4 +4296,55 @@ std::unique_ptr<SoRayPickAction> ViewProviderSketch::getRayPickAction()
     Gui::View3DInventorViewer *viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
 
     return std::make_unique<SoRayPickAction>(viewer->getSoRenderManager()->getViewportRegion());
+}
+
+SbVec2f ViewProviderSketch::getScreenCoordinates(SbVec2f sketchcoordinates)
+{
+
+    Base::Placement sketchPlacement = getEditingPlacement();
+    Base::Vector3d sketchPos(sketchPlacement.getPosition());
+    Base::Rotation sketchRot(sketchPlacement.getRotation());
+
+    // get global coordinates from sketcher coordinates
+    Base::Vector3d pos(sketchcoordinates[0], sketchcoordinates[1],0);
+    sketchRot.multVec(pos,pos);
+    pos = pos + sketchPos;
+
+    Gui::MDIView *mdi = this->getActiveView();
+    Gui::View3DInventor *view = qobject_cast<Gui::View3DInventor*>(mdi);
+    if (!view || !edit)
+        return SbVec2f(0,0);
+
+    Gui::View3DInventorViewer* viewer = view->getViewer();
+
+    SoCamera* pCam = viewer->getSoRenderManager()->getCamera();
+
+    if (!pCam)
+        return SbVec2f(0,0);
+
+    SbViewVolume vol = pCam->getViewVolume();
+    Gui::ViewVolumeProjection proj(vol);
+
+    // dimensionless [0 1] (or 1.5 see View3DInventorViewer.cpp )
+    Base::Vector3d screencoords = proj(pos);
+
+    int width = viewer->getGLWidget()->width(),
+        height = viewer->getGLWidget()->height();
+
+    if (width >= height) {
+        // "Landscape" orientation, to square
+        screencoords.x *= height;
+        screencoords.x += (width-height) / 2.0;
+        screencoords.y *= height;
+    }
+    else {
+        // "Portrait" orientation
+        screencoords.x *= width;
+        screencoords.y *= width;
+        screencoords.y += (height-width) / 2.0;
+    }
+
+    SbVec2f iconCoords(screencoords.x,screencoords.y);
+
+    return iconCoords;
 }

@@ -187,12 +187,10 @@ public:
                            SbLine&) const;
 
     /// helper to detect preselection
-    bool detectPreselection(const Gui::View3DInventorViewer *viewer,
-                            const SbVec2s &cursorPos);
+    bool detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos);
 
     /// Helper for detectPreselection(), for constraints only.
     std::set<int> detectPreselectionConstr(const SoPickedPoint *Point,
-                                           const Gui::View3DInventorViewer *viewer,
                                            const SbVec2s &cursorPos);
 
     /*! Look at the center of the bounding of all selected items */
@@ -327,6 +325,8 @@ private:
     Base::Placement getEditingPlacement() const;
 
     std::unique_ptr<SoRayPickAction> getRayPickAction();
+
+    SbVec2f getScreenCoordinates(SbVec2f sketchcoordinates);
 
 protected:
     boost::signals2::connection connectUndoDocument;
