@@ -1013,8 +1013,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
         Mode != STATUS_SKETCH_DragConstraint &&
         Mode != STATUS_SKETCH_UseRubberBand) {
 
-        boost::scoped_ptr<SoPickedPoint> pp(this->getPointOnRay(cursorPos, viewer));
-        preselectChanged = detectPreselection(pp.get(), viewer, cursorPos);
+        preselectChanged = detectPreselection(viewer, cursorPos);
     }
 
     switch (Mode) {
@@ -1639,6 +1638,14 @@ std::set<int> ViewProviderSketch::detectPreselectionConstr(const SoPickedPoint *
 {
     std::set<int> constrIndices;
     SoPath *path = Point->getPath();
+
+    // Get the constraints' tail
+    SoNode *tailFather2 = path->getNode(path->getLength()-3);
+
+    if (tailFather2 != edit->constrGroup)
+        return constrIndices;
+
+
     SoNode *tail = path->getTail();
     SoNode *tailFather = path->getNode(path->getLength()-2);
 
@@ -1780,11 +1787,12 @@ std::set<int> ViewProviderSketch::detectPreselectionConstr(const SoPickedPoint *
     return constrIndices;
 }
 
-bool ViewProviderSketch::detectPreselection(const SoPickedPoint *Point,
-                                            const Gui::View3DInventorViewer *viewer,
+bool ViewProviderSketch::detectPreselection(const Gui::View3DInventorViewer *viewer,
                                             const SbVec2s &cursorPos)
 {
     assert(edit);
+
+    std::unique_ptr<SoPickedPoint> Point(this->getPointOnRay(cursorPos, viewer));
 
     int PtIndex = -1;
     int GeoIndex = -1; // valid values are 0,1,2,... for normal geometry and -3,-4,-5,... for external geometry
@@ -1794,8 +1802,7 @@ bool ViewProviderSketch::detectPreselection(const SoPickedPoint *Point,
     if (Point) {
         //Base::Console().Log("Point pick\n");
         SoPath *path = Point->getPath();
-        SoNode *tail = path->getTail();
-        SoNode *tailFather2 = path->getNode(path->getLength()-3);
+        SoNode *tail = path->getTail(); // Tail is directly the node containing points and curves
 
         // checking for a hit in the points
         if (tail == edit->PointSet) {
@@ -1816,7 +1823,7 @@ bool ViewProviderSketch::detectPreselection(const SoPickedPoint *Point,
                     int curveIndex = static_cast<const SoLineDetail *>(curve_detail)->getLineIndex();
                     GeoIndex = edit->CurvIdToGeoId[curveIndex];
                 }
-            // checking for a hit in the cross
+            // checking for a hit in the axes
             } else if (tail == edit->RootCrossSet) {
                 const SoDetail *cross_detail = Point->getDetail(edit->RootCrossSet);
                 if (cross_detail && cross_detail->getTypeId() == SoLineDetail::getClassTypeId()) {
@@ -1825,8 +1832,7 @@ bool ViewProviderSketch::detectPreselection(const SoPickedPoint *Point,
                 }
             } else {
                 // checking if a constraint is hit
-                if (tailFather2 == edit->constrGroup)
-                    constrIndices = detectPreselectionConstr(Point, viewer, cursorPos);
+                constrIndices = detectPreselectionConstr(Point.get(), viewer, cursorPos);
             }
         }
 

@@ -187,8 +187,7 @@ public:
                            SbLine&) const;
 
     /// helper to detect preselection
-    bool detectPreselection(const SoPickedPoint *Point,
-                            const Gui::View3DInventorViewer *viewer,
+    bool detectPreselection(const Gui::View3DInventorViewer *viewer,
                             const SbVec2s &cursorPos);
 
     /// Helper for detectPreselection(), for constraints only.
