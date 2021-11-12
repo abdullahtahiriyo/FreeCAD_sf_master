@@ -39,6 +39,9 @@
 # include <Inventor/nodes/SoPickStyle.h>
 # include <Inventor/nodes/SoDrawStyle.h>
 # include <Inventor/SoPickedPoint.h>
+# include <Inventor/details/SoPointDetail.h>
+# include <Inventor/details/SoDetail.h>
+# include <Inventor/details/SoLineDetail.h>
 
 # include <Inventor/nodes/SoAnnotation.h>
 # include <Inventor/nodes/SoImage.h>
@@ -129,6 +132,11 @@ inline std::unique_ptr<SoRayPickAction> ViewProviderSketchCoinAttorney::getRayPi
 float ViewProviderSketchCoinAttorney::getScaleFactor(ViewProviderSketch & vp)
 {
     return vp.getScaleFactor();
+}
+
+SbVec2f ViewProviderSketchCoinAttorney::getScreenCoordinates(ViewProviderSketch & vp, SbVec2f sketchcoordinates)
+{
+    return vp.getScreenCoordinates(sketchcoordinates);
 }
 
 
@@ -2577,4 +2585,197 @@ QString CoinManager::getPresentationString(const Constraint *constraint)
     }
 
     return valueStr;
+}
+
+CoinManager::PreselectionResult CoinManager::detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos)
+{
+    CoinManager::PreselectionResult result;
+
+    if(!Point)
+        return result;
+
+    std::set<int> constrIndices;
+
+    //Base::Console().Log("Point pick\n");
+    SoPath *path = Point->getPath();
+    SoNode *tail = path->getTail(); // Tail is directly the node containing points and curves
+
+    // checking for a hit in the points
+    if (tail == edit->PointSet) {
+        const SoDetail *point_detail = Point->getDetail(edit->PointSet);
+        if (point_detail && point_detail->getTypeId() == SoPointDetail::getClassTypeId()) {
+            // get the index
+            result.ptIndex = static_cast<const SoPointDetail *>(point_detail)->getCoordinateIndex();
+            result.ptIndex -= 1; // shift corresponding to RootPoint
+            if (result.ptIndex == Sketcher::GeoEnum::RtPnt)
+                result.axes = PreselectionResult::Axes::RootPoint;
+        }
+    } else {
+        // checking for a hit in the curves
+        if (tail == edit->CurveSet) {
+            const SoDetail *curve_detail = Point->getDetail(edit->CurveSet);
+            if (curve_detail && curve_detail->getTypeId() == SoLineDetail::getClassTypeId()) {
+                // get the index
+                int curveIndex = static_cast<const SoLineDetail *>(curve_detail)->getLineIndex();
+                result.geoIndex = edit->CurvIdToGeoId[curveIndex];
+            }
+        // checking for a hit in the axes
+        } else if (tail == edit->RootCrossSet) {
+            const SoDetail *cross_detail = Point->getDetail(edit->RootCrossSet);
+            if (cross_detail && cross_detail->getTypeId() == SoLineDetail::getClassTypeId()) {
+                // get the index (reserve index 0 for root point)
+                int CrossIndex = static_cast<const SoLineDetail *>(cross_detail)->getLineIndex();
+
+                if(CrossIndex == 0)
+                    result.axes = PreselectionResult::Axes::HorizontalAxis;
+                else if(CrossIndex == 1)
+                    result.axes = PreselectionResult::Axes::VerticalAxis;
+            }
+        } else {
+            // checking if a constraint is hit
+            constrIndices = detectPreselectionConstr(Point, cursorPos);
+        }
+    }
+}
+
+std::set<int> CoinManager::detectPreselectionConstr(const SoPickedPoint *Point,
+                                                    const SbVec2s &cursorPos)
+{
+    std::set<int> constrIndices;
+    SoPath *path = Point->getPath();
+
+    // Get the constraints' tail
+    SoNode *tailFather2 = path->getNode(path->getLength()-3);
+
+    if (tailFather2 != edit->constrGroup)
+        return constrIndices;
+
+
+    SoNode *tail = path->getTail();
+    SoNode *tailFather = path->getNode(path->getLength()-2);
+
+    for (int i=0; i < edit->constrGroup->getNumChildren(); ++i) {
+        if (edit->constrGroup->getChild(i) == tailFather) {
+            SoSeparator *sep = static_cast<SoSeparator *>(tailFather);
+            if (sep->getNumChildren() > static_cast<int>(ConstraintNodePosition::FirstConstraintIdIndex)) {
+                SoInfo *constrIds = NULL;
+                if (tail == sep->getChild(static_cast<int>(ConstraintNodePosition::FirstIconIndex))) {
+                    // First icon was hit
+                    constrIds = static_cast<SoInfo *>(sep->getChild(static_cast<int>(ConstraintNodePosition::FirstConstraintIdIndex)));
+                }
+                else {
+                    // Assume second icon was hit
+                    if ( static_cast<int>(ConstraintNodePosition::SecondConstraintIdIndex) < sep->getNumChildren()) {
+                        constrIds = static_cast<SoInfo *>(sep->getChild(static_cast<int>(ConstraintNodePosition::SecondConstraintIdIndex)));
+                    }
+                }
+
+                if (constrIds) {
+                    QString constrIdsStr = QString::fromLatin1(constrIds->string.getValue().getString());
+                    if (edit->combinedConstrBoxes.count(constrIdsStr) && dynamic_cast<SoImage *>(tail)) {
+                        // If it's a combined constraint icon
+
+                        // Screen dimensions of the icon
+                        SbVec3s iconSize = getDisplayedSize(static_cast<SoImage *>(tail));
+                        // Center of the icon
+                        //SbVec2f iconCoords = viewer->screenCoordsOfPath(path);
+
+                        // The use of the Path to get the screen coordinates to get the icon center coordinates
+                        // does not work.
+                        //
+                        // This implementation relies on the use of ZoomTranslation to get the absolute and relative
+                        // positions of the icons.
+                        //
+                        // In the case of second icons (the same constraint has two icons at two different positions),
+                        // the translation vectors have to be added, as the second ZoomTranslation operates on top of
+                        // the first.
+                        //
+                        // Coordinates are projected on the sketch plane and then to the screen in the interval [0 1]
+                        // Then this result is converted to pixels using the scale factor.
+
+                        SbVec3f absPos;
+                        SbVec3f trans;
+
+                        auto translation = static_cast<SoZoomTranslation *>(static_cast<SoSeparator *>(tailFather)->getChild( static_cast<int>(ConstraintNodePosition::FirstTranslationIndex)));
+
+                        absPos = translation->abPos.getValue();
+
+                        trans = translation->translation.getValue();
+
+                        if (tail != sep->getChild(static_cast<int>(ConstraintNodePosition::FirstIconIndex))) {
+
+                            auto translation2 = static_cast<SoZoomTranslation *>(static_cast<SoSeparator *>(tailFather)->getChild( static_cast<int>(ConstraintNodePosition::SecondTranslationIndex)));
+
+                            absPos += translation2->abPos.getValue();
+
+                            trans += translation2->translation.getValue();
+                        }
+
+                        // TODO: Is this calculation actually sound? Why the absolute position is not scaled and the translation is? Review.
+                        SbVec3f constrPos = absPos + trans*ViewProviderSketchCoinAttorney::getScaleFactor(viewProvider);
+
+                        SbVec2f iconCoords = ViewProviderSketchCoinAttorney::getScreenCoordinates(viewProvider, SbVec2f(constrPos[0],constrPos[1]));
+
+                        // cursorPos is SbVec2s in screen coordinates coming from SoEvent in mousemove
+                        //
+                        // Coordinates of the mouse cursor on the icon, origin at top-left for Qt
+                        // but bottom-left for OIV.
+                        // The coordinates are needed in Qt format, i.e. from top to bottom.
+                        int iconX = cursorPos[0] - iconCoords[0] + iconSize[0]/2,
+                            iconY = cursorPos[1] - iconCoords[1] + iconSize[1]/2;
+                        iconY = iconSize[1] - iconY;
+
+                        for (ConstrIconBBVec::iterator b = edit->combinedConstrBoxes[constrIdsStr].begin();
+                            b != edit->combinedConstrBoxes[constrIdsStr].end(); ++b) {
+
+#ifdef FC_DEBUG
+                            // Useful code to debug coordinates and bounding boxes that does not need to be compiled in for
+                            // any debug operations.
+
+                            /*Base::Console().Log("Abs(%f,%f),Trans(%f,%f),Coords(%d,%d),iCoords(%f,%f),icon(%d,%d),isize(%d,%d),boundingbox([%d,%d],[%d,%d])\n", absPos[0],absPos[1],trans[0], trans[1], cursorPos[0], cursorPos[1], iconCoords[0], iconCoords[1], iconX, iconY, iconSize[0], iconSize[1], b->first.topLeft().x(),b->first.topLeft().y(),b->first.bottomRight().x(),b->first.bottomRight().y());*/
+#endif
+
+                            if (b->first.contains(iconX, iconY)) {
+                                // We've found a bounding box that contains the mouse pointer!
+                                for (std::set<int>::iterator k = b->second.begin(); k != b->second.end(); ++k)
+                                    constrIndices.insert(*k);
+                            }
+                        }
+                    }
+                    else {
+                        // It's a constraint icon, not a combined one
+                        QStringList constrIdStrings = constrIdsStr.split(QString::fromLatin1(","));
+                        while (!constrIdStrings.empty())
+                            constrIndices.insert(constrIdStrings.takeAt(0).toInt());
+                    }
+                }
+            }
+            else {
+                // other constraint icons - eg radius...
+                constrIndices.clear();
+                constrIndices.insert(i);
+            }
+            break;
+        }
+    }
+
+    return constrIndices;
+}
+
+SbVec3s CoinManager::getDisplayedSize(const SoImage *iconPtr) const
+{
+#if (COIN_MAJOR_VERSION >= 3)
+    SbVec3s iconSize = iconPtr->image.getValue().getSize();
+#else
+    SbVec2s size;
+    int nc;
+    const unsigned char * bytes = iconPtr->image.getValue(size, nc);
+    SbImage img (bytes, size, nc);
+    SbVec3s iconSize = img.getSize();
+#endif
+    if (iconPtr->width.getValue() != -1)
+        iconSize[0] = iconPtr->width.getValue();
+    if (iconPtr->height.getValue() != -1)
+        iconSize[1] = iconPtr->height.getValue();
+    return iconSize;
 }

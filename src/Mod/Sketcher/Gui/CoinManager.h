@@ -34,6 +34,8 @@
 
 class SbVec3f;
 class SoRayPickAction;
+class SoPickedPoint;
+class SbVec3s;
 
 namespace Base {
     template< typename T >
@@ -89,12 +91,10 @@ private:
     static inline std::unique_ptr<SoRayPickAction> getRayPickAction(ViewProviderSketch & vp);
 
     static float getScaleFactor(ViewProviderSketch & vp);
+    static SbVec2f getScreenCoordinates(ViewProviderSketch & vp, SbVec2f sketchcoordinates);
 
     friend class CoinManager;
 };
-
-
-
 
 /** @brief      Class for managing the Coin nodes of ViewProviderSketch.
  *  @details    To be documented.
@@ -150,6 +150,27 @@ class SketcherGuiExport CoinManager
         float boundingBoxMagnitudeOrder = 0;
         std::vector<int> bsplineGeoIds;
 
+    };
+
+    struct PreselectionResult {
+        enum class Axes {
+            None,
+            RootPoint,
+            HorizontalAxis,
+            VerticalAxis
+        };
+
+        int ptIndex = -1;
+        int geoIndex = -1; // valid values are 0,1,2,... for normal geometry and -3,-4,-5,... for external geometry
+        Axes axes = Axes::None;
+        std::set<int> constrIndices;
+
+        inline void clear() {
+            ptIndex = -1;
+            geoIndex = -1;
+            axes = Axes::None;
+            constrIndices.clear();
+        }
     };
 
 private:
@@ -217,6 +238,8 @@ public:
     float getboundingBoxMagnitudeOrder() { return analysisResults.boundingBoxMagnitudeOrder;}
     //@}
 
+    PreselectionResult detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos);
+
 private:
     // This function populates the coin nodes with the information of the current geometry
     void processGeometry(const GeoList & geolist);
@@ -248,6 +271,12 @@ private:
     /// Return display string for constraint including hiding units if
     //requested.
     QString getPresentationString(const Sketcher::Constraint *constraint);
+
+    std::set<int> detectPreselectionConstr( const SoPickedPoint *Point,
+                                            const SbVec2s &cursorPos);
+
+    /// Returns the size that Coin should display the indicated image at
+    SbVec3s getDisplayedSize(const SoImage *) const;
 
 private:
     ViewProviderSketch & viewProvider;

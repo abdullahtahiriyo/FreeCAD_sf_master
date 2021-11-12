@@ -223,8 +223,6 @@ public:
     /// moves a selected constraint
     void moveConstraint(int constNum, const Base::Vector2d &toPos);
 
-
-    float getScaleFactor();
     int getPreselectPoint(void) const;
     int getPreselectCurve(void) const;
     int getPreselectCross(void) const;
@@ -328,6 +326,8 @@ private:
 
     SbVec2f getScreenCoordinates(SbVec2f sketchcoordinates);
 
+    float getScaleFactor();
+
 protected:
     boost::signals2::connection connectUndoDocument;
     boost::signals2::connection connectRedoDocument;
@@ -423,9 +423,6 @@ protected:
 
     /// Essentially a version of sendConstraintIconToCoin, with a blank icon
     void clearCoinImage(SoImage *soImagePtr);
-
-    /// Returns the size that Coin should display the indicated image at
-    SbVec3s getDisplayedSize(const SoImage *) const;
     //@}
 
     void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
