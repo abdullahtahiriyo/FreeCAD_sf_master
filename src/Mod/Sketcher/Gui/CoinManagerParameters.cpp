@@ -55,3 +55,23 @@ SbColor DrawingParameters::ConstrIcoColor                           (1.0f,0.149f
 SbColor DrawingParameters::NonDrivingConstrDimColor                 (0.0f,0.149f,1.0f);   // #0026FF -> (  0, 38,255)
 SbColor DrawingParameters::ExprBasedConstrDimColor                  (1.0f,0.5f,0.149f);   // #FF7F26 -> (255, 127,38)
 SbColor DrawingParameters::DeactivatedConstrDimColor                (0.8f,0.8f,0.8f);     // #CCCCCC -> (204,204,204)
+
+QColor DrawingParameters::constrIcoColor(           (int)(DrawingParameters::ConstrIcoColor [0] * 255.0f),
+                                                    (int)(DrawingParameters::ConstrIcoColor[1] * 255.0f),
+                                                    (int)(DrawingParameters::ConstrIcoColor[2] * 255.0f));
+
+QColor DrawingParameters::nonDrivingConstrIcoColor( (int)(DrawingParameters::NonDrivingConstrDimColor[0] * 255.0f),
+                                                    (int)(DrawingParameters::NonDrivingConstrDimColor[1] * 255.0f),
+                                                    (int)(DrawingParameters::NonDrivingConstrDimColor[2] * 255.0f));
+
+QColor DrawingParameters::constrIconSelColor (      (int)(DrawingParameters::SelectColor[0] * 255.0f),
+                                                    (int)(DrawingParameters::SelectColor[1] * 255.0f),
+                                                    (int)(DrawingParameters::SelectColor[2] * 255.0f));
+
+QColor DrawingParameters::constrIconPreselColor (   (int)(DrawingParameters::PreselectColor[0] * 255.0f),
+                                                    (int)(DrawingParameters::PreselectColor[1] * 255.0f),
+                                                    (int)(DrawingParameters::PreselectColor[2] * 255.0f));
+
+QColor DrawingParameters::constrIconDisabledColor ( (int)(DrawingParameters::DeactivatedConstrDimColor[0] * 255.0f),
+                                                    (int)(DrawingParameters::DeactivatedConstrDimColor[1] * 255.0f),
+                                                    (int)(DrawingParameters::DeactivatedConstrDimColor[2] * 255.0f));

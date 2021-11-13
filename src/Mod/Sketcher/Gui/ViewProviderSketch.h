@@ -177,15 +177,6 @@ public:
 
     /** @name helper functions */
     //@{
-    /// give the coordinates of a line on the sketch plane in sketcher (2D) coordinates
-    void getCoordsOnSketchPlane(double &u, double &v, const SbVec3f &point,
-                                const SbVec3f &normal);
-
-    /// give projecting line of position
-    void getProjectingLine(const SbVec2s&,
-                           const Gui::View3DInventorViewer *viewer,
-                           SbLine&) const;
-
     /// helper to detect preselection
     bool detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos);
 
@@ -250,6 +241,8 @@ public:
     virtual bool mouseButtonPressed(int Button, bool pressed, const SbVec2s& cursorPos, const Gui::View3DInventorViewer* viewer) override;
     //@}
 
+    float getScaleFactor() const;
+
     void deleteSelected();
 
     /// updates the visibility of the virtual space
@@ -303,12 +296,16 @@ private:
                         bool geometrywithmemoryallocation,
                         std::vector<std::unique_ptr<Part::Geometry>> &deepCopiesToDelete);
 
-    /// Draw all constraint icons
-    /*! Except maybe the radius and lock ones? */
-    void drawConstraintIcons();
-
     /// helper to detect whether the picked point lies on the sketch
     bool isPointOnSketch(const SoPickedPoint *pp) const;
+
+    /// give the coordinates of a line on the sketch plane in sketcher (2D) coordinates
+    void getCoordsOnSketchPlane(const SbVec3f &point, const SbVec3f &normal, double &u, double &v) const;
+
+    /// give projecting line of position
+    void getProjectingLine(const SbVec2s&,
+                           const Gui::View3DInventorViewer *viewer,
+                           SbLine&) const;
 
     /* private functions to decouple Attorneys and Clients from the internal implementation of
     the ViewProvider and its members, such as sketchObject */
@@ -322,11 +319,13 @@ private:
 
     Base::Placement getEditingPlacement() const;
 
-    std::unique_ptr<SoRayPickAction> getRayPickAction();
+    std::unique_ptr<SoRayPickAction> getRayPickAction() const;
 
-    SbVec2f getScreenCoordinates(SbVec2f sketchcoordinates);
+    SbVec2f getScreenCoordinates(SbVec2f sketchcoordinates) const;
 
-    float getScaleFactor();
+    QFont getApplicationFont() const;
+
+    double getRotation(SbVec3f pos0, SbVec3f pos1) const;
 
 protected:
     boost::signals2::connection connectUndoDocument;
@@ -347,83 +346,6 @@ protected:
     static QString appendConstraintMsg( const QString & singularmsg,
                                         const QString & pluralmsg,
                                         const std::vector<int> &vector);
-
-    /** @name Protected helpers for drawing constraint icons*/
-    //@{
-    QString iconTypeFromConstraint(Sketcher::Constraint *constraint);
-
-    /// Returns a QColor object appropriate for constraint with given id
-    /*! In the case of combined icons, the icon color is chosen based on
-     *  the constraint with the highest priority from constrColorPriority()
-     */
-    QColor constrColor(int constraintId);
-    /// Used by drawMergedConstraintIcons to decide what color to make icons
-    /*! See constrColor() */
-    int constrColorPriority(int constraintId);
-
-    /// Internal type used for drawing constraint icons
-    struct constrIconQueueItem {
-        /// Type of constraint the icon represents.  Eg: "small/Constraint_PointOnObject_sm"
-        QString type;
-
-        /// Internal constraint ID number
-        /// These map to results of getSketchObject()->Constraints.getValues()
-        int constraintId;
-
-        /// Label to be rendered with this icon, if any
-        QString label;
-
-        /// Absolute coordinates of the constraint icon
-        SbVec3f position;
-
-        /// Pointer to the SoImage object where the icon should be written
-        SoImage *destination;
-
-        /// Pointer to SoInfo object where we store the constraint IDs that the icon refers to
-        SoInfo *infoPtr;
-
-        /// Angle to rotate an icon
-        double iconRotation;
-
-        bool visible;
-    };
-
-    /// Internal type used for drawing constraint icons
-    typedef std::vector<constrIconQueueItem> IconQueue;
-    /// For constraint icon bounding boxes
-    typedef std::pair<QRect, std::set<int> > ConstrIconBB;
-    /// For constraint icon bounding boxes
-    typedef std::vector<ConstrIconBB> ConstrIconBBVec;
-
-    void combineConstraintIcons(IconQueue iconQueue);
-
-    /// Renders an icon for a single constraint and sends it to Coin
-    void drawTypicalConstraintIcon(const constrIconQueueItem &i);
-
-    /// Combines multiple constraint icons and sends them to Coin
-    void drawMergedConstraintIcons(IconQueue iconQueue);
-
-    /// Helper for drawMergedConstraintIcons and drawTypicalConstraintIcon
-    QImage renderConstrIcon(const QString &type,
-                            const QColor &iconColor,
-                            const QStringList &labels,
-                            const QList<QColor> &labelColors,
-                            double iconRotation,
-                            //! Gets populated with bounding boxes (in icon
-                            //! image coordinates) for the icon at left, then
-                            //! labels for different constraints.
-                            std::vector<QRect> *boundingBoxes = NULL,
-                            //! If not NULL, gets set to the number of pixels
-                            //! that the text extends below the icon base.
-                            int *vPad = NULL);
-
-    /// Copies a QImage constraint icon into a SoImage*
-    /*! Used by drawTypicalConstraintIcon() and drawMergedConstraintIcons() */
-    void sendConstraintIconToCoin(const QImage &icon, SoImage *soImagePtr);
-
-    /// Essentially a version of sendConstraintIconToCoin, with a blank icon
-    void clearCoinImage(SoImage *soImagePtr);
-    //@}
 
     void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
     void setPositionText(const Base::Vector2d &Pos);

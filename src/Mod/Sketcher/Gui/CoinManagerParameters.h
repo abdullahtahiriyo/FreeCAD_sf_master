@@ -32,6 +32,7 @@
 #endif  // #ifndef _PreComp_
 
 #include <qstring.h>
+#include <qcolor.h>
 
 #include "GeoList.h"
 
@@ -99,6 +100,13 @@ struct DrawingParameters {
 
     // Rendering font information
     int coinFontSize;
+
+    // Icon colors
+    static QColor constrIcoColor;
+    static QColor nonDrivingConstrIcoColor;
+    static QColor constrIconSelColor;
+    static QColor constrIconPreselColor;
+    static QColor constrIconDisabledColor;
 };
 
 /** @brief      Struct for storing the nodes that need to be edited to represent a geometry layer

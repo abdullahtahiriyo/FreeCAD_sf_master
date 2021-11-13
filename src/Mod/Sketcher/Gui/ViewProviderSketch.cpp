@@ -126,15 +126,7 @@
 
 FC_LOG_LEVEL_INIT("Sketch",true,true)
 
-// The first is used to point at a SoDatumLabel for some
-// constraints, and at a SoMaterial for others...
-#define CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL 0
-#define CONSTRAINT_SEPARATOR_INDEX_FIRST_TRANSLATION 1
-#define CONSTRAINT_SEPARATOR_INDEX_FIRST_ICON 2
-#define CONSTRAINT_SEPARATOR_INDEX_FIRST_CONSTRAINTID 3
-#define CONSTRAINT_SEPARATOR_INDEX_SECOND_TRANSLATION 4
-#define CONSTRAINT_SEPARATOR_INDEX_SECOND_ICON 5
-#define CONSTRAINT_SEPARATOR_INDEX_SECOND_CONSTRAINTID 6
+
 
 using namespace SketcherGui;
 using namespace Sketcher;
@@ -481,7 +473,7 @@ Base::Placement ViewProviderSketch::getEditingPlacement() const {
     return Base::Placement(doc->getEditingTransform());
 }
 
-void ViewProviderSketch::getCoordsOnSketchPlane(double &u, double &v,const SbVec3f &point, const SbVec3f &normal)
+void ViewProviderSketch::getCoordsOnSketchPlane(const SbVec3f &point, const SbVec3f &normal, double &u, double &v) const
 {
     // Plane form
     Base::Vector3d R0(0,0,0),RN(0,0,1),RX(1,0,0),RY(0,1,0);
@@ -536,7 +528,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
     }
 
     try {
-        getCoordsOnSketchPlane(x,y,pos,normal);
+        getCoordsOnSketchPlane(pos,normal,x,y);
         snapToGrid(x, y);
     }
     catch (const Base::DivisionByZeroError&) {
@@ -997,7 +989,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
 
     double x,y;
     try {
-        getCoordsOnSketchPlane(x,y,line.getPosition(),line.getDirection());
+        getCoordsOnSketchPlane(line.getPosition(),line.getDirection(),x,y);
         snapToGrid(x, y);
     }
     catch (const Base::DivisionByZeroError&) {
@@ -1021,7 +1013,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
     switch (Mode) {
         case STATUS_NONE:
             if (preselectChanged) {
-                this->drawConstraintIcons();
+                coinManager->drawConstraintIcons();
                 this->updateColor();
                 return true;
             }
@@ -1128,7 +1120,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                     // calculate the click position and use it as initial point.
                     SbLine line2;
                     getProjectingLine(prvCursorPos, viewer, line2);
-                    getCoordsOnSketchPlane(xInit,yInit,line2.getPosition(),line2.getDirection());
+                    getCoordsOnSketchPlane(line2.getPosition(),line2.getDirection(),xInit,yInit);
                     snapToGrid(xInit, yInit);
                 } else {
                     relative = false;
@@ -1215,7 +1207,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
         case STATUS_SKETCH_UseHandler:
             edit->sketchHandler->mouseMove(Base::Vector2d(x,y));
             if (preselectChanged) {
-                this->drawConstraintIcons();
+                coinManager->drawConstraintIcons();
                 this->updateColor();
             }
             return true;
@@ -1483,7 +1475,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                 coinManager->clearSelectPoints();
                 edit->SelCurvSet.clear();
                 edit->SelConstraintSet.clear();
-                this->drawConstraintIcons();
+                coinManager->drawConstraintIcons();
                 this->updateColor();
             }
         }
@@ -1524,7 +1516,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                     else if (shapetype.size() > 10 && shapetype.substr(0,10) == "Constraint") {
                         int ConstrId = Sketcher::PropertyConstraintList::getIndexFromConstraintName(shapetype);
                         edit->SelConstraintSet.insert(ConstrId);
-                        this->drawConstraintIcons();
+                        coinManager->drawConstraintIcons();
                         this->updateColor();
                     }
                 }
@@ -1569,7 +1561,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                         else if (shapetype.size() > 10 && shapetype.substr(0,10) == "Constraint") {
                             int ConstrId = Sketcher::PropertyConstraintList::getIndexFromConstraintName(shapetype);
                             edit->SelConstraintSet.erase(ConstrId);
-                            this->drawConstraintIcons();
+                            coinManager->drawConstraintIcons();
                             this->updateColor();
                         }
                     }
@@ -1638,21 +1630,13 @@ bool ViewProviderSketch::detectPreselection(SoPickedPoint * Point, const SbVec2s
 {
     assert(edit);
 
-    //
-    int GeoIndex = -1; // valid values are 0,1,2,... for normal geometry and -3,-4,-5,... for external geometry
-    int CrossIndex = -1;
-    std::set<int> constrIndices;
-
     if (Point) {
 
-        PreselectionResult result = coinManager->detectPreselection(Point, cursorPos);
+        CoinManager::PreselectionResult result = coinManager->detectPreselection(Point, cursorPos);
 
-        int PtIndex = result.
-
-
-        if (PtIndex != -1 && PtIndex != edit->PreselectPoint) { // if a new point is hit
+        if (result.ptIndex != -1 && result.ptIndex != edit->PreselectPoint) { // if a new point is hit
             std::stringstream ss;
-            ss << "Vertex" << PtIndex + 1;
+            ss << "Vertex" << result.ptIndex + 1;
             bool accepted =
             Gui::Selection().setPreselect(SEL_PARAMS
                                          ,Point->getPoint()[0]
@@ -1660,7 +1644,7 @@ bool ViewProviderSketch::detectPreselection(SoPickedPoint * Point, const SbVec2s
                                          ,Point->getPoint()[2]) != 0;
             edit->blockedPreselection = !accepted;
             if (accepted) {
-                coinManager->setPreselectPoint(PtIndex);
+                coinManager->setPreselectPoint(result.ptIndex);
                 edit->PreselectCurve = -1;
                 edit->PreselectCross = -1;
                 edit->PreselectConstraintSet.clear();
@@ -1668,12 +1652,12 @@ bool ViewProviderSketch::detectPreselection(SoPickedPoint * Point, const SbVec2s
                     edit->sketchHandler->applyCursor();
                 return true;
             }
-        } else if (GeoIndex != -1 && GeoIndex != edit->PreselectCurve) {  // if a new curve is hit
+        } else if (result.geoIndex != -1 && result.geoIndex != edit->PreselectCurve) {  // if a new curve is hit
             std::stringstream ss;
-            if (GeoIndex >= 0)
-                ss << "Edge" << GeoIndex + 1;
+            if (result.geoIndex >= 0)
+                ss << "Edge" << result.geoIndex + 1;
             else // external geometry
-                ss << "ExternalEdge" << -GeoIndex + Sketcher::GeoEnum::RefExt + 1; // convert index start from -3 to 1
+                ss << "ExternalEdge" << -result.geoIndex + Sketcher::GeoEnum::RefExt + 1; // convert index start from -3 to 1
             bool accepted =
             Gui::Selection().setPreselect(SEL_PARAMS
                                          ,Point->getPoint()[0]
@@ -1682,19 +1666,20 @@ bool ViewProviderSketch::detectPreselection(SoPickedPoint * Point, const SbVec2s
             edit->blockedPreselection = !accepted;
             if (accepted) {
                 coinManager->resetPreselectPoint();
-                edit->PreselectCurve = GeoIndex;
+                edit->PreselectCurve = result.geoIndex;
                 edit->PreselectCross = -1;
                 edit->PreselectConstraintSet.clear();
                 if (edit->sketchHandler)
                     edit->sketchHandler->applyCursor();
                 return true;
             }
-        } else if (CrossIndex != -1 && CrossIndex != edit->PreselectCross) {  // if a cross line is hit
+        } else if (result.axes != CoinManager::PreselectionResult::Axes::None  && static_cast<int>(result.axes) != edit->PreselectCross) {  // if a cross line is hit
             std::stringstream ss;
-            switch(CrossIndex){
-                case 0: ss << "RootPoint" ; break;
-                case 1: ss << "H_Axis"    ; break;
-                case 2: ss << "V_Axis"    ; break;
+            switch(result.axes){
+                case CoinManager::PreselectionResult::Axes::RootPoint:      ss << "RootPoint" ; break;
+                case CoinManager::PreselectionResult::Axes::HorizontalAxis: ss << "H_Axis"    ; break;
+                case CoinManager::PreselectionResult::Axes::VerticalAxis:   ss << "V_Axis"    ; break;
+                case CoinManager::PreselectionResult::Axes::None:           break; // silent warning - be explicit
             }
             bool accepted =
             Gui::Selection().setPreselect(SEL_PARAMS
@@ -1703,20 +1688,20 @@ bool ViewProviderSketch::detectPreselection(SoPickedPoint * Point, const SbVec2s
                                          ,Point->getPoint()[2]) != 0;
             edit->blockedPreselection = !accepted;
             if (accepted) {
-                if (CrossIndex == 0)
+                if (result.axes == CoinManager::PreselectionResult::Axes::RootPoint)
                     coinManager->setPreselectPoint(-1);
                 else
                     coinManager->resetPreselectPoint();
                 edit->PreselectCurve = -1;
-                edit->PreselectCross = CrossIndex;
+                edit->PreselectCross = static_cast<int>(result.axes);
                 edit->PreselectConstraintSet.clear();
                 if (edit->sketchHandler)
                     edit->sketchHandler->applyCursor();
                 return true;
             }
-        } else if (constrIndices.empty() == false && constrIndices != edit->PreselectConstraintSet) { // if a constraint is hit
+        } else if (result.constrIndices.empty() == false && result.constrIndices != edit->PreselectConstraintSet) { // if a constraint is hit
             bool accepted = true;
-            for(std::set<int>::iterator it = constrIndices.begin(); it != constrIndices.end(); ++it) {
+            for(std::set<int>::iterator it = result.constrIndices.begin(); it != result.constrIndices.end(); ++it) {
                 std::stringstream ss;
                 ss << Sketcher::PropertyConstraintList::getConstraintName(*it);
 
@@ -1733,12 +1718,13 @@ bool ViewProviderSketch::detectPreselection(SoPickedPoint * Point, const SbVec2s
                 coinManager->resetPreselectPoint();
                 edit->PreselectCurve = -1;
                 edit->PreselectCross = -1;
-                edit->PreselectConstraintSet = constrIndices;
+                edit->PreselectConstraintSet = result.constrIndices;
                 if (edit->sketchHandler)
                     edit->sketchHandler->applyCursor();
                 return true;//Preselection changed
             }
-        } else if ((PtIndex == -1 && GeoIndex == -1 && CrossIndex == -1 && constrIndices.empty()) &&
+        } else if ((result.ptIndex == -1 && result.geoIndex == -1 &&
+                    result.axes == CoinManager::PreselectionResult::Axes::None && result.constrIndices.empty()) &&
                    (edit->PreselectPoint != -1 || edit->PreselectCurve != -1 || edit->PreselectCross != -1
                     || edit->PreselectConstraintSet.empty() != true || edit->blockedPreselection)) {
             // we have just left a preselection
@@ -2425,573 +2411,7 @@ bool ViewProviderSketch::doubleClicked(void)
     return true;
 }
 
-
-
-QString ViewProviderSketch::iconTypeFromConstraint(Constraint *constraint)
-{
-    /*! TODO: Consider pushing this functionality up into Constraint
-     *
-     Abdullah: Please, don't. An icon is visualisation information and
-     does not belong in App, but in Gui. Rather consider refactoring it
-     in a separate class dealing with visualisation of constraints.*/
-
-    switch(constraint->Type) {
-    case Horizontal:
-        return QString::fromLatin1("Constraint_Horizontal");
-    case Vertical:
-        return QString::fromLatin1("Constraint_Vertical");
-    case PointOnObject:
-        return QString::fromLatin1("Constraint_PointOnObject");
-    case Tangent:
-        return QString::fromLatin1("Constraint_Tangent");
-    case Parallel:
-        return QString::fromLatin1("Constraint_Parallel");
-    case Perpendicular:
-        return QString::fromLatin1("Constraint_Perpendicular");
-    case Equal:
-        return QString::fromLatin1("Constraint_EqualLength");
-    case Symmetric:
-        return QString::fromLatin1("Constraint_Symmetric");
-    case SnellsLaw:
-        return QString::fromLatin1("Constraint_SnellsLaw");
-    case Block:
-        return QString::fromLatin1("Constraint_Block");
-    default:
-        return QString();
-    }
-}
-
-void ViewProviderSketch::sendConstraintIconToCoin(const QImage &icon, SoImage *soImagePtr)
-{
-    SoSFImage icondata = SoSFImage();
-
-    Gui::BitmapFactory().convert(icon, icondata);
-
-    SbVec2s iconSize(icon.width(), icon.height());
-
-    int four = 4;
-    soImagePtr->image.setValue(iconSize, 4, icondata.getValue(iconSize, four));
-
-    //Set Image Alignment to Center
-    soImagePtr->vertAlignment = SoImage::HALF;
-    soImagePtr->horAlignment = SoImage::CENTER;
-}
-
-void ViewProviderSketch::clearCoinImage(SoImage *soImagePtr)
-{
-    soImagePtr->setToDefaults();
-}
-
-QColor ViewProviderSketch::constrColor(int constraintId)
-{
-    static QColor constrIcoColor((int)(ConstrIcoColor [0] * 255.0f),
-                                 (int)(ConstrIcoColor[1] * 255.0f),
-                                 (int)(ConstrIcoColor[2] * 255.0f));
-    static QColor nonDrivingConstrIcoColor((int)(NonDrivingConstrDimColor[0] * 255.0f),
-                                 (int)(NonDrivingConstrDimColor[1] * 255.0f),
-                                 (int)(NonDrivingConstrDimColor[2] * 255.0f));
-    static QColor constrIconSelColor ((int)(SelectColor[0] * 255.0f),
-                                      (int)(SelectColor[1] * 255.0f),
-                                      (int)(SelectColor[2] * 255.0f));
-    static QColor constrIconPreselColor ((int)(PreselectColor[0] * 255.0f),
-                                         (int)(PreselectColor[1] * 255.0f),
-                                         (int)(PreselectColor[2] * 255.0f));
-
-    static QColor constrIconDisabledColor ((int)(DeactivatedConstrDimColor[0] * 255.0f),
-                                           (int)(DeactivatedConstrDimColor[1] * 255.0f),
-                                           (int)(DeactivatedConstrDimColor[2] * 255.0f));
-
-    const std::vector<Sketcher::Constraint *> &constraints = getSketchObject()->Constraints.getValues();
-
-    if (edit->PreselectConstraintSet.count(constraintId))
-        return constrIconPreselColor;
-    else if (edit->SelConstraintSet.find(constraintId) != edit->SelConstraintSet.end())
-        return constrIconSelColor;
-    else if(!constraints[constraintId]->isActive)
-        return constrIconDisabledColor;
-    else if(!constraints[constraintId]->isDriving)
-        return nonDrivingConstrIcoColor;
-    else
-        return constrIcoColor;
-
-}
-
-int ViewProviderSketch::constrColorPriority(int constraintId)
-{
-    if (edit->PreselectConstraintSet.count(constraintId))
-        return 3;
-    else if (edit->SelConstraintSet.find(constraintId) != edit->SelConstraintSet.end())
-        return 2;
-    else
-        return 1;
-}
-
-// public function that triggers drawing of most constraint icons
-void ViewProviderSketch::drawConstraintIcons()
-{
-    const std::vector<Sketcher::Constraint *> &constraints = getSketchObject()->Constraints.getValues();
-    int constrId = 0;
-
-    std::vector<constrIconQueueItem> iconQueue;
-
-    for (std::vector<Sketcher::Constraint *>::const_iterator it=constraints.begin();
-         it != constraints.end(); ++it, ++constrId) {
-
-        // Check if Icon Should be created
-        bool multipleIcons = false;
-
-        QString icoType = iconTypeFromConstraint(*it);
-        if(icoType.isEmpty())
-            continue;
-
-        switch((*it)->Type) {
-
-        case Tangent:
-            {   // second icon is available only for colinear line segments
-                const Part::Geometry *geo1 = getSketchObject()->getGeometry((*it)->First);
-                const Part::Geometry *geo2 = getSketchObject()->getGeometry((*it)->Second);
-                if (geo1 && geo1->getTypeId() == Part::GeomLineSegment::getClassTypeId() &&
-                    geo2 && geo2->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
-                    multipleIcons = true;
-                }
-            }
-            break;
-        case Horizontal:
-        case Vertical:
-            {   // second icon is available only for point alignment
-                if ((*it)->Second != Constraint::GeoUndef &&
-                    (*it)->FirstPos != Sketcher::none &&
-                    (*it)->SecondPos != Sketcher::none) {
-                    multipleIcons = true;
-                }
-            }
-            break;
-        case Parallel:
-            multipleIcons = true;
-            break;
-        case Perpendicular:
-            // second icon is available only when there is no common point
-            if ((*it)->FirstPos == Sketcher::none && (*it)->Third == Constraint::GeoUndef)
-                multipleIcons = true;
-            break;
-        case Equal:
-            multipleIcons = true;
-            break;
-        default:
-            break;
-        }
-
-        // Double-check that we can safely access the Inventor nodes
-        if (constrId >= edit->constrGroup->getNumChildren()) {
-            Base::Console().Warning("Can't update constraint icons because view is not in sync with sketch\n");
-            break;
-        }
-
-        // Find the Constraint Icon SoImage Node
-        SoSeparator *sep = static_cast<SoSeparator *>(edit->constrGroup->getChild(constrId));
-        int numChildren = sep->getNumChildren();
-
-        SbVec3f absPos;
-        // Somewhat hacky - we use SoZoomTranslations for most types of icon,
-        // but symmetry icons use SoTranslations...
-        SoTranslation *translationPtr = static_cast<SoTranslation *>(sep->getChild(CONSTRAINT_SEPARATOR_INDEX_FIRST_TRANSLATION));
-        if(dynamic_cast<SoZoomTranslation *>(translationPtr))
-            absPos = static_cast<SoZoomTranslation *>(translationPtr)->abPos.getValue();
-        else
-            absPos = translationPtr->translation.getValue();
-
-        SoImage *coinIconPtr = dynamic_cast<SoImage *>(sep->getChild(CONSTRAINT_SEPARATOR_INDEX_FIRST_ICON));
-        SoInfo *infoPtr = static_cast<SoInfo *>(sep->getChild(CONSTRAINT_SEPARATOR_INDEX_FIRST_CONSTRAINTID));
-
-        constrIconQueueItem thisIcon;
-        thisIcon.type = icoType;
-        thisIcon.constraintId = constrId;
-        thisIcon.position = absPos;
-        thisIcon.destination = coinIconPtr;
-        thisIcon.infoPtr = infoPtr;
-        thisIcon.visible = (*it)->isInVirtualSpace == getIsShownVirtualSpace();
-
-        if ((*it)->Type==Symmetric) {
-            Base::Vector3d startingpoint = getSketchObject()->getPoint((*it)->First,(*it)->FirstPos);
-            Base::Vector3d endpoint = getSketchObject()->getPoint((*it)->Second,(*it)->SecondPos);
-
-            double x0,y0,x1,y1;
-            SbVec3f pos0(startingpoint.x,startingpoint.y,startingpoint.z);
-            SbVec3f pos1(endpoint.x,endpoint.y,endpoint.z);
-
-            Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(edit->EditRoot);
-            if (!(mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())))
-                return;
-            Gui::View3DInventorViewer *viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
-            SoCamera* pCam = viewer->getSoRenderManager()->getCamera();
-            if (!pCam)
-                return;
-
-            try {
-                SbViewVolume vol = pCam->getViewVolume();
-
-                getCoordsOnSketchPlane(x0,y0,pos0,vol.getProjectionDirection());
-                getCoordsOnSketchPlane(x1,y1,pos1,vol.getProjectionDirection());
-
-                thisIcon.iconRotation = -atan2((y1-y0),(x1-x0))*180/M_PI;
-            }
-            catch (const Base::DivisionByZeroError&) {
-                thisIcon.iconRotation = 0;
-            }
-        }
-        else {
-            thisIcon.iconRotation = 0;
-        }
-
-        if (multipleIcons) {
-            if((*it)->Name.empty())
-                thisIcon.label = QString::number(constrId + 1);
-            else
-                thisIcon.label = QString::fromUtf8((*it)->Name.c_str());
-            iconQueue.push_back(thisIcon);
-
-            // Note that the second translation is meant to be applied after the first.
-            // So, to get the position of the second icon, we add the two translations together
-            //
-            // See note ~30 lines up.
-            if (numChildren > CONSTRAINT_SEPARATOR_INDEX_SECOND_CONSTRAINTID) {
-                translationPtr = static_cast<SoTranslation *>(sep->getChild(CONSTRAINT_SEPARATOR_INDEX_SECOND_TRANSLATION));
-                if(dynamic_cast<SoZoomTranslation *>(translationPtr))
-                    thisIcon.position += static_cast<SoZoomTranslation *>(translationPtr)->abPos.getValue();
-                else
-                    thisIcon.position += translationPtr->translation.getValue();
-
-                thisIcon.destination = dynamic_cast<SoImage *>(sep->getChild(CONSTRAINT_SEPARATOR_INDEX_SECOND_ICON));
-                thisIcon.infoPtr = static_cast<SoInfo *>(sep->getChild(CONSTRAINT_SEPARATOR_INDEX_SECOND_CONSTRAINTID));
-            }
-        }
-        else {
-            if ((*it)->Name.empty())
-                thisIcon.label = QString();
-            else
-                thisIcon.label = QString::fromUtf8((*it)->Name.c_str());
-        }
-
-        iconQueue.push_back(thisIcon);
-    }
-
-    combineConstraintIcons(iconQueue);
-}
-
-void ViewProviderSketch::combineConstraintIcons(IconQueue iconQueue)
-{
-    // getScaleFactor gives us a ratio of pixels per some kind of real units
-    float maxDistSquared = pow(getScaleFactor(), 2);
-
-    // There's room for optimisation here; we could reuse the combined icons...
-    edit->combinedConstrBoxes.clear();
-
-    while(!iconQueue.empty()) {
-        // A group starts with an item popped off the back of our initial queue
-        IconQueue thisGroup;
-        thisGroup.push_back(iconQueue.back());
-        ViewProviderSketch::constrIconQueueItem init = iconQueue.back();
-        iconQueue.pop_back();
-
-        // we group only icons not being Symmetry icons, because we want those on the line
-        // and only icons that are visible
-        if(init.type != QString::fromLatin1("Constraint_Symmetric") && init.visible){
-
-            IconQueue::iterator i = iconQueue.begin();
-
-
-            while(i != iconQueue.end()) {
-                if((*i).visible) {
-                    bool addedToGroup = false;
-
-                    for(IconQueue::iterator j = thisGroup.begin();
-                        j != thisGroup.end(); ++j) {
-                        float distSquared = pow(i->position[0]-j->position[0],2) + pow(i->position[1]-j->position[1],2);
-                        if(distSquared <= maxDistSquared && (*i).type != QString::fromLatin1("Constraint_Symmetric")) {
-                            // Found an icon in iconQueue that's close enough to
-                            // a member of thisGroup, so move it into thisGroup
-                            thisGroup.push_back(*i);
-                            i = iconQueue.erase(i);
-                            addedToGroup = true;
-                            break;
-                        }
-                    }
-
-                    if(addedToGroup) {
-                        if(i == iconQueue.end())
-                            // We just got the last icon out of iconQueue
-                            break;
-                        else
-                            // Start looking through the iconQueue again, in case
-                            // we have an icon that's now close enough to thisGroup
-                            i = iconQueue.begin();
-                    } else
-                        ++i;
-                }
-                else // if !visible we skip it
-                   i++;
-            }
-
-        }
-
-        if(thisGroup.size() == 1) {
-            drawTypicalConstraintIcon(thisGroup[0]);
-        }
-        else {
-            drawMergedConstraintIcons(thisGroup);
-        }
-    }
-}
-
-void ViewProviderSketch::drawMergedConstraintIcons(IconQueue iconQueue)
-{
-    for(IconQueue::iterator i = iconQueue.begin(); i != iconQueue.end(); ++i) {
-        clearCoinImage(i->destination);
-    }
-
-    QImage compositeIcon;
-    SoImage *thisDest = iconQueue[0].destination;
-    SoInfo *thisInfo = iconQueue[0].infoPtr;
-
-    // Tracks all constraint IDs that are combined into this icon
-    QString idString;
-    int lastVPad = 0;
-
-    QStringList labels;
-    std::vector<int> ids;
-    QString thisType;
-    QColor iconColor;
-    QList<QColor> labelColors;
-    int maxColorPriority;
-    double iconRotation;
-
-    ConstrIconBBVec boundingBoxes;
-    while(!iconQueue.empty()) {
-        IconQueue::iterator i = iconQueue.begin();
-
-        labels.clear();
-        labels.append(i->label);
-
-        ids.clear();
-        ids.push_back(i->constraintId);
-
-        thisType = i->type;
-        iconColor = constrColor(i->constraintId);
-        labelColors.clear();
-        labelColors.append(iconColor);
-        iconRotation= i->iconRotation;
-
-        maxColorPriority = constrColorPriority(i->constraintId);
-
-        if(idString.length())
-            idString.append(QString::fromLatin1(","));
-        idString.append(QString::number(i->constraintId));
-
-        i = iconQueue.erase(i);
-        while(i != iconQueue.end()) {
-            if(i->type != thisType) {
-                ++i;
-                continue;
-            }
-
-            labels.append(i->label);
-            ids.push_back(i->constraintId);
-            labelColors.append(constrColor(i->constraintId));
-
-            if(constrColorPriority(i->constraintId) > maxColorPriority) {
-                maxColorPriority = constrColorPriority(i->constraintId);
-                iconColor= constrColor(i->constraintId);
-            }
-
-            idString.append(QString::fromLatin1(",") +
-                            QString::number(i->constraintId));
-
-            i = iconQueue.erase(i);
-        }
-
-        // To be inserted into edit->combinedConstBoxes
-        std::vector<QRect> boundingBoxesVec;
-        int oldHeight = 0;
-
-        // Render the icon here.
-        if(compositeIcon.isNull()) {
-            compositeIcon = renderConstrIcon(thisType,
-                                             iconColor,
-                                             labels,
-                                             labelColors,
-                                             iconRotation,
-                                             &boundingBoxesVec,
-                                             &lastVPad);
-        } else {
-            int thisVPad;
-            QImage partialIcon = renderConstrIcon(thisType,
-                                                  iconColor,
-                                                  labels,
-                                                  labelColors,
-                                                  iconRotation,
-                                                  &boundingBoxesVec,
-                                                  &thisVPad);
-
-            // Stack vertically for now.  Down the road, it might make sense
-            // to figure out the best orientation automatically.
-            oldHeight = compositeIcon.height();
-
-            // This is overkill for the currently used (20 July 2014) font,
-            // since it always seems to have the same vertical pad, but this
-            // might not always be the case.  The 3 pixel buffer might need
-            // to vary depending on font size too...
-            oldHeight -= std::max(lastVPad - 3, 0);
-
-            compositeIcon = compositeIcon.copy(0, 0,
-                                               std::max(partialIcon.width(),
-                                                        compositeIcon.width()),
-                                               partialIcon.height() +
-                                               compositeIcon.height());
-
-            QPainter qp(&compositeIcon);
-            qp.drawImage(0, oldHeight, partialIcon);
-
-            lastVPad = thisVPad;
-        }
-
-        // Add bounding boxes for the icon we just rendered to boundingBoxes
-        std::vector<int>::iterator id = ids.begin();
-        std::set<int> nextIds;
-        for(std::vector<QRect>::iterator bb = boundingBoxesVec.begin();
-            bb != boundingBoxesVec.end(); ++bb) {
-            nextIds.clear();
-
-            if(bb == boundingBoxesVec.begin()) {
-                // The first bounding box is for the icon at left, so assign
-                // all IDs for that type of constraint to the icon.
-                for(std::vector<int>::iterator j = ids.begin(); j != ids.end(); ++j)
-                    nextIds.insert(*j);
-            }
-            else {
-                nextIds.insert(*(id++));
-            }
-
-            ConstrIconBB newBB(bb->adjusted(0, oldHeight, 0, oldHeight),
-                               nextIds);
-
-            boundingBoxes.push_back(newBB);
-        }
-    }
-
-    edit->combinedConstrBoxes[idString] = boundingBoxes;
-    thisInfo->string.setValue(idString.toLatin1().data());
-    sendConstraintIconToCoin(compositeIcon, thisDest);
-}
-
-
-/// Note: labels, labelColors, and boundingBoxes are all
-/// assumed to be the same length.
-QImage ViewProviderSketch::renderConstrIcon(const QString &type,
-                                            const QColor &iconColor,
-                                            const QStringList &labels,
-                                            const QList<QColor> &labelColors,
-                                            double iconRotation,
-                                            std::vector<QRect> *boundingBoxes,
-                                            int *vPad)
-{
-    // Constants to help create constraint icons
-    QString joinStr = QString::fromLatin1(", ");
-
-    QPixmap pxMap;
-    std::stringstream constraintName;
-    constraintName << type.toLatin1().data() << edit->constraintIconSize; // allow resizing by embedding size
-    if (! Gui::BitmapFactory().findPixmapInCache(constraintName.str().c_str(), pxMap)) {
-        pxMap = Gui::BitmapFactory().pixmapFromSvg(type.toLatin1().data(),QSizeF(edit->constraintIconSize,edit->constraintIconSize));
-        Gui::BitmapFactory().addPixmapToCache(constraintName.str().c_str(), pxMap); // Cache for speed, avoiding pixmapFromSvg
-    }
-    QImage icon = pxMap.toImage();
-
-    QFont font = QApplication::font();
-    font.setPixelSize(static_cast<int>(1.0 * edit->constraintIconSize));
-    font.setBold(true);
-    QFontMetrics qfm = QFontMetrics(font);
-
-    int labelWidth = qfm.boundingRect(labels.join(joinStr)).width();
-    // See Qt docs on qRect::bottom() for explanation of the +1
-    int pxBelowBase = qfm.boundingRect(labels.join(joinStr)).bottom() + 1;
-
-    if(vPad)
-        *vPad = pxBelowBase;
-
-    QTransform rotation;
-    rotation.rotate(iconRotation);
-
-    QImage roticon = icon.transformed(rotation);
-    QImage image = roticon.copy(0, 0, roticon.width() + labelWidth,
-                                                        roticon.height() + pxBelowBase);
-
-    // Make a bounding box for the icon
-    if(boundingBoxes)
-        boundingBoxes->push_back(QRect(0, 0, roticon.width(), roticon.height()));
-
-    // Render the Icons
-    QPainter qp(&image);
-    qp.setCompositionMode(QPainter::CompositionMode_SourceIn);
-    qp.fillRect(roticon.rect(), iconColor);
-
-    // Render constraint label if necessary
-    if (!labels.join(QString()).isEmpty()) {
-        qp.setCompositionMode(QPainter::CompositionMode_SourceOver);
-        qp.setFont(font);
-
-        int cursorOffset = 0;
-
-        //In Python: "for label, color in zip(labels, labelColors):"
-        QStringList::const_iterator labelItr;
-        QString labelStr;
-        QList<QColor>::const_iterator colorItr;
-        QRect labelBB;
-        for(labelItr = labels.begin(), colorItr = labelColors.begin();
-            labelItr != labels.end() && colorItr != labelColors.end();
-            ++labelItr, ++colorItr) {
-
-            qp.setPen(*colorItr);
-
-            if(labelItr + 1 == labels.end()) // if this is the last label
-                labelStr = *labelItr;
-            else
-                labelStr = *labelItr + joinStr;
-
-            // Note: text can sometimes draw to the left of the starting
-            //       position, eg italic fonts.  Check QFontMetrics
-            //       documentation for more info, but be mindful if the
-            //       icon.width() is ever very small (or removed).
-            qp.drawText(icon.width() + cursorOffset, icon.height(), labelStr);
-
-            if(boundingBoxes) {
-                labelBB = qfm.boundingRect(labelStr);
-                labelBB.moveTo(icon.width() + cursorOffset,
-                               icon.height() - qfm.height() + pxBelowBase);
-                boundingBoxes->push_back(labelBB);
-            }
-
-            cursorOffset += Gui::QtTools::horizontalAdvance(qfm, labelStr);
-        }
-    }
-
-    return image;
-}
-
-void ViewProviderSketch::drawTypicalConstraintIcon(const constrIconQueueItem &i)
-{
-    QColor color = constrColor(i.constraintId);
-
-    QImage image = renderConstrIcon(i.type,
-                                    color,
-                                    QStringList(i.label),
-                                    QList<QColor>() << color,
-                                    i.iconRotation);
-
-    i.infoPtr->string.setValue(QString::number(i.constraintId).toLatin1().data());
-    sendConstraintIconToCoin(image, i.destination);
-}
-
-float ViewProviderSketch::getScaleFactor()
+float ViewProviderSketch::getScaleFactor() const
 {
     assert(edit);
     Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(edit->EditRoot);
@@ -3268,7 +2688,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 
     // Avoids unneeded calls to pixmapFromSvg
     if(Mode==STATUS_NONE || Mode==STATUS_SKETCH_UseHandler) {
-       this->drawConstraintIcons();
+       coinManager->drawConstraintIcons(geolist);
        this->updateColor();
     }
 
@@ -4056,7 +3476,7 @@ bool ViewProviderSketch::onDelete(const std::vector<std::string> &subList)
             Gui::Command::updateActive();
         }
         else {
-            this->drawConstraintIcons();
+            coinManager->drawConstraintIcons();
             this->updateColor();
         }
 
@@ -4108,7 +3528,7 @@ const std::vector<Sketcher::Constraint *> ViewProviderSketch::getConstraints() c
 
 const GeoList ViewProviderSketch::getGeoList() const
 {
-    std::vector<Part::Geometry *> tempGeo = getSketchObject()->getCompleteGeometry(); // without memory allocation
+    const std::vector<Part::Geometry *> tempGeo = getSketchObject()->getCompleteGeometry(); // without memory allocation
 
     int intGeoCount = getSketchObject()->getHighestCurveIndex() + 1;
 
@@ -4122,7 +3542,7 @@ bool ViewProviderSketch::constraintHasExpression(int constrid) const
     return getSketchObject()->constraintHasExpression(constrid);
 }
 
-std::unique_ptr<SoRayPickAction> ViewProviderSketch::getRayPickAction()
+std::unique_ptr<SoRayPickAction> ViewProviderSketch::getRayPickAction() const
 {
     assert(edit);
     Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(edit->EditRoot);
@@ -4133,7 +3553,7 @@ std::unique_ptr<SoRayPickAction> ViewProviderSketch::getRayPickAction()
     return std::make_unique<SoRayPickAction>(viewer->getSoRenderManager()->getViewportRegion());
 }
 
-SbVec2f ViewProviderSketch::getScreenCoordinates(SbVec2f sketchcoordinates)
+SbVec2f ViewProviderSketch::getScreenCoordinates(SbVec2f sketchcoordinates) const
 {
 
     Base::Placement sketchPlacement = getEditingPlacement();
@@ -4182,4 +3602,34 @@ SbVec2f ViewProviderSketch::getScreenCoordinates(SbVec2f sketchcoordinates)
     SbVec2f iconCoords(screencoords.x,screencoords.y);
 
     return iconCoords;
+}
+
+QFont ViewProviderSketch::getApplicationFont() const
+{
+    return QApplication::font();
+}
+
+double ViewProviderSketch::getRotation(SbVec3f pos0, SbVec3f pos1) const
+{
+    double x0,y0,x1,y1;
+
+    Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(edit->EditRoot);
+    if (!(mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())))
+        return 0;
+    Gui::View3DInventorViewer *viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
+    SoCamera* pCam = viewer->getSoRenderManager()->getCamera();
+    if (!pCam)
+        return 0;
+
+    try {
+        SbViewVolume vol = pCam->getViewVolume();
+
+        getCoordsOnSketchPlane(pos0,vol.getProjectionDirection(),x0,y0);
+        getCoordsOnSketchPlane(pos1,vol.getProjectionDirection(),x1,y1);
+
+        return -atan2((y1-y0),(x1-x0))*180/M_PI;
+    }
+    catch (const Base::DivisionByZeroError&) {
+        return 0;
+    }
 }

@@ -72,8 +72,11 @@
 #include <App/ObjectIdentifier.h>
 
 #include <Gui/SoFCBoundingBox.h>
-
+#include <Gui/BitmapFactory.h>
 #include <Gui/Inventor/MarkerBitmaps.h>
+#include <Gui/Tools.h>
+
+#include <qpainter.h>
 
 #include "SoZoomTranslation.h"
 #include "SoDatumLabel.h"
@@ -94,22 +97,22 @@ using namespace Sketcher;
 
 //***** ViewProviderSketchCoinAttorney - Attorney to limit coupling and encapsulation to viewprovider ******************************
 
-inline bool ViewProviderSketchCoinAttorney::constraintHasExpression(ViewProviderSketch & vp, int constrid)
+inline bool ViewProviderSketchCoinAttorney::constraintHasExpression(const ViewProviderSketch & vp, int constrid)
 {
     return vp.constraintHasExpression(constrid);
 };
 
-inline const std::vector<Sketcher::Constraint *> ViewProviderSketchCoinAttorney::getConstraints(ViewProviderSketch & vp)
+inline const std::vector<Sketcher::Constraint *> ViewProviderSketchCoinAttorney::getConstraints(const ViewProviderSketch & vp)
 {
     return vp.getConstraints();
 }
 
-inline const GeoList ViewProviderSketchCoinAttorney::getGeoList(ViewProviderSketch & vp)
+inline const GeoList ViewProviderSketchCoinAttorney::getGeoList(const ViewProviderSketch & vp)
 {
     return vp.getGeoList();
 }
 
-inline Base::Placement ViewProviderSketchCoinAttorney::getEditingPlacement(ViewProviderSketch & vp)
+inline Base::Placement ViewProviderSketchCoinAttorney::getEditingPlacement(const ViewProviderSketch & vp)
 {
     return vp.getEditingPlacement();
 }
@@ -119,24 +122,34 @@ inline void ViewProviderSketchCoinAttorney::updateGridExtent(ViewProviderSketch 
     vp.updateGridExtent(minx, maxx, miny, maxy);
 }
 
-inline bool ViewProviderSketchCoinAttorney::isShownVirtualSpace(ViewProviderSketch & vp)
+inline bool ViewProviderSketchCoinAttorney::isShownVirtualSpace(const ViewProviderSketch & vp)
 {
     return vp.isShownVirtualSpace;
 }
 
-inline std::unique_ptr<SoRayPickAction> ViewProviderSketchCoinAttorney::getRayPickAction(ViewProviderSketch & vp)
+inline std::unique_ptr<SoRayPickAction> ViewProviderSketchCoinAttorney::getRayPickAction(const ViewProviderSketch & vp)
 {
     return vp.getRayPickAction();
 }
 
-float ViewProviderSketchCoinAttorney::getScaleFactor(ViewProviderSketch & vp)
+float ViewProviderSketchCoinAttorney::getScaleFactor(const ViewProviderSketch & vp)
 {
     return vp.getScaleFactor();
 }
 
-SbVec2f ViewProviderSketchCoinAttorney::getScreenCoordinates(ViewProviderSketch & vp, SbVec2f sketchcoordinates)
+SbVec2f ViewProviderSketchCoinAttorney::getScreenCoordinates(const ViewProviderSketch & vp, SbVec2f sketchcoordinates)
 {
     return vp.getScreenCoordinates(sketchcoordinates);
+}
+
+QFont ViewProviderSketchCoinAttorney::getApplicationFont(const ViewProviderSketch & vp)
+{
+    return vp.getApplicationFont();
+}
+
+double ViewProviderSketchCoinAttorney::getRotation(const ViewProviderSketch & vp, SbVec3f pos0, SbVec3f pos1)
+{
+    return vp.getRotation(pos0,pos1);
 }
 
 
@@ -393,7 +406,7 @@ void CoinManager::processConstraints(const GeoList & geolist)
     // After an undo/redo it can happen that we have an empty geometry list but a non-empty constraint list
     // In this case just ignore the constraints. (See bug #0000421)
     if (geolist.geomlist.size() <= 2 && !constrlist.empty()) {
-        rebuildConstraintNodes();
+        rebuildConstraintNodes(geolist);
         return;
     }
 
@@ -404,7 +417,7 @@ void CoinManager::processConstraints(const GeoList & geolist)
 Restart:
     // check if a new constraint arrived
     if (constrlist.size() != edit->vConstrType.size())
-        rebuildConstraintNodes();
+        rebuildConstraintNodes(geolist);
 
     assert(int(constrlist.size()) == edit->constrGroup->getNumChildren());
     assert(int(edit->vConstrType.size()) == edit->constrGroup->getNumChildren());
@@ -2071,9 +2084,14 @@ void CoinManager::updateConstraintColor(std::vector<Sketcher::Constraint *> cons
 
 void CoinManager::rebuildConstraintNodes(void)
 {
-    const std::vector<Sketcher::Constraint *> &constrlist = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
-
     auto geolist = ViewProviderSketchCoinAttorney::getGeoList(viewProvider);
+
+    rebuildConstraintNodes(geolist);
+}
+
+void CoinManager::rebuildConstraintNodes(const GeoList & geolist)
+{
+    const std::vector<Sketcher::Constraint *> &constrlist = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
 
     // clean up
     Gui::coinRemoveAllChildren(edit->constrGroup);
@@ -2636,6 +2654,8 @@ CoinManager::PreselectionResult CoinManager::detectPreselection(SoPickedPoint * 
             constrIndices = detectPreselectionConstr(Point, cursorPos);
         }
     }
+
+    return result;
 }
 
 std::set<int> CoinManager::detectPreselectionConstr(const SoPickedPoint *Point,
@@ -2778,4 +2798,541 @@ SbVec3s CoinManager::getDisplayedSize(const SoImage *iconPtr) const
     if (iconPtr->height.getValue() != -1)
         iconSize[1] = iconPtr->height.getValue();
     return iconSize;
+}
+
+// public function that triggers drawing of most constraint icons
+void CoinManager::drawConstraintIcons()
+{
+    auto geolist = ViewProviderSketchCoinAttorney::getGeoList(viewProvider);
+
+    drawConstraintIcons(geolist);
+}
+
+void CoinManager::drawConstraintIcons(const GeoList & geolist)
+{
+    const std::vector<Sketcher::Constraint *> &constraints = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
+
+    int constrId = 0;
+
+    std::vector<constrIconQueueItem> iconQueue;
+
+    for (std::vector<Sketcher::Constraint *>::const_iterator it=constraints.begin();
+         it != constraints.end(); ++it, ++constrId) {
+
+        // Check if Icon Should be created
+        bool multipleIcons = false;
+
+        QString icoType = iconTypeFromConstraint(*it);
+        if(icoType.isEmpty())
+            continue;
+
+        switch((*it)->Type) {
+
+        case Tangent:
+            {   // second icon is available only for colinear line segments
+                const Part::Geometry *geo1 = geolist.getGeometryFromGeoId((*it)->First);
+                const Part::Geometry *geo2 = geolist.getGeometryFromGeoId((*it)->Second);
+                if (geo1 && geo1->getTypeId() == Part::GeomLineSegment::getClassTypeId() &&
+                    geo2 && geo2->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                    multipleIcons = true;
+                }
+            }
+            break;
+        case Horizontal:
+        case Vertical:
+            {   // second icon is available only for point alignment
+                if ((*it)->Second != Constraint::GeoUndef &&
+                    (*it)->FirstPos != Sketcher::none &&
+                    (*it)->SecondPos != Sketcher::none) {
+                    multipleIcons = true;
+                }
+            }
+            break;
+        case Parallel:
+            multipleIcons = true;
+            break;
+        case Perpendicular:
+            // second icon is available only when there is no common point
+            if ((*it)->FirstPos == Sketcher::none && (*it)->Third == Constraint::GeoUndef)
+                multipleIcons = true;
+            break;
+        case Equal:
+            multipleIcons = true;
+            break;
+        default:
+            break;
+        }
+
+        // Double-check that we can safely access the Inventor nodes
+        if (constrId >= edit->constrGroup->getNumChildren()) {
+            Base::Console().Warning("Can't update constraint icons because view is not in sync with sketch\n");
+            break;
+        }
+
+        // Find the Constraint Icon SoImage Node
+        SoSeparator *sep = static_cast<SoSeparator *>(edit->constrGroup->getChild(constrId));
+        int numChildren = sep->getNumChildren();
+
+        SbVec3f absPos;
+        // Somewhat hacky - we use SoZoomTranslations for most types of icon,
+        // but symmetry icons use SoTranslations...
+        SoTranslation *translationPtr = static_cast<SoTranslation *>(sep->getChild(static_cast<int>(ConstraintNodePosition::FirstTranslationIndex)));
+
+        if(dynamic_cast<SoZoomTranslation *>(translationPtr))
+            absPos = static_cast<SoZoomTranslation *>(translationPtr)->abPos.getValue();
+        else
+            absPos = translationPtr->translation.getValue();
+
+        SoImage *coinIconPtr = dynamic_cast<SoImage *>(sep->getChild(static_cast<int>(ConstraintNodePosition::FirstIconIndex)));
+        SoInfo *infoPtr = static_cast<SoInfo *>(sep->getChild(static_cast<int>(ConstraintNodePosition::FirstConstraintIdIndex)));
+
+        constrIconQueueItem thisIcon;
+        thisIcon.type = icoType;
+        thisIcon.constraintId = constrId;
+        thisIcon.position = absPos;
+        thisIcon.destination = coinIconPtr;
+        thisIcon.infoPtr = infoPtr;
+        thisIcon.visible = (*it)->isInVirtualSpace == ViewProviderSketchCoinAttorney::isShownVirtualSpace(viewProvider);
+
+        if ((*it)->Type==Symmetric) {
+            Base::Vector3d startingpoint = geolist.getPoint((*it)->First, (*it)->FirstPos);
+            Base::Vector3d endpoint = geolist.getPoint((*it)->Second,(*it)->SecondPos);
+
+            SbVec3f pos0(startingpoint.x,startingpoint.y,startingpoint.z);
+            SbVec3f pos1(endpoint.x,endpoint.y,endpoint.z);
+
+            thisIcon.iconRotation = ViewProviderSketchCoinAttorney::getRotation(viewProvider, pos0, pos1);
+        }
+        else {
+            thisIcon.iconRotation = 0;
+        }
+
+        if (multipleIcons) {
+            if((*it)->Name.empty())
+                thisIcon.label = QString::number(constrId + 1);
+            else
+                thisIcon.label = QString::fromUtf8((*it)->Name.c_str());
+            iconQueue.push_back(thisIcon);
+
+            // Note that the second translation is meant to be applied after the first.
+            // So, to get the position of the second icon, we add the two translations together
+            //
+            // See note ~30 lines up.
+            if (numChildren > static_cast<int>(ConstraintNodePosition::SecondConstraintIdIndex)) {
+                translationPtr = static_cast<SoTranslation *>(sep->getChild(static_cast<int>(ConstraintNodePosition::SecondTranslationIndex)));
+                if(dynamic_cast<SoZoomTranslation *>(translationPtr))
+                    thisIcon.position += static_cast<SoZoomTranslation *>(translationPtr)->abPos.getValue();
+                else
+                    thisIcon.position += translationPtr->translation.getValue();
+
+                thisIcon.destination = dynamic_cast<SoImage *>(sep->getChild(static_cast<int>(ConstraintNodePosition::SecondIconIndex)));
+                thisIcon.infoPtr = static_cast<SoInfo *>(sep->getChild(static_cast<int>(ConstraintNodePosition::SecondConstraintIdIndex)));
+            }
+        }
+        else {
+            if ((*it)->Name.empty())
+                thisIcon.label = QString();
+            else
+                thisIcon.label = QString::fromUtf8((*it)->Name.c_str());
+        }
+
+        iconQueue.push_back(thisIcon);
+    }
+
+    combineConstraintIcons(iconQueue);
+}
+
+void CoinManager::combineConstraintIcons(IconQueue iconQueue)
+{
+    // getScaleFactor gives us a ratio of pixels per some kind of real units
+    float maxDistSquared = pow(ViewProviderSketchCoinAttorney::getScaleFactor(viewProvider), 2);
+
+    // There's room for optimisation here; we could reuse the combined icons...
+    edit->combinedConstrBoxes.clear();
+
+    while(!iconQueue.empty()) {
+        // A group starts with an item popped off the back of our initial queue
+        IconQueue thisGroup;
+        thisGroup.push_back(iconQueue.back());
+        constrIconQueueItem init = iconQueue.back();
+        iconQueue.pop_back();
+
+        // we group only icons not being Symmetry icons, because we want those on the line
+        // and only icons that are visible
+        if(init.type != QString::fromLatin1("Constraint_Symmetric") && init.visible){
+
+            IconQueue::iterator i = iconQueue.begin();
+
+
+            while(i != iconQueue.end()) {
+                if((*i).visible) {
+                    bool addedToGroup = false;
+
+                    for(IconQueue::iterator j = thisGroup.begin();
+                        j != thisGroup.end(); ++j) {
+                        float distSquared = pow(i->position[0]-j->position[0],2) + pow(i->position[1]-j->position[1],2);
+                        if(distSquared <= maxDistSquared && (*i).type != QString::fromLatin1("Constraint_Symmetric")) {
+                            // Found an icon in iconQueue that's close enough to
+                            // a member of thisGroup, so move it into thisGroup
+                            thisGroup.push_back(*i);
+                            i = iconQueue.erase(i);
+                            addedToGroup = true;
+                            break;
+                        }
+                    }
+
+                    if(addedToGroup) {
+                        if(i == iconQueue.end())
+                            // We just got the last icon out of iconQueue
+                            break;
+                        else
+                            // Start looking through the iconQueue again, in case
+                            // we have an icon that's now close enough to thisGroup
+                            i = iconQueue.begin();
+                    } else
+                        ++i;
+                }
+                else // if !visible we skip it
+                   i++;
+            }
+
+        }
+
+        if(thisGroup.size() == 1) {
+            drawTypicalConstraintIcon(thisGroup[0]);
+        }
+        else {
+            drawMergedConstraintIcons(thisGroup);
+        }
+    }
+}
+
+void CoinManager::drawMergedConstraintIcons(IconQueue iconQueue)
+{
+    for(IconQueue::iterator i = iconQueue.begin(); i != iconQueue.end(); ++i) {
+        clearCoinImage(i->destination);
+    }
+
+    QImage compositeIcon;
+    SoImage *thisDest = iconQueue[0].destination;
+    SoInfo *thisInfo = iconQueue[0].infoPtr;
+
+    // Tracks all constraint IDs that are combined into this icon
+    QString idString;
+    int lastVPad = 0;
+
+    QStringList labels;
+    std::vector<int> ids;
+    QString thisType;
+    QColor iconColor;
+    QList<QColor> labelColors;
+    int maxColorPriority;
+    double iconRotation;
+
+    ConstrIconBBVec boundingBoxes;
+    while(!iconQueue.empty()) {
+        IconQueue::iterator i = iconQueue.begin();
+
+        labels.clear();
+        labels.append(i->label);
+
+        ids.clear();
+        ids.push_back(i->constraintId);
+
+        thisType = i->type;
+        iconColor = constrColor(i->constraintId);
+        labelColors.clear();
+        labelColors.append(iconColor);
+        iconRotation= i->iconRotation;
+
+        maxColorPriority = constrColorPriority(i->constraintId);
+
+        if(idString.length())
+            idString.append(QString::fromLatin1(","));
+        idString.append(QString::number(i->constraintId));
+
+        i = iconQueue.erase(i);
+        while(i != iconQueue.end()) {
+            if(i->type != thisType) {
+                ++i;
+                continue;
+            }
+
+            labels.append(i->label);
+            ids.push_back(i->constraintId);
+            labelColors.append(constrColor(i->constraintId));
+
+            if(constrColorPriority(i->constraintId) > maxColorPriority) {
+                maxColorPriority = constrColorPriority(i->constraintId);
+                iconColor= constrColor(i->constraintId);
+            }
+
+            idString.append(QString::fromLatin1(",") +
+                            QString::number(i->constraintId));
+
+            i = iconQueue.erase(i);
+        }
+
+        // To be inserted into edit->combinedConstBoxes
+        std::vector<QRect> boundingBoxesVec;
+        int oldHeight = 0;
+
+        // Render the icon here.
+        if(compositeIcon.isNull()) {
+            compositeIcon = renderConstrIcon(thisType,
+                                             iconColor,
+                                             labels,
+                                             labelColors,
+                                             iconRotation,
+                                             &boundingBoxesVec,
+                                             &lastVPad);
+        } else {
+            int thisVPad;
+            QImage partialIcon = renderConstrIcon(thisType,
+                                                  iconColor,
+                                                  labels,
+                                                  labelColors,
+                                                  iconRotation,
+                                                  &boundingBoxesVec,
+                                                  &thisVPad);
+
+            // Stack vertically for now.  Down the road, it might make sense
+            // to figure out the best orientation automatically.
+            oldHeight = compositeIcon.height();
+
+            // This is overkill for the currently used (20 July 2014) font,
+            // since it always seems to have the same vertical pad, but this
+            // might not always be the case.  The 3 pixel buffer might need
+            // to vary depending on font size too...
+            oldHeight -= std::max(lastVPad - 3, 0);
+
+            compositeIcon = compositeIcon.copy(0, 0,
+                                               std::max(partialIcon.width(),
+                                                        compositeIcon.width()),
+                                               partialIcon.height() +
+                                               compositeIcon.height());
+
+            QPainter qp(&compositeIcon);
+            qp.drawImage(0, oldHeight, partialIcon);
+
+            lastVPad = thisVPad;
+        }
+
+        // Add bounding boxes for the icon we just rendered to boundingBoxes
+        std::vector<int>::iterator id = ids.begin();
+        std::set<int> nextIds;
+        for(std::vector<QRect>::iterator bb = boundingBoxesVec.begin();
+            bb != boundingBoxesVec.end(); ++bb) {
+            nextIds.clear();
+
+            if(bb == boundingBoxesVec.begin()) {
+                // The first bounding box is for the icon at left, so assign
+                // all IDs for that type of constraint to the icon.
+                for(std::vector<int>::iterator j = ids.begin(); j != ids.end(); ++j)
+                    nextIds.insert(*j);
+            }
+            else {
+                nextIds.insert(*(id++));
+            }
+
+            ConstrIconBB newBB(bb->adjusted(0, oldHeight, 0, oldHeight),
+                               nextIds);
+
+            boundingBoxes.push_back(newBB);
+        }
+    }
+
+    edit->combinedConstrBoxes[idString] = boundingBoxes;
+    thisInfo->string.setValue(idString.toLatin1().data());
+    sendConstraintIconToCoin(compositeIcon, thisDest);
+}
+
+
+/// Note: labels, labelColors, and boundingBoxes are all
+/// assumed to be the same length.
+QImage CoinManager::renderConstrIcon(const QString &type,
+                                            const QColor &iconColor,
+                                            const QStringList &labels,
+                                            const QList<QColor> &labelColors,
+                                            double iconRotation,
+                                            std::vector<QRect> *boundingBoxes,
+                                            int *vPad)
+{
+    // Constants to help create constraint icons
+    QString joinStr = QString::fromLatin1(", ");
+
+    QPixmap pxMap;
+    std::stringstream constraintName;
+    constraintName << type.toLatin1().data() << edit->constraintIconSize; // allow resizing by embedding size
+    if (! Gui::BitmapFactory().findPixmapInCache(constraintName.str().c_str(), pxMap)) {
+        pxMap = Gui::BitmapFactory().pixmapFromSvg(type.toLatin1().data(),QSizeF(edit->constraintIconSize,edit->constraintIconSize));
+        Gui::BitmapFactory().addPixmapToCache(constraintName.str().c_str(), pxMap); // Cache for speed, avoiding pixmapFromSvg
+    }
+    QImage icon = pxMap.toImage();
+
+    QFont font = ViewProviderSketchCoinAttorney::getApplicationFont(viewProvider);
+    font.setPixelSize(static_cast<int>(1.0 * edit->constraintIconSize));
+    font.setBold(true);
+    QFontMetrics qfm = QFontMetrics(font);
+
+    int labelWidth = qfm.boundingRect(labels.join(joinStr)).width();
+    // See Qt docs on qRect::bottom() for explanation of the +1
+    int pxBelowBase = qfm.boundingRect(labels.join(joinStr)).bottom() + 1;
+
+    if(vPad)
+        *vPad = pxBelowBase;
+
+    QTransform rotation;
+    rotation.rotate(iconRotation);
+
+    QImage roticon = icon.transformed(rotation);
+    QImage image = roticon.copy(0, 0, roticon.width() + labelWidth,
+                                                        roticon.height() + pxBelowBase);
+
+    // Make a bounding box for the icon
+    if(boundingBoxes)
+        boundingBoxes->push_back(QRect(0, 0, roticon.width(), roticon.height()));
+
+    // Render the Icons
+    QPainter qp(&image);
+    qp.setCompositionMode(QPainter::CompositionMode_SourceIn);
+    qp.fillRect(roticon.rect(), iconColor);
+
+    // Render constraint label if necessary
+    if (!labels.join(QString()).isEmpty()) {
+        qp.setCompositionMode(QPainter::CompositionMode_SourceOver);
+        qp.setFont(font);
+
+        int cursorOffset = 0;
+
+        //In Python: "for label, color in zip(labels, labelColors):"
+        QStringList::const_iterator labelItr;
+        QString labelStr;
+        QList<QColor>::const_iterator colorItr;
+        QRect labelBB;
+        for(labelItr = labels.begin(), colorItr = labelColors.begin();
+            labelItr != labels.end() && colorItr != labelColors.end();
+            ++labelItr, ++colorItr) {
+
+            qp.setPen(*colorItr);
+
+            if(labelItr + 1 == labels.end()) // if this is the last label
+                labelStr = *labelItr;
+            else
+                labelStr = *labelItr + joinStr;
+
+            // Note: text can sometimes draw to the left of the starting
+            //       position, eg italic fonts.  Check QFontMetrics
+            //       documentation for more info, but be mindful if the
+            //       icon.width() is ever very small (or removed).
+            qp.drawText(icon.width() + cursorOffset, icon.height(), labelStr);
+
+            if(boundingBoxes) {
+                labelBB = qfm.boundingRect(labelStr);
+                labelBB.moveTo(icon.width() + cursorOffset,
+                               icon.height() - qfm.height() + pxBelowBase);
+                boundingBoxes->push_back(labelBB);
+            }
+
+            cursorOffset += Gui::QtTools::horizontalAdvance(qfm, labelStr);
+        }
+    }
+
+    return image;
+}
+
+void CoinManager::drawTypicalConstraintIcon(const constrIconQueueItem &i)
+{
+    QColor color = constrColor(i.constraintId);
+
+    QImage image = renderConstrIcon(i.type,
+                                    color,
+                                    QStringList(i.label),
+                                    QList<QColor>() << color,
+                                    i.iconRotation);
+
+    i.infoPtr->string.setValue(QString::number(i.constraintId).toLatin1().data());
+    sendConstraintIconToCoin(image, i.destination);
+}
+
+QString CoinManager::iconTypeFromConstraint(Constraint *constraint)
+{
+    /*! TODO: Consider pushing this functionality up into Constraint
+     *
+     Abdullah: Please, don't. An icon is visualisation information and
+     does not belong in App, but in Gui. Rather consider refactoring it
+     in a separate class dealing with visualisation of constraints.*/
+
+    switch(constraint->Type) {
+    case Horizontal:
+        return QString::fromLatin1("Constraint_Horizontal");
+    case Vertical:
+        return QString::fromLatin1("Constraint_Vertical");
+    case PointOnObject:
+        return QString::fromLatin1("Constraint_PointOnObject");
+    case Tangent:
+        return QString::fromLatin1("Constraint_Tangent");
+    case Parallel:
+        return QString::fromLatin1("Constraint_Parallel");
+    case Perpendicular:
+        return QString::fromLatin1("Constraint_Perpendicular");
+    case Equal:
+        return QString::fromLatin1("Constraint_EqualLength");
+    case Symmetric:
+        return QString::fromLatin1("Constraint_Symmetric");
+    case SnellsLaw:
+        return QString::fromLatin1("Constraint_SnellsLaw");
+    case Block:
+        return QString::fromLatin1("Constraint_Block");
+    default:
+        return QString();
+    }
+}
+
+void CoinManager::sendConstraintIconToCoin(const QImage &icon, SoImage *soImagePtr)
+{
+    SoSFImage icondata = SoSFImage();
+
+    Gui::BitmapFactory().convert(icon, icondata);
+
+    SbVec2s iconSize(icon.width(), icon.height());
+
+    int four = 4;
+    soImagePtr->image.setValue(iconSize, 4, icondata.getValue(iconSize, four));
+
+    //Set Image Alignment to Center
+    soImagePtr->vertAlignment = SoImage::HALF;
+    soImagePtr->horAlignment = SoImage::CENTER;
+}
+
+void CoinManager::clearCoinImage(SoImage *soImagePtr)
+{
+    soImagePtr->setToDefaults();
+}
+
+QColor CoinManager::constrColor(int constraintId)
+{
+    const auto constraints = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
+
+    if (edit->PreselectConstraintSet.count(constraintId))
+        return drawingParameters.constrIconPreselColor;
+    else if (edit->SelConstraintSet.find(constraintId) != edit->SelConstraintSet.end())
+        return drawingParameters.constrIconSelColor;
+    else if(!constraints[constraintId]->isActive)
+        return drawingParameters.constrIconDisabledColor;
+    else if(!constraints[constraintId]->isDriving)
+        return drawingParameters.nonDrivingConstrIcoColor;
+    else
+        return drawingParameters.constrIcoColor;
+
+}
+
+int CoinManager::constrColorPriority(int constraintId)
+{
+    if (edit->PreselectConstraintSet.count(constraintId))
+        return 3;
+    else if (edit->SelConstraintSet.find(constraintId) != edit->SelConstraintSet.end())
+        return 2;
+    else
+        return 1;
 }
