@@ -118,10 +118,19 @@ public: // Utility methods
     static bool getBlocked(const Part::Geometry * geometry);
 
 public:
+    GeometryFacade(const GeometryFacade&) = delete;
+    GeometryFacade(GeometryFacade&&) = default;
+
     ~GeometryFacade();
     void setGeometry(Part::Geometry *geometry);
+
     void setOwner(bool owner) {
         OwnerGeo = owner;
+    }
+
+    // returns if the facade is the owner of the geometry pointer.
+    bool getOwner() const {
+        return OwnerGeo;
     }
 
     // Geometry Extension Interface
