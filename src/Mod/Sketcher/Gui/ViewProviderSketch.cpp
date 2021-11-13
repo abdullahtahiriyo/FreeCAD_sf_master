@@ -187,14 +187,16 @@ ViewProviderSketch::ViewProviderSketch()
     }
 
     sPixmap = "Sketcher_Sketch";
-    LineColor.setValue(1,1,1);
-    PointColor.setValue(1,1,1);
-    PointSize.setValue(4);
 
-
+    // Moving control
     xInit=0;
     yInit=0;
     relative=false;
+
+    // Colors and sizes to be used by parent ViewProvider's code
+    LineColor.setValue(1,1,1);
+    PointColor.setValue(1,1,1);
+    PointSize.setValue(4);
 
     unsigned long color;
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
@@ -215,8 +217,6 @@ ViewProviderSketch::ViewProviderSketch()
 
     //rubberband selection
     rubberband = new Gui::Rubberband();
-
-    // Status message states:
 
 
     subscribeToParameters();
@@ -974,7 +974,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
 
         std::unique_ptr<SoPickedPoint> Point(this->getPointOnRay(cursorPos, viewer));
 
-        preselectChanged = detectPreselection(Point.get(), cursorPos);
+        preselectChanged = detectAndShowPreselection(Point.get(), cursorPos);
     }
 
     switch (Mode) {
@@ -1593,7 +1593,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
     }
 }
 
-bool ViewProviderSketch::detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos)
+bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos)
 {
     assert(edit);
 
@@ -1722,8 +1722,6 @@ bool ViewProviderSketch::detectPreselection(SoPickedPoint * Point, const SbVec2s
 
     return false;
 }
-
-
 
 void ViewProviderSketch::centerSelection()
 {
@@ -2365,13 +2363,6 @@ void ViewProviderSketch::updateColor(void)
 
 }
 
-bool ViewProviderSketch::isPointOnSketch(const SoPickedPoint *pp) const
-{
-    // checks if we picked a point on the sketch or any other nodes like the grid
-    SoPath *path = pp->getPath();
-    return path->containsNode(edit->EditRoot);
-}
-
 bool ViewProviderSketch::doubleClicked(void)
 {
     Gui::Application::Instance->activeDocument()->setEdit(this);
@@ -2605,8 +2596,6 @@ void ViewProviderSketch::scaleBSplinePoleCirclesAndUpdateSolverAndSketchObjectGe
         }
     }
 }
-
-
 
 void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverlay /*=true*/)
 {
@@ -3436,8 +3425,27 @@ QIcon ViewProviderSketch::mergeColorfulOverlayIcons (const QIcon & orig) const
 }
 
 
-/* private functions to decouple Attorneys and Clients from the internal implementation of
-   the ViewProvider and its members, such as sketchObject */
+/*************************** functions ViewProviderSketch offers to friends such as DrawHandlerSketch ************************/
+
+void ViewProviderSketch::setPositionText(const Base::Vector2d &Pos, const SbString &text)
+{
+    coinManager->setPositionText(Pos,text);
+}
+
+void ViewProviderSketch::setPositionText(const Base::Vector2d &Pos)
+{
+    coinManager->setPositionText(Pos);
+}
+
+void ViewProviderSketch::resetPositionText(void)
+{
+    coinManager->resetPositionText();
+}
+
+/*************************** private functions to decouple Attorneys and Clients  ********************************************/
+
+// Establishes a private collaboration interface with CoinManager to perform CoinManager tasks, while abstracting CoinManager
+// from the specific ViewProviderSketch implementation, while allowing ViewProviderSketch to fully delegate coin management.
 
 const std::vector<Sketcher::Constraint *> ViewProviderSketch::getConstraints() const
 {
@@ -3550,20 +3558,4 @@ double ViewProviderSketch::getRotation(SbVec3f pos0, SbVec3f pos1) const
     catch (const Base::DivisionByZeroError&) {
         return 0;
     }
-}
-
-
-void ViewProviderSketch::setPositionText(const Base::Vector2d &Pos, const SbString &text)
-{
-    coinManager->setPositionText(Pos,text);
-}
-
-void ViewProviderSketch::setPositionText(const Base::Vector2d &Pos)
-{
-    coinManager->setPositionText(Pos);
-}
-
-void ViewProviderSketch::resetPositionText(void)
-{
-    coinManager->resetPositionText();
 }

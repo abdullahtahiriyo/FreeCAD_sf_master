@@ -140,6 +140,7 @@ public:
 
     /// Is the view provider selectable
     bool isSelectable(void) const override;
+
     /// Observer message from the Selection
     virtual void onSelectionChanged(const Gui::SelectionChanges& msg) override;
 
@@ -178,11 +179,7 @@ public:
     /** @name helper functions */
     //@{
     /// helper to detect preselection
-    bool detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos);
-
-    /// Helper for detectPreselection(), for constraints only.
-    std::set<int> detectPreselectionConstr(const SoPickedPoint *Point,
-                                           const SbVec2s &cursorPos);
+    bool detectAndShowPreselection (SoPickedPoint * Point, const SbVec2s &cursorPos);
 
     /*! Look at the center of the bounding of all selected items */
     void centerSelection();
@@ -193,6 +190,7 @@ public:
 
     /// helper change the color of the sketch according to selection and solver status
     void updateColor(void);
+
     /// get the pointer to the sketch document object
     Sketcher::SketchObject *getSketchObject(void) const;
 
@@ -267,8 +265,6 @@ public:
     void OnChange(Base::Subject<const char*> &rCaller, const char * sReason) override;
 
 protected:
-
-
     virtual bool setEdit(int ModNum) override;
     virtual void unsetEdit(int ModNum) override;
     virtual void setEditViewer(Gui::View3DInventorViewer*, int ModNum) override;
@@ -295,9 +291,6 @@ private:
                         GeoList & geolist,
                         bool geometrywithmemoryallocation,
                         std::vector<std::unique_ptr<Part::Geometry>> &deepCopiesToDelete);
-
-    /// helper to detect whether the picked point lies on the sketch
-    bool isPointOnSketch(const SoPickedPoint *pp) const;
 
     /// give the coordinates of a line on the sketch plane in sketcher (2D) coordinates
     void getCoordsOnSketchPlane(const SbVec3f &point, const SbVec3f &normal, double &u, double &v) const;
@@ -327,6 +320,9 @@ private:
 
     double getRotation(SbVec3f pos0, SbVec3f pos1) const;
 
+    // Required for DrawHandle TODO: Consider writing an attorney to limit
+    // the access of DrawHandler to ViewProvider and improve encapsulation
+    // and prevent uncontrolled grow of dependencies.
     void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
     void setPositionText(const Base::Vector2d &Pos);
     void resetPositionText(void);
