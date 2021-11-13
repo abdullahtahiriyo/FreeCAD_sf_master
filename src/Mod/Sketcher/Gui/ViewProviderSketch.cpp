@@ -108,6 +108,7 @@
 #include <Mod/Sketcher/App/SketchObject.h>
 #include <Mod/Sketcher/App/Sketch.h>
 #include <Mod/Sketcher/App/GeometryFacade.h>
+#include <Mod/Sketcher/App/GeoList.h>
 
 #include "SoZoomTranslation.h"
 #include "SoDatumLabel.h"
@@ -120,7 +121,6 @@
 #include "ViewProviderSketchGeometryExtension.h"
 #include <Mod/Sketcher/App/SolverGeometryExtension.h>
 
-#include "GeoList.h"
 #include "EditData.h"
 #include "CoinManager.h"
 

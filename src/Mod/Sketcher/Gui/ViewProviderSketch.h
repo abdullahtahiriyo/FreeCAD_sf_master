@@ -74,6 +74,9 @@ namespace Sketcher {
     class Constraint;
     class Sketch;
     class SketchObject;
+
+    template < typename T >
+    class GeoListModel;
 }
 
 namespace SketcherGui {
@@ -82,10 +85,7 @@ struct EditData;
 class CoinManager;
 class DrawSketchHandler;
 
-template < typename T >
-class GeoListModel;
-
-using GeoList = GeoListModel<Part::Geometry *>;
+using GeoList = Sketcher::GeoListModel<Part::Geometry *>;
 
 /** The Sketch ViewProvider
   * This class handles mainly the drawing and editing of the sketch.

@@ -34,7 +34,7 @@
 #include <qstring.h>
 #include <qcolor.h>
 
-#include "GeoList.h"
+#include <Mod/Sketcher/App/GeoList.h>
 
 #include <vector>
 #include <map>
@@ -132,7 +132,7 @@ struct GeometryLayerNodes {
  */
 struct GeometryLayer {
     //int layerId = 0;  // currently unused
-    const GeoList & geolist;
+    const Sketcher::GeoList & geolist;
 };
 
 /** @brief      Struct adapted to store the parameters necessary to create and update

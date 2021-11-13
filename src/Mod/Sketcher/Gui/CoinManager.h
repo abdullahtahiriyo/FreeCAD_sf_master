@@ -53,16 +53,18 @@ namespace Part {
 namespace Sketcher {
     class Constraint;
     class PropertyConstraintList;
+
+    template < typename T >
+    class GeoListModel;
 };
 
 namespace SketcherGui {
 
 struct EditData;
-
-template < typename T >
-class GeoListModel;
-
 class ViewProviderSketch;
+
+using GeoList = Sketcher::GeoListModel<Part::Geometry *>;
+using GeoListFacade = Sketcher::GeoListModel<std::unique_ptr<const Sketcher::GeometryFacade>>;
 
 
 /** @brief      Attorney class for limiting access to viewprovider

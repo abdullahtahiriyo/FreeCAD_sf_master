@@ -61,6 +61,8 @@
 #include <Mod/Sketcher/App/SolverGeometryExtension.h>
 #include <Mod/Sketcher/App/GeoEnum.h>
 #include <Mod/Sketcher/App/Constraint.h>
+#include <Mod/Sketcher/App/GeoList.h>
+
 #include <Base/Exception.h>
 #include <Base/Tools2D.h>
 #include <Base/UnitsApi.h>
@@ -84,8 +86,6 @@
 #include "InformationOverlayCoinConverter.h"
 
 #include "GeometryCoinConverter.h"
-
-#include "GeoList.h"
 
 #include "ViewProviderSketch.h"
 

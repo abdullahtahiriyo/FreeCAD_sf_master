@@ -37,7 +37,7 @@
 
 #include "GeoList.h"
 
-using namespace SketcherGui;
+using namespace Sketcher;
 
 template <typename T>
 GeoListModel<T>::GeoListModel(  const std::vector<T> & geometrylist,
@@ -147,7 +147,7 @@ Base::Vector3d GeoListModel<T>::getPoint(const Part::Geometry * geo, Sketcher::P
     return Base::Vector3d();
 }
 
-namespace SketcherGui {
+namespace Sketcher {
 
 // Template specialisations
 

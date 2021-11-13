@@ -21,8 +21,8 @@
  ***************************************************************************/
 
 
-#ifndef SKETCHERGUI_GeoList_H
-#define SKETCHERGUI_GeoList_H
+#ifndef SKETCHER_GeoList_H
+#define SKETCHER_GeoList_H
 
 #ifndef _PreComp_
 
@@ -45,7 +45,7 @@ namespace Sketcher {
     enum PointPos : int;
 }
 
-namespace SketcherGui {
+namespace Sketcher {
 
 /** @brief      Class for managing internal and external geometry as a single object
  *  @details
@@ -114,8 +114,8 @@ private:
 using GeoList = GeoListModel<Part::Geometry *>;
 using GeoListFacade = GeoListModel<std::unique_ptr<const Sketcher::GeometryFacade>>;
 
-} // namespace SketcherGui
+} // namespace Sketcher
 
 
-#endif // SKETCHERGUI_GeoList_H
+#endif // SKETCHER_GeoList_H
 
