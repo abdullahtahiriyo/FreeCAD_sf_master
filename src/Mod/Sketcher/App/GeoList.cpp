@@ -39,12 +39,51 @@
 
 using namespace Sketcher;
 
+// Vector is moved
 template <typename T>
-GeoListModel<T>::GeoListModel(  const std::vector<T> & geometrylist,
-                                    int intgeocount ):  geomlist(geometrylist),
-                                                        intGeoCount(intgeocount){
+GeoListModel<T>::GeoListModel(  std::vector<T> && geometrylist,
+                                int intgeocount,
+                                bool ownerT): geomlist(std::move(geometrylist)),
+                                              intGeoCount(intgeocount),
+                                              OwnerT(ownerT)
+{
 
 }
+
+// Vector is shallow copied (copy constructed)
+template <typename T>
+GeoListModel<T>::GeoListModel(  const std::vector<T> & geometrylist,
+                                int intgeocount,
+                                bool ownerT): geomlist(geometrylist),
+                                              intGeoCount(intgeocount),
+                                              OwnerT(ownerT)
+{
+
+}
+
+template <typename T>
+GeoListModel<T>::~GeoListModel()
+{
+    if(OwnerT) {
+        for(auto & g : geomlist)
+            delete g;
+    }
+}
+
+template <typename T>
+GeoListModel<T> GeoListModel<T>::getGeoListModel(std::vector<T> && geometrylist, int intgeocount, bool ownerT)
+{
+    // moving a copy passed by value
+    return GeoListModel(std::move(geometrylist), intgeocount, ownerT);
+}
+
+template <typename T>
+const GeoListModel<T> GeoListModel<T>::getGeoListModel(const std::vector<T> &geometrylist, int intgeocount, bool ownerT)
+{
+    // moving a copy passed by value
+    return GeoListModel(geometrylist, intgeocount, ownerT);
+}
+
 
 template <typename T>
 int GeoListModel<T>::getGeoIdFromGeomListIndex(int index) const
@@ -168,6 +207,55 @@ Base::Vector3d GeoListModel<std::unique_ptr<const Sketcher::GeometryFacade>>::ge
     const Part::Geometry * geo = getGeometryFromGeoId(geoId)->getGeometry();
 
     return getPoint(geo, pos);
+}
+
+
+template <>
+GeoListModel<std::unique_ptr< const Sketcher::GeometryFacade>>::GeoListModel(
+                                std::vector<std::unique_ptr<const Sketcher::GeometryFacade>> && geometrylist,
+                                int intgeocount,
+                                bool ownerT) :  geomlist(std::move(geometrylist)),
+                                                intGeoCount(intgeocount),
+                                                OwnerT(false)
+{
+    // GeometryFacades hold the responsibility for releasing the resources.
+    //
+    // This means that each GeometryFacade that is passed to the GeoListModel,
+    // must set the ownership (GF->setOwner(true)), if it should be the owner.
+    // Otherwise, it follows the default behaviour that some other class, which
+    // created the pointer, is responsible for freeing it.
+    //
+    // Under the Single Responsibility Principle GeoListModel cannot be made
+    // responsible for releasing those pointers.
+    assert(ownerT == false);
+}
+
+template <>
+GeoListModel<std::unique_ptr< const Sketcher::GeometryFacade>>::GeoListModel(
+                                const std::vector<std::unique_ptr< const Sketcher::GeometryFacade>> & geometrylist,
+                                int intgeocount,
+                                bool ownerT):   intGeoCount(intgeocount),
+                                                OwnerT(false)
+{
+    // GeometryFacades are movable, but not copiable, so they need to be reconstructed (shallow copy of vector)
+    // Under the Single Responsibility Principle, these will not take over a responsibility that shall be enforced
+    // on the original GeometryFacade. Use the move version of getGeoListModel if moving the responsibility is intended.
+    assert(ownerT == false);
+
+    geomlist.reserve(geometrylist.size());
+
+    for(auto & v : geometrylist) {
+        geomlist.push_back(GeometryFacade::getFacade(v->getGeometry()));
+    }
+}
+
+
+
+template <>
+GeoListModel<std::unique_ptr<const Sketcher::GeometryFacade>>::~GeoListModel()
+{
+    // GeometryFacade is responsible for taken ownership of its pointers and deleting them.
+
 }
 
 // instantiate the types so that other translation units can access template constructors

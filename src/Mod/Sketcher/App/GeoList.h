@@ -47,6 +47,9 @@ namespace Sketcher {
 
 namespace Sketcher {
 
+// TODO: This class is half-cooked and needs to be reviewed. Specially the const/non-const aspect
+// as well as the ability to take ownership of deepcopied vectors.
+
 /** @brief      Class for managing internal and external geometry as a single object
  *  @details
  *  Internal and external geometries are present in a single geometry vector one after the other.
@@ -58,14 +61,34 @@ template <typename T>
 class GeoListModel {
     using Vector3d = Base::Vector3<double>;
 
-public:
+
+protected:
     /**
     * Constructs the object from a list of geometry in geomlist format and the number of internal
     * geometries (non external) present in the list.
     *
     * @param geometrylist: the geometry in geomlist format (external after internal in a single vector).
+    * @param intgeocount: the number of internal geometries (non external) in the list.
+    * @param ownerT: indicates whether the GeoListModel takes ownership of the elements of the std::vector<T> (for pointers)
     */
-    explicit GeoListModel( const std::vector<T> & geometrylist, int intgeocount);
+    explicit GeoListModel(std::vector<T> && geometrylist, int intgeocount, bool ownerT = false);
+
+    explicit GeoListModel(const std::vector<T> & geometrylist, int intgeocount, bool ownerT = false);
+
+public:
+    ~GeoListModel();
+
+    /**
+     * GeoListModel manages the lifetime of its internal std::vector. This means that while the actual ownership
+     * of the T parameter needs to be specified or separately handled, a new vector will be created and the T elements
+     * shallow copied to the internal vector.
+     *
+     * The constness of the GeoListModel is tied to the constness of the std::vector from which it is constructed,
+     * except when the vector is not const, but the user uses the factory method to create a const model.
+     */
+    static GeoListModel<T> getGeoListModel(std::vector<T> && geometrylist, int intgeocount, bool ownerT = false);
+    static const GeoListModel<T> getGeoListModel(const std::vector<T> & geometrylist, int intgeocount, bool ownerT = false);
+
 
     /**
     * returns the geometry given by the GeoId
@@ -101,14 +124,23 @@ public:
     */
     int getExternalCount() const { return int(geomlist.size()) - intGeoCount;}
 
+    /**
+     * return a reference to the internal geometry list vector.
+     *
+     * @warning { It returns a reference to the internal list vector. The validity of the
+     * reference depends on the lifetime of the GeoListModel object.}
+     */
+     std::vector<T> & geometryList() { return const_cast<std::vector<T> &>(geomlist);}
+
 public:
-    const std::vector<T> & geomlist;
+    std::vector<T> geomlist;
 
 private:
     Vector3d getPoint(const Part::Geometry * geo, Sketcher::PointPos pos) const;
 
 private:
     int intGeoCount;
+    bool OwnerT;
 };
 
 using GeoList = GeoListModel<Part::Geometry *>;
