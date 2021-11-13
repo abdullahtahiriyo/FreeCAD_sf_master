@@ -2379,7 +2379,7 @@ void ViewProviderSketch::updateColor(void)
 
     int intGeoCount = getSketchObject()->getHighestCurveIndex() + 1;
 
-    GeoListFacade geolistfacade {tempGeoFacade, intGeoCount};
+    auto geolistfacade = GeoListFacade::getGeoListModel(tempGeoFacade, intGeoCount);
 
     bool sketchinvalid =    getSketchObject()->getLastHasRedundancies()           ||
                             getSketchObject()->getLastHasConflicts()              ||
@@ -2656,7 +2656,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 
     int intGeoCount = getSketchObject()->getHighestCurveIndex() + 1;
 
-    GeoList geolist {tempGeo, intGeoCount};
+    auto geolist = GeoList::getGeoListModel(tempGeo, intGeoCount);
 
     assert(int(tempGeo.size()) == geolist.getExternalCount() + intGeoCount);
     assert(int(tempGeo.size()) >= 2);
@@ -3532,7 +3532,7 @@ const GeoList ViewProviderSketch::getGeoList() const
 
     int intGeoCount = getSketchObject()->getHighestCurveIndex() + 1;
 
-    GeoList geolist {tempGeo, intGeoCount};
+    auto geolist = GeoList::getGeoListModel(std::move(tempGeo), intGeoCount);
 
     return geolist;
 }

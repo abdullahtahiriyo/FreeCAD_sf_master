@@ -2612,8 +2612,6 @@ CoinManager::PreselectionResult CoinManager::detectPreselection(SoPickedPoint * 
     if(!Point)
         return result;
 
-    std::set<int> constrIndices;
-
     //Base::Console().Log("Point pick\n");
     SoPath *path = Point->getPath();
     SoNode *tail = path->getTail(); // Tail is directly the node containing points and curves
@@ -2651,7 +2649,7 @@ CoinManager::PreselectionResult CoinManager::detectPreselection(SoPickedPoint * 
             }
         } else {
             // checking if a constraint is hit
-            constrIndices = detectPreselectionConstr(Point, cursorPos);
+            result.constrIndices = detectPreselectionConstr(Point, cursorPos);
         }
     }
 
