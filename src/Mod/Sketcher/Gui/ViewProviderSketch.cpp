@@ -132,27 +132,6 @@ using namespace SketcherGui;
 using namespace Sketcher;
 namespace bp = boost::placeholders;
 
-SbColor ViewProviderSketch::VertexColor                             (1.0f,0.149f,0.0f);   // #FF2600 -> (255, 38,  0)
-SbColor ViewProviderSketch::CurveColor                              (1.0f,1.0f,1.0f);     // #FFFFFF -> (255,255,255)
-SbColor ViewProviderSketch::CurveDraftColor                         (0.0f,0.0f,0.86f);    // #0000DC -> (  0,  0,220)
-SbColor ViewProviderSketch::CurveExternalColor                      (0.8f,0.2f,0.6f);     // #CC3399 -> (204, 51,153)
-SbColor ViewProviderSketch::CrossColorH                             (0.8f,0.4f,0.4f);     // #CC6666 -> (204,102,102)
-SbColor ViewProviderSketch::CrossColorV                             (0.47f,1.0f,0.51f);   // #83FF83 -> (120,255,131)
-SbColor ViewProviderSketch::FullyConstrainedColor                   (0.0f,1.0f,0.0f);     // #00FF00 -> (  0,255,  0)
-SbColor ViewProviderSketch::ConstrDimColor                          (1.0f,0.149f,0.0f);   // #FF2600 -> (255, 38,  0)
-SbColor ViewProviderSketch::ConstrIcoColor                          (1.0f,0.149f,0.0f);   // #FF2600 -> (255, 38,  0)
-SbColor ViewProviderSketch::NonDrivingConstrDimColor                (0.0f,0.149f,1.0f);   // #0026FF -> (  0, 38,255)
-SbColor ViewProviderSketch::ExprBasedConstrDimColor                 (1.0f,0.5f,0.149f);   // #FF7F26 -> (255, 127,38)
-SbColor ViewProviderSketch::PreselectColor                          (0.88f,0.88f,0.0f);   // #E1E100 -> (225,225,  0)
-SbColor ViewProviderSketch::SelectColor                             (0.11f,0.68f,0.11f);  // #1CAD1C -> ( 28,173, 28)
-SbColor ViewProviderSketch::PreselectSelectedColor                  (0.36f,0.48f,0.11f);  // #5D7B1C -> ( 93,123, 28)
-SbColor ViewProviderSketch::DeactivatedConstrDimColor               (0.8f,0.8f,0.8f);     // #CCCCCC -> (204,204,204)
-SbColor ViewProviderSketch::InternalAlignedGeoColor                 (0.7f,0.7f,0.5f);     // #B2B27F -> (178,178,127)
-SbColor ViewProviderSketch::FullyConstraintElementColor             (0.50f,0.81f,0.62f);  // #80D0A0 -> (128,208,160)
-SbColor ViewProviderSketch::FullyConstraintConstructionElementColor (0.56f,0.66f,0.99f);  // #8FA9FD -> (143,169,253)
-SbColor ViewProviderSketch::FullyConstraintInternalAlignmentColor   (0.87f,0.87f,0.78f);  // #DEDEC8 -> (222,222,200)
-SbColor ViewProviderSketch::FullyConstraintConstructionPointColor   (1.0f,0.58f,0.50f);   // #FF9580 -> (255,149,128)
-SbColor ViewProviderSketch::InvalidSketchColor                      (1.0f,0.42f,0.0f);    // #FF6D00 -> (255,109,  0)
 // Variables for holding previous click
 SbTime  ViewProviderSketch::prvClickTime;
 SbVec2s ViewProviderSketch::prvClickPos;
@@ -211,18 +190,6 @@ ViewProviderSketch::ViewProviderSketch()
     LineColor.setValue(1,1,1);
     PointColor.setValue(1,1,1);
     PointSize.setValue(4);
-
-    zLowLines=0.005f;
-    //zLines=0.005f;    // ZLines removed in favour of 3 height groups intended for NormalLines, ConstructionLines, ExternalLines
-    //zMidLines=0.006f;
-    zHighLines=0.007f;  // Lines that are somehow selected to be in the high position (higher than other line categories)
-    zHighLine=0.008f;   // highlighted line (of any group)
-    zConstr=0.009f; // constraint not construction
-    //zPoints=0.010f;
-    zLowPoints = 0.010f;
-    zHighPoints = 0.011f;
-    zHighlight=0.012f;
-    zText=0.012f;
 
 
     xInit=0;
@@ -2882,36 +2849,7 @@ bool ViewProviderSketch::setEdit(int ModNum)
 
     ViewProvider2DObjectGrid::setEdit(ModNum); // notify to handle grid according to edit mode property
 
-    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-
-    auto updateColor = [&hGrp](SbColor & sbcolor, const char * parametername){
-        float transparency = 0.f;
-        unsigned long color = (unsigned long)(sbcolor.getPackedValue());
-        color = hGrp->GetUnsigned(parametername, color);
-        sbcolor.setPackedValue((uint32_t)color, transparency);
-    };
-
-    // set the point color
-    updateColor(VertexColor, "EditedVertexColor");
-    updateColor(CurveColor, "EditedEdgeColor");
-    updateColor(CurveDraftColor, "ConstructionColor");
-    updateColor(InternalAlignedGeoColor, "InternalAlignedGeoColor");
-    updateColor(FullyConstraintElementColor, "FullyConstraintElementColor");
-    updateColor(FullyConstraintConstructionElementColor, "FullyConstraintConstructionElementColor");
-    updateColor(FullyConstraintInternalAlignmentColor, "FullyConstraintInternalAlignmentColor");
-    updateColor(FullyConstraintConstructionPointColor, "FullyConstraintConstructionPointColor");
-    updateColor(FullyConstraintElementColor, "FullyConstraintElementColor");
-    updateColor(InvalidSketchColor, "InvalidSketchColor");
-    updateColor(FullyConstrainedColor, "FullyConstrainedColor");
-    updateColor(ConstrDimColor, "ConstrainedDimColor");
-    updateColor(ConstrIcoColor, "ConstrainedIcoColor");
-    updateColor(NonDrivingConstrDimColor, "NonDrivingConstrDimColor");
-    updateColor(ExprBasedConstrDimColor, "ExprBasedConstrDimColor");
-    updateColor(DeactivatedConstrDimColor, "DeactivatedConstrDimColor");
-    updateColor(CurveExternalColor, "ExternalColor");
-    updateColor(PreselectColor, "HighlightColor");
-    updateColor(SelectColor, "SelectionColor");
-
+    // update colors
     coinManager->updateCoinManagerColors();
 
     // start the edit dialog
@@ -3253,26 +3191,6 @@ void ViewProviderSketch::unsetEditViewer(Gui::View3DInventorViewer* viewer)
     SoNode* root = viewer->getSceneGraph();
     static_cast<Gui::SoFCUnifiedSelection*>(root)->selectionRole.setValue(true);
 }
-
-void ViewProviderSketch::setPositionText(const Base::Vector2d &Pos, const SbString &text)
-{
-    edit->textX->string = text;
-    edit->textPos->translation = SbVec3f(Pos.x,Pos.y,zText);
-}
-
-void ViewProviderSketch::setPositionText(const Base::Vector2d &Pos)
-{
-    SbString text;
-    text.sprintf(" (%.1f,%.1f)", Pos.x, Pos.y);
-    setPositionText(Pos,text);
-}
-
-void ViewProviderSketch::resetPositionText(void)
-{
-    edit->textX->string = "";
-}
-
-
 
 int ViewProviderSketch::getPreselectPoint(void) const
 {
@@ -3632,4 +3550,20 @@ double ViewProviderSketch::getRotation(SbVec3f pos0, SbVec3f pos1) const
     catch (const Base::DivisionByZeroError&) {
         return 0;
     }
+}
+
+
+void ViewProviderSketch::setPositionText(const Base::Vector2d &Pos, const SbString &text)
+{
+    coinManager->setPositionText(Pos,text);
+}
+
+void ViewProviderSketch::setPositionText(const Base::Vector2d &Pos)
+{
+    coinManager->setPositionText(Pos);
+}
+
+void ViewProviderSketch::resetPositionText(void)
+{
+    coinManager->resetPositionText();
 }

@@ -62,6 +62,8 @@ struct DrawingParameters {
     const float zLowPoints  = 0.010f;    // TODO: Fix zLowPoints
     const float zHighPoints = 0.011f;
     const float zHighlight  = 0.012f;   // Highlighted rendering height for points
+    const float zText       = 0.012f;
+
 
     // Rendering Order
     enum class GeometryRendering {

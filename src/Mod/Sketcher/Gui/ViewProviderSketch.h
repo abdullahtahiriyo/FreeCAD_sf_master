@@ -327,6 +327,10 @@ private:
 
     double getRotation(SbVec3f pos0, SbVec3f pos1) const;
 
+    void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
+    void setPositionText(const Base::Vector2d &Pos);
+    void resetPositionText(void);
+
 protected:
     boost::signals2::connection connectUndoDocument;
     boost::signals2::connection connectRedoDocument;
@@ -347,50 +351,13 @@ protected:
                                         const QString & pluralmsg,
                                         const std::vector<int> &vector);
 
-    void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
-    void setPositionText(const Base::Vector2d &Pos);
-    void resetPositionText(void);
-
     // modes while sketching
     SketchMode Mode;
-
-    // colors
-    static SbColor VertexColor;
-    static SbColor CurveColor;
-    static SbColor CurveDraftColor;
-    static SbColor CurveExternalColor;
-    static SbColor CrossColorV;
-    static SbColor CrossColorH;
-    static SbColor FullyConstrainedColor;
-    static SbColor ConstrDimColor;
-    static SbColor ConstrIcoColor;
-    static SbColor NonDrivingConstrDimColor;
-    static SbColor ExprBasedConstrDimColor;
-    static SbColor PreselectColor;
-    static SbColor SelectColor;
-    static SbColor PreselectSelectedColor;
-    static SbColor DeactivatedConstrDimColor;
-    static SbColor InternalAlignedGeoColor;
-    static SbColor FullyConstraintElementColor;
-    static SbColor FullyConstraintConstructionElementColor;
-    static SbColor FullyConstraintInternalAlignmentColor;
-    static SbColor FullyConstraintConstructionPointColor;
-    static SbColor InvalidSketchColor;
 
     static SbTime prvClickTime;
     static SbVec2s prvClickPos; //used by double-click-detector
     static SbVec2s prvCursorPos;
     static SbVec2s newCursorPos;
-
-    float zLowPoints;
-    float zHighPoints;
-    float zConstr;
-    float zHighlight;
-    float zText;
-    float zHighLine;
-    float zLowLines;
-    float zMidLines;
-    float zHighLines;
 
     // reference coordinates for relative operations
     double xInit,yInit;

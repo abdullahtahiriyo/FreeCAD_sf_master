@@ -252,6 +252,10 @@ public:
     // This specific overload is to use a specific geometry list, which may be a temporal one
     void drawConstraintIcons(const GeoList & geolist);
 
+    void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
+    void setPositionText(const Base::Vector2d &Pos);
+    void resetPositionText(void);
+
 private:
     // This function populates the coin nodes with the information of the current geometry
     void processGeometry(const GeoList & geolist);

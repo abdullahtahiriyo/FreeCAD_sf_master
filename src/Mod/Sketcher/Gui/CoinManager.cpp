@@ -1669,6 +1669,7 @@ void CoinManager::clearSelectPoints(void)
 
 void CoinManager::updateCoinManagerColors()
 {
+    // TODO: Consider making colors updated using the observer
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
 
     auto updateColor = [&hGrp](SbColor & sbcolor, const char * parametername){
@@ -1679,6 +1680,28 @@ void CoinManager::updateCoinManagerColors()
     };
 
     updateColor(drawingParameters.CreateCurveColor, "CreateLineColor");
+    updateColor(drawingParameters.VertexColor, "EditedVertexColor");
+    updateColor(drawingParameters.CurveColor, "EditedEdgeColor");
+    updateColor(drawingParameters.CurveDraftColor, "ConstructionColor");
+    updateColor(drawingParameters.InternalAlignedGeoColor, "InternalAlignedGeoColor");
+    updateColor(drawingParameters.FullyConstraintElementColor, "FullyConstraintElementColor");
+    updateColor(drawingParameters.FullyConstraintConstructionElementColor, "FullyConstraintConstructionElementColor");
+    updateColor(drawingParameters.FullyConstraintInternalAlignmentColor, "FullyConstraintInternalAlignmentColor");
+    updateColor(drawingParameters.FullyConstraintConstructionPointColor, "FullyConstraintConstructionPointColor");
+    updateColor(drawingParameters.FullyConstraintElementColor, "FullyConstraintElementColor");
+    updateColor(drawingParameters.InvalidSketchColor, "InvalidSketchColor");
+    updateColor(drawingParameters.FullyConstrainedColor, "FullyConstrainedColor");
+    updateColor(drawingParameters.ConstrDimColor, "ConstrainedDimColor");
+    updateColor(drawingParameters.ConstrIcoColor, "ConstrainedIcoColor");
+    updateColor(drawingParameters.NonDrivingConstrDimColor, "NonDrivingConstrDimColor");
+    updateColor(drawingParameters.ExprBasedConstrDimColor, "ExprBasedConstrDimColor");
+    updateColor(drawingParameters.DeactivatedConstrDimColor, "DeactivatedConstrDimColor");
+    updateColor(drawingParameters.CurveExternalColor, "ExternalColor");
+    updateColor(drawingParameters.PreselectColor, "HighlightColor");
+    updateColor(drawingParameters.SelectColor, "SelectionColor");
+
+
+
 }
 
 void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid)
@@ -3333,4 +3356,22 @@ int CoinManager::constrColorPriority(int constraintId)
         return 2;
     else
         return 1;
+}
+
+void CoinManager::setPositionText(const Base::Vector2d &Pos, const SbString &text)
+{
+    edit->textX->string = text;
+    edit->textPos->translation = SbVec3f(Pos.x, Pos.y, drawingParameters.zText);
+}
+
+void CoinManager::setPositionText(const Base::Vector2d &Pos)
+{
+    SbString text;
+    text.sprintf(" (%.1f,%.1f)", Pos.x, Pos.y);
+    setPositionText(Pos,text);
+}
+
+void CoinManager::resetPositionText(void)
+{
+    edit->textX->string = "";
 }
