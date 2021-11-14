@@ -61,11 +61,6 @@ using namespace Sketcher;
 
 /************************************ Attorney *******************************************/
 
-inline void ViewProviderSketchDrawSketchHandlerAttorney::deactivateHandler(ViewProviderSketch & vp)
-{
-    vp.deactivateHandler();
-}
-
 inline void ViewProviderSketchDrawSketchHandlerAttorney::setPositionText(ViewProviderSketch &vp, const Base::Vector2d &Pos, const SbString &txt)
 {
     vp.setPositionText(Pos,txt);

@@ -42,7 +42,6 @@ class ViewProviderSketch;
 
 class ViewProviderSketchDrawSketchHandlerAttorney {
 private:
-    static inline void deactivateHandler(ViewProviderSketch &vp);
     static inline void setPositionText(ViewProviderSketch &vp, const Base::Vector2d &Pos, const SbString &txt);
     static inline void setPositionText(ViewProviderSketch &vp, const Base::Vector2d &Pos);
     static inline void resetPositionText(ViewProviderSketch &vp);
