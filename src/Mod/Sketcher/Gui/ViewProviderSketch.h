@@ -24,6 +24,8 @@
 #ifndef SKETCHERGUI_VIEWPROVIDERSKETCH_H
 #define SKETCHERGUI_VIEWPROVIDERSKETCH_H
 
+#include <memory>
+
 #include <Mod/Part/Gui/ViewProvider2DObject.h>
 #include <Mod/Part/Gui/ViewProviderAttachExtension.h>
 #include <Mod/Part/App/BodyBase.h>
@@ -36,6 +38,8 @@
 #include <QCoreApplication>
 #include <Gui/Document.h>
 #include "ShortcutListener.h"
+
+#include <Mod/Sketcher/App/GeoList.h>
 
 class TopoDS_Shape;
 class TopoDS_Face;
@@ -73,9 +77,6 @@ namespace Sketcher {
     class Constraint;
     class Sketch;
     class SketchObject;
-
-    template < typename T >
-    class GeoListModel;
 }
 
 namespace SketcherGui {
@@ -84,7 +85,9 @@ struct EditData;
 class CoinManager;
 class DrawSketchHandler;
 
-using GeoList = Sketcher::GeoListModel<Part::Geometry *>;
+using GeoList = Sketcher::GeoList;
+using GeoListFacade = Sketcher::GeoListFacade;
+
 
 /** The Sketch ViewProvider
   * This class handles mainly the drawing and editing of the sketch.
@@ -95,7 +98,6 @@ using GeoList = Sketcher::GeoListModel<Part::Geometry *>;
 class SketcherGuiExport ViewProviderSketch : public PartGui::ViewProvider2DObjectGrid
                                             , public PartGui::ViewProviderAttachExtension
                                             , public Gui::SelectionObserver
-                                            , public ParameterGrp::ObserverType
 {
     Q_DECLARE_TR_FUNCTIONS(SketcherGui::ViewProviderSketch)
     /// generates a warning message about constraint conflicts and appends it to the given message
@@ -108,6 +110,84 @@ class SketcherGuiExport ViewProviderSketch : public PartGui::ViewProvider2DObjec
     static QString appendMalformedMsg(const std::vector<int> &redundant);
 
     PROPERTY_HEADER_WITH_OVERRIDE(SketcherGui::ViewProviderSketch);
+
+private:
+    class ParameterObserver : public ParameterGrp::ObserverType
+    {
+    public:
+        ParameterObserver(ViewProviderSketch & client);
+        ~ParameterObserver();
+
+        void initParameters();
+
+        void subscribeToParameters();
+
+        void unsubscribeToParameters();
+
+        /** Observer for parameter group. */
+        void OnChange(Base::Subject<const char*> &rCaller, const char * sReason) override;
+
+    private:
+
+        void updateBoolProperty(const std::string & string, App::Property * property, bool defaultvalue);
+        void updateGridSize(const std::string & string, App::Property * property);
+
+        // Only for colors outside of edit mode, edit mode colors are handled by CoinManager.
+        void updateColorProperty(const std::string & string, App::Property * property, float r, float g, float b);
+
+        void updateEscapeKeyBehaviour(const std::string & string, App::Property * property);
+
+        void updateAutoRecompute(const std::string & string, App::Property * property);
+
+        void updateRecalculateInitialSolutionWhileDragging(const std::string & string, App::Property * property);
+
+    private:
+        ViewProviderSketch &Client;
+        std::map<std::string, std::tuple<std::function<void(const std::string & string, App::Property *)>, App::Property * >> parameterMap;
+    };
+
+    class Drag {
+    public:
+        Drag() {
+            resetVector();
+        }
+
+        void resetVector() {
+            xInit = 0;
+            yInit = 0;
+            relative = false;
+        }
+
+        void resetIds() {
+            DragPoint = -1;
+            DragCurve = -1;
+            DragConstraintSet.clear();
+        }
+
+        double xInit, yInit;                // starting point of the dragging operation
+        bool relative;                      // whether the dragging move vector is relative or absolute
+
+
+        int DragPoint = -1;                 // dragged point id
+        int DragCurve = -1;                 // dragged curve id
+        std::set<int> DragConstraintSet;    // dragged constraints ids
+    };
+
+    struct DoubleClick {
+        static SbTime prvClickTime;
+        static SbVec2s prvClickPos; //used by double-click-detector
+        static SbVec2s prvCursorPos;
+        static SbVec2s newCursorPos;
+    };
+
+    struct ViewProviderParameters {
+        bool handleEscapeButton = false;
+        bool autoRecompute = false;
+        bool recalculateInitialSolutionWhileDragging = false;
+
+        bool isShownVirtualSpace = false; // indicates whether the present virtual space view is the Real Space or the Virtual Space (virtual space 1 or 2)
+        bool buttonPress = false;
+    };
 
 public:
     /// constructor
@@ -138,6 +218,10 @@ public:
 
     //@}
 
+
+    // TODO: SketchMode should be refactored. DrawSketchHandler, its inheritance and free functions should access this mode via the DrawSketchHandler
+    // Attorney. I will not refactor this at this moment, as the refactor will be even more extensive and difficult to review. But this should be done
+    // in a second stage.
 
     /** @name modus handling */
     //@{
@@ -189,7 +273,6 @@ public:
     /** @name preselection functions */
     //@{
     /// helper to detect preselection
-    bool detectAndShowPreselection (SoPickedPoint * Point, const SbVec2s &cursorPos);
     int getPreselectPoint(void) const;
     int getPreselectCurve(void) const;
     int getPreselectCross(void) const;
@@ -269,9 +352,6 @@ public:
     /// signals if the elements list has changed
     boost::signals2::signal<void ()> signalElementsChanged;
 
-    /** Observer for parameter group. */
-    void OnChange(Base::Subject<const char*> &rCaller, const char * sReason) override;
-
     friend class ViewProviderSketchDrawSketchHandlerAttorney;
     friend class ViewProviderSketchCoinAttorney;
     friend class ViewProviderSketchShortcutListenerAttorney;
@@ -287,25 +367,11 @@ protected:
 
     /** @name miscelanea editing functions */
     //@{
-    /// set up the edition data structure EditData
-    void createEditInventorNodes(void);
 
     void deactivateHandler();
 
     /// get called if a subelement is double clicked while editing
     void editDoubleClicked(void);
-    //@}
-
-    /** @name parameter management */
-    //@{
-    /// set icon & font sizes
-    void initItemsSizes();
-    /// subscribe to parameter groups as an observer
-    void subscribeToParameters();
-    /// unsubscribe to parameter groups as an observer
-    void unsubscribeToParameters();
-    /// updates the sizes of the edit mode inventor node
-    void updateInventorNodeSizes();
     //@}
 
     /** @name Solver Information */
@@ -350,6 +416,12 @@ private:
                            SbLine&) const;
     //@}
 
+    /** @name preselection functions */
+    //@{
+    /// helper to detect preselection
+    bool detectAndShowPreselection (SoPickedPoint * Point, const SbVec2s &cursorPos);
+    //@}
+
 
     /** @name Attorney functions*/
     //@{
@@ -367,6 +439,8 @@ private:
     // gets the list of geometry of the sketchobject or of the solver instance
     const GeoList getGeoList() const;
 
+    GeoListFacade getGeoListFacade() const;
+
     Base::Placement getEditingPlacement() const;
 
     std::unique_ptr<SoRayPickAction> getRayPickAction() const;
@@ -375,7 +449,21 @@ private:
 
     QFont getApplicationFont() const;
 
+    int defaultFontSizePixels() const;
+
+    int getApplicationLogicalDPIX() const;
+
     double getRotation(SbVec3f pos0, SbVec3f pos1) const;
+
+    bool isSketchInvalid() const;
+
+    bool isSketchFullyConstrained() const;
+
+    bool haveConstraintsInvalidGeometry() const;
+
+    void addNodeToRoot(SoSeparator * node);
+
+    void removeNodeFromRoot(SoSeparator * node);
 
     //********* ViewProviderSketchShortcutListenerAttorney ***********//
     void deleteSelected();
@@ -393,7 +481,7 @@ private:
     void setAxisPickStyle(bool on);
     //@}
 
-protected:
+private:
     boost::signals2::connection connectUndoDocument;
     boost::signals2::connection connectRedoDocument;
 
@@ -403,27 +491,24 @@ protected:
     // modes while sketching
     SketchMode Mode;
 
-    static SbTime prvClickTime;
-    static SbVec2s prvClickPos; //used by double-click-detector
-    static SbVec2s prvCursorPos;
-    static SbVec2s newCursorPos;
-
     // reference coordinates for relative operations
-    double xInit,yInit;
-    bool relative;
+    Drag drag;
 
-    Gui::Rubberband* rubberband;
+    std::unique_ptr<Gui::Rubberband> rubberband;
 
     std::string editDocName;
     std::string editObjName;
     std::string editSubName;
 
-    // Virtual space variables
-    bool isShownVirtualSpace; // indicates whether the present virtual space view is the Real Space or the Virtual Space (virtual space 1 or 2)
-
     ShortcutListener* listener;
 
     std::unique_ptr<CoinManager> coinManager;
+
+    std::unique_ptr<ViewProviderSketch::ParameterObserver> pObserver;
+
+    std::unique_ptr<DrawSketchHandler> sketchHandler;
+
+    ViewProviderParameters viewProviderParameters;
 };
 
 } // namespace PartGui
