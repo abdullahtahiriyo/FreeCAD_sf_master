@@ -27,8 +27,6 @@
 #include <Mod/Part/Gui/ViewProvider2DObject.h>
 #include <Mod/Part/Gui/ViewProviderAttachExtension.h>
 #include <Mod/Part/App/BodyBase.h>
-#include <Inventor/SbImage.h>
-#include <Inventor/SbColor.h>
 #include <Base/Tools2D.h>
 #include <Base/Placement.h>
 #include <Gui/Selection.h>
@@ -43,6 +41,7 @@ class TopoDS_Shape;
 class TopoDS_Face;
 class SoSeparator;
 class SbLine;
+class SbVec2f;
 class SbVec3f;
 class SoCoordinate3;
 class SoInfo;
@@ -116,6 +115,8 @@ public:
     /// destructor
     virtual ~ViewProviderSketch();
 
+    /** @name Properties */
+    //@{
     App::PropertyBool Autoconstraints;
     App::PropertyBool AvoidRedundant;
     App::PropertyPythonObject TempoVis;
@@ -126,23 +127,7 @@ public:
     App::PropertyBool ForceOrtho;
     App::PropertyBool SectionView;
     App::PropertyString EditingWorkbench;
-
-    /// draw the sketch in the inventor nodes
-    /// temp => use temporary solver solution in SketchObject
-    /// recreateinformationscenography => forces a rebuild of the information overlay scenography
-    void draw(bool temp=false, bool rebuildinformationoverlay=true);
-
-    /// draw the edit curve
-    void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
-
-    /// draw the edit markers
-    void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
-
-    /// Is the view provider selectable
-    bool isSelectable(void) const override;
-
-    /// Observer message from the Selection
-    virtual void onSelectionChanged(const Gui::SelectionChanges& msg) override;
+    //@}
 
     /** @name handler control */
     //@{
@@ -153,6 +138,7 @@ public:
     /// set the pick style of the sketch coordinate axes
     void setAxisPickStyle(bool on);
     //@}
+
 
     /** @name modus handling */
     //@{
@@ -170,27 +156,54 @@ public:
         STATUS_SKETCH_StartRubberBand, /**< enum value for initiating a rubber band selection */
         STATUS_SKETCH_UseRubberBand /**< enum value when making a rubber band selection *//**< enum value a DrawSketchHandler is in control. */
     };
+
     /// is called by GuiCommands to set the drawing mode
     void setSketchMode(SketchMode mode) {Mode = mode;}
     /// get the sketch mode
     SketchMode getSketchMode(void) const {return Mode;}
     //@}
 
-    /** @name helper functions */
+    /** @name Drawing functions */
     //@{
-    /// helper to detect preselection
-    bool detectAndShowPreselection (SoPickedPoint * Point, const SbVec2s &cursorPos);
-
-    /*! Look at the center of the bounding of all selected items */
-    void centerSelection();
-
-    /// box selection method
-    void doBoxSelection(const SbVec2s &startPos, const SbVec2s &endPos,
-                        const Gui::View3DInventorViewer *viewer);
+    /// draw the sketch in the inventor nodes
+    /// temp => use temporary solver solution in SketchObject
+    /// recreateinformationscenography => forces a rebuild of the information overlay scenography
+    void draw(bool temp=false, bool rebuildinformationoverlay=true);
 
     /// helper change the color of the sketch according to selection and solver status
     void updateColor(void);
 
+    /// draw the edit curve
+    void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
+
+    /// draw the edit markers
+    void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
+    //@}
+
+    /** @name Selection functions */
+    //@{
+    /// Is the view provider selectable
+    bool isSelectable(void) const override;
+
+    /// Observer message from the Selection
+    virtual void onSelectionChanged(const Gui::SelectionChanges& msg) override;
+
+    /// box selection method
+    void doBoxSelection(const SbVec2s &startPos, const SbVec2s &endPos,
+                        const Gui::View3DInventorViewer *viewer);
+    //@}
+
+    /** @name preselection functions */
+    //@{
+    /// helper to detect preselection
+    bool detectAndShowPreselection (SoPickedPoint * Point, const SbVec2s &cursorPos);
+    int getPreselectPoint(void) const;
+    int getPreselectCurve(void) const;
+    int getPreselectCross(void) const;
+    //@}
+
+    /** @name Access to Sketch and Solver objects */
+    //@{
     /// get the pointer to the sketch document object
     Sketcher::SketchObject *getSketchObject(void) const;
 
@@ -205,6 +218,12 @@ public:
      * -> inline void updateSolverExtension(int geoId, std::unique_ptr<Part::GeometryExtension> && ext)
      */
     const Sketcher::Sketch &getSolvedSketch(void) const;
+    //@}
+
+    /** @name miscelanea utilities */
+    //@{
+    /*! Look at the center of the bounding of all selected items */
+    void centerSelection();
 
     /// snap points x,y (mouse coordinates) onto grid if enabled
     void snapToGrid(double &x, double &y);
@@ -212,10 +231,18 @@ public:
     /// moves a selected constraint
     void moveConstraint(int constNum, const Base::Vector2d &toPos);
 
-    int getPreselectPoint(void) const;
-    int getPreselectCurve(void) const;
-    int getPreselectCross(void) const;
+    float getScaleFactor() const;
     //@}
+
+
+    /// updates the visibility of the virtual space
+    /** @name constraint Virtual Space visibility management */
+    //@{
+    void updateVirtualSpace(void);
+    void setIsShownVirtualSpace(bool isshownvirtualspace);
+    bool getIsShownVirtualSpace(void) const;
+    //@}
+
 
     /** @name base class implementer */
     //@{
@@ -239,20 +266,8 @@ public:
     virtual bool mouseButtonPressed(int Button, bool pressed, const SbVec2s& cursorPos, const Gui::View3DInventorViewer* viewer) override;
     //@}
 
-    float getScaleFactor() const;
-
-    void deleteSelected();
-
-    /// updates the visibility of the virtual space
-    void updateVirtualSpace(void);
-    void setIsShownVirtualSpace(bool isshownvirtualspace);
-    bool getIsShownVirtualSpace(void) const;
-
     /// Icons and Icon overlays
     virtual QIcon mergeColorfulOverlayIcons (const QIcon & orig) const override;
-
-    friend class DrawSketchHandler;
-    friend class ViewProviderSketchCoinAttorney;
 
     /// signals if the constraints list has changed
     boost::signals2::signal<void ()> signalConstraintsChanged;
@@ -264,34 +279,75 @@ public:
     /** Observer for parameter group. */
     void OnChange(Base::Subject<const char*> &rCaller, const char * sReason) override;
 
+    friend class DrawSketchHandler;
+    friend class ViewProviderSketchCoinAttorney;
+    friend class ViewProviderSketchShortcutListenerAttorney;
+
 protected:
+    /** @name enter/exit edit mode */
+    //@{
     virtual bool setEdit(int ModNum) override;
     virtual void unsetEdit(int ModNum) override;
     virtual void setEditViewer(Gui::View3DInventorViewer*, int ModNum) override;
     virtual void unsetEditViewer(Gui::View3DInventorViewer*) override;
+    //@}
+
+    /** @name miscelanea editing functions */
+    //@{
+    /// set up the edition data structure EditData
+    void createEditInventorNodes(void);
+
     void deactivateHandler();
-    /// update solver information based on last solving at SketchObject
-    void UpdateSolverInformation(void);
-    /// get called by the container whenever a property has been changed
-    virtual void onChanged(const App::Property *prop) override;
 
     /// get called if a subelement is double clicked while editing
     void editDoubleClicked(void);
+    //@}
 
-    /// set up the edition data structure EditData
-    void createEditInventorNodes(void);
-    /// pointer to the edit data structure if the ViewProvider is in edit.
-    EditData *edit;
+    /** @name parameter management */
+    //@{
+    /// set icon & font sizes
+    void initItemsSizes();
+    /// subscribe to parameter groups as an observer
+    void subscribeToParameters();
+    /// unsubscribe to parameter groups as an observer
+    void unsubscribeToParameters();
+    /// updates the sizes of the edit mode inventor node
+    void updateInventorNodeSizes();
+    //@}
 
+    /** @name Solver Information */
+    //@{
+    /// update solver information based on last solving at SketchObject
+    void UpdateSolverInformation(void);
+
+    /// Auxiliary function to generate messages about conflicting, redundant and malformed constraints
+    static QString appendConstraintMsg( const QString & singularmsg,
+                                        const QString & pluralmsg,
+                                        const std::vector<int> &vector);
+    //@}
+
+    /** @name manage updates during undo/redo operations */
+    //@{
     void slotUndoDocument(const Gui::Document&);
     void slotRedoDocument(const Gui::Document&);
+    void forceUpdateData();
+    //@}
+
+    /** @name base class implementer */
+    //@{
+    /// get called by the container whenever a property has been changed
+    virtual void onChanged(const App::Property *prop) override;
+    //@}
 
 private:
+    /// function to handle OCCT BSpline weight calculation singularities and representation
     void scaleBSplinePoleCirclesAndUpdateSolverAndSketchObjectGeometry(
                         GeoList & geolist,
                         bool geometrywithmemoryallocation,
                         std::vector<std::unique_ptr<Part::Geometry>> &deepCopiesToDelete);
 
+    /** @name geometry and coordinates auxiliary functions */
+    //@{
     /// give the coordinates of a line on the sketch plane in sketcher (2D) coordinates
     void getCoordsOnSketchPlane(const SbVec3f &point, const SbVec3f &normal, double &u, double &v) const;
 
@@ -299,9 +355,27 @@ private:
     void getProjectingLine(const SbVec2s&,
                            const Gui::View3DInventorViewer *viewer,
                            SbLine&) const;
+    //@}
 
+    /** @name Drawhandler private interface */
+    //@{
+    /// Required for DrawHandle
+    // TODO: Consider writing an attorney to limit
+    // the access of DrawHandler to ViewProvider and improve encapsulation
+    // and prevent uncontrolled grow of dependencies.
+    void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
+    void setPositionText(const Base::Vector2d &Pos);
+    void resetPositionText(void);
+    //@}
+
+    /** @name Attorney functions*/
+    //@{
     /* private functions to decouple Attorneys and Clients from the internal implementation of
-    the ViewProvider and its members, such as sketchObject */
+    the ViewProvider and its members, such as sketchObject (see friend attorney classes) and
+    improve encapsulation.
+    */
+
+    //********* ViewProviderSketchCoinAttorney ***********************
 
     bool constraintHasExpression(int constrid) const;
 
@@ -320,32 +394,16 @@ private:
 
     double getRotation(SbVec3f pos0, SbVec3f pos1) const;
 
-    // Required for DrawHandle TODO: Consider writing an attorney to limit
-    // the access of DrawHandler to ViewProvider and improve encapsulation
-    // and prevent uncontrolled grow of dependencies.
-    void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
-    void setPositionText(const Base::Vector2d &Pos);
-    void resetPositionText(void);
+    // ViewProviderSketchShortcutListenerAttorney
+    void deleteSelected();
+    //@}
 
 protected:
     boost::signals2::connection connectUndoDocument;
     boost::signals2::connection connectRedoDocument;
 
-    /// set icon & font sizes
-    void initItemsSizes();
-    /// subscribe to parameter groups as an observer
-    void subscribeToParameters();
-    /// unsubscribe to parameter groups as an observer
-    void unsubscribeToParameters();
-    /// updates the sizes of the edit mode inventor node
-    void updateInventorNodeSizes();
-
-    void forceUpdateData();
-
-    /// Auxiliary function to generate messages about conflicting, redundant and malformed constraints
-    static QString appendConstraintMsg( const QString & singularmsg,
-                                        const QString & pluralmsg,
-                                        const std::vector<int> &vector);
+    /// pointer to the edit data structure if the ViewProvider is in edit.
+    EditData *edit;
 
     // modes while sketching
     SketchMode Mode;

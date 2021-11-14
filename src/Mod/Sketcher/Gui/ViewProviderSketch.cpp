@@ -26,10 +26,7 @@
 #ifndef _PreComp_
 # include <Standard_math.hxx>
 # include <Poly_Polygon3D.hxx>
-# include <Geom_BSplineCurve.hxx>
-# include <Geom_Circle.hxx>
-# include <Geom_Ellipse.hxx>
-# include <Geom_TrimmedCurve.hxx>
+
 # include <Inventor/actions/SoGetBoundingBoxAction.h>
 # include <Inventor/SoPath.h>
 # include <Inventor/SbBox3f.h>
