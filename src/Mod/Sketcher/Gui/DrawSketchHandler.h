@@ -47,6 +47,7 @@ private:
     static inline void resetPositionText(ViewProviderSketch &vp);
     static inline void drawEdit(ViewProviderSketch &vp, const std::vector<Base::Vector2d> &EditCurve);
     static inline void drawEditMarkers(ViewProviderSketch &vp, const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
+    static inline void setAxisPickStyle(ViewProviderSketch &vp, bool on);
 
     friend class DrawSketchHandler;
 };
@@ -127,6 +128,7 @@ protected:
 
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
     void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
+    void setAxisPickStyle(bool on);
 
 
 

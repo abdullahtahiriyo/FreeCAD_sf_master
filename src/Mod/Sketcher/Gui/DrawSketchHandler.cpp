@@ -86,6 +86,11 @@ inline void ViewProviderSketchDrawSketchHandlerAttorney::drawEditMarkers(ViewPro
     vp.drawEditMarkers(EditMarkers, augmentationlevel);
 }
 
+inline void ViewProviderSketchDrawSketchHandlerAttorney::setAxisPickStyle(ViewProviderSketch &vp, bool on)
+{
+    vp.setAxisPickStyle(on);
+}
+
 /**************************** DrawSketchHandler *******************************************/
 
 
@@ -734,4 +739,9 @@ void DrawSketchHandler::drawEdit(const std::vector<Base::Vector2d> &EditCurve)
 void DrawSketchHandler::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel)
 {
     ViewProviderSketchDrawSketchHandlerAttorney::drawEditMarkers(*sketchgui, EditMarkers, augmentationlevel);
+}
+
+void DrawSketchHandler::setAxisPickStyle(bool on)
+{
+    ViewProviderSketchDrawSketchHandlerAttorney::setAxisPickStyle(*sketchgui, on);
 }

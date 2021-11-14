@@ -135,8 +135,7 @@ public:
     void activateHandler(DrawSketchHandler *newHandler);
     /// removes the active handler
     void purgeHandler(void);
-    /// set the pick style of the sketch coordinate axes
-    void setAxisPickStyle(bool on);
+
     //@}
 
 
@@ -390,6 +389,8 @@ private:
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
     /// draw the edit markers
     void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
+    /// set the pick style of the sketch coordinate axes
+    void setAxisPickStyle(bool on);
     //@}
 
 protected:

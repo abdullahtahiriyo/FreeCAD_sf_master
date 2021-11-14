@@ -6678,7 +6678,7 @@ public:
 
     virtual void activated(ViewProviderSketch *sketchgui)
     {
-        sketchgui->setAxisPickStyle(false);
+        setAxisPickStyle(false);
         Gui::MDIView *mdi = Gui::Application::Instance->activeDocument()->getActiveView();
         Gui::View3DInventorViewer *viewer;
         viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
@@ -6694,7 +6694,7 @@ public:
 
     virtual void deactivated(ViewProviderSketch *sketchgui)
     {
-        sketchgui->setAxisPickStyle(true);
+        setAxisPickStyle(true);
     }
 
     virtual void mouseMove(Base::Vector2d onSketchPos)
@@ -6862,7 +6862,7 @@ namespace SketcherGui {
 
         virtual void activated(ViewProviderSketch *sketchgui)
         {
-            sketchgui->setAxisPickStyle(false);
+            setAxisPickStyle(false);
             Gui::MDIView *mdi = Gui::Application::Instance->activeDocument()->getActiveView();
             Gui::View3DInventorViewer *viewer;
             viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
@@ -6878,7 +6878,7 @@ namespace SketcherGui {
 
         virtual void deactivated(ViewProviderSketch *sketchgui)
         {
-            sketchgui->setAxisPickStyle(true);
+            setAxisPickStyle(true);
         }
 
         virtual void mouseMove(Base::Vector2d onSketchPos)
