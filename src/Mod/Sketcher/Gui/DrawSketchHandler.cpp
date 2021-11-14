@@ -59,6 +59,36 @@ using namespace SketcherGui;
 using namespace Sketcher;
 
 
+/************************************ Attorney *******************************************/
+
+inline void ViewProviderSketchDrawSketchHandlerAttorney::deactivateHandler(ViewProviderSketch & vp)
+{
+    vp.deactivateHandler();
+}
+
+inline void ViewProviderSketchDrawSketchHandlerAttorney::setPositionText(ViewProviderSketch &vp, const Base::Vector2d &Pos, const SbString &txt)
+{
+    vp.setPositionText(Pos,txt);
+}
+
+inline void ViewProviderSketchDrawSketchHandlerAttorney::setPositionText(ViewProviderSketch &vp, const Base::Vector2d &Pos)
+{
+    vp.setPositionText(Pos);
+}
+
+inline void ViewProviderSketchDrawSketchHandlerAttorney::resetPositionText(ViewProviderSketch &vp)
+{
+    vp.resetPositionText();
+}
+
+inline void ViewProviderSketchDrawSketchHandlerAttorney::drawEdit(ViewProviderSketch &vp, const std::vector<Base::Vector2d> &EditCurve)
+{
+    vp.drawEdit(EditCurve);
+}
+
+/**************************** DrawSketchHandler *******************************************/
+
+
 //**************************************************************************
 // Construction/Destruction
 
@@ -69,7 +99,7 @@ DrawSketchHandler::~DrawSketchHandler() {}
 void DrawSketchHandler::quit(void)
 {
     assert(sketchgui);
-    sketchgui->drawEdit(std::vector<Base::Vector2d>());
+    drawEdit(std::vector<Base::Vector2d>());
     sketchgui->drawEditMarkers(std::vector<Base::Vector2d>());
     resetPositionText();
 
@@ -682,16 +712,21 @@ void DrawSketchHandler::renderSuggestConstraintsCursor(std::vector<AutoConstrain
 
 void DrawSketchHandler::setPositionText(const Base::Vector2d &Pos, const SbString &text)
 {
-    sketchgui->setPositionText(Pos, text);
+    ViewProviderSketchDrawSketchHandlerAttorney::setPositionText(*sketchgui, Pos, text);
 }
 
 
 void DrawSketchHandler::setPositionText(const Base::Vector2d &Pos)
 {
-    sketchgui->setPositionText(Pos);
+    ViewProviderSketchDrawSketchHandlerAttorney::setPositionText(*sketchgui,Pos);
 }
 
 void DrawSketchHandler::resetPositionText(void)
 {
-    sketchgui->resetPositionText();
+    ViewProviderSketchDrawSketchHandlerAttorney::resetPositionText(*sketchgui);
+}
+
+void DrawSketchHandler::drawEdit(const std::vector<Base::Vector2d> &EditCurve)
+{
+    ViewProviderSketchDrawSketchHandlerAttorney::drawEdit(*sketchgui, EditCurve);
 }
