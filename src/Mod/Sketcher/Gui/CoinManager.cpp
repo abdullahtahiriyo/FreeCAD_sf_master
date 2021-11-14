@@ -27,7 +27,6 @@
 # include <Inventor/nodes/SoSeparator.h>
 # include <Inventor/nodes/SoGroup.h>
 # include <Inventor/nodes/SoSwitch.h>
-# include <Gui/Inventor/SmSwitchboard.h>
 # include <Inventor/nodes/SoMaterial.h>
 # include <Inventor/nodes/SoCoordinate3.h>
 # include <Inventor/nodes/SoLineSet.h>
@@ -50,9 +49,12 @@
 # include <Inventor/actions/SoRayPickAction.h>
 
 # include <Inventor/SbVec3f.h>
+# include <Inventor/SbImage.h>
 
 # include <memory>
 #endif  // #ifndef _PreComp_
+
+#include <Gui/Inventor/SmSwitchboard.h>
 
 #include "EditData.h"
 
