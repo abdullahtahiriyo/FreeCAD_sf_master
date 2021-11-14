@@ -170,6 +170,8 @@ private:
         bool handleEscapeButton = false;
         bool autoRecompute = false;
         bool recalculateInitialSolutionWhileDragging = false;
+
+        bool isShownVirtualSpace = false; // indicates whether the present virtual space view is the Real Space or the Virtual Space (virtual space 1 or 2)
     };
 
 public:
@@ -463,9 +465,6 @@ private:
     std::string editDocName;
     std::string editObjName;
     std::string editSubName;
-
-    // Virtual space variables
-    bool isShownVirtualSpace; // indicates whether the present virtual space view is the Real Space or the Virtual Space (virtual space 1 or 2)
 
     ShortcutListener* listener;
 

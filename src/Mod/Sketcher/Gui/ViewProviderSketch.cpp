@@ -289,7 +289,6 @@ ViewProviderSketch::ViewProviderSketch()
   : SelectionObserver(false),
     edit(0),
     Mode(STATUS_NONE),
-    isShownVirtualSpace(false),
     listener(0),
     coinManager(nullptr),
     pObserver(std::make_unique<ViewProviderSketch::ParameterObserver>(*this))
@@ -2661,7 +2660,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 
 void ViewProviderSketch::setIsShownVirtualSpace(bool isshownvirtualspace)
 {
-    this->isShownVirtualSpace = isshownvirtualspace;
+    viewProviderParameters.isShownVirtualSpace = isshownvirtualspace;
 
     coinManager->updateVirtualSpace();
 
@@ -2670,7 +2669,7 @@ void ViewProviderSketch::setIsShownVirtualSpace(bool isshownvirtualspace)
 
 bool ViewProviderSketch::getIsShownVirtualSpace() const
 {
-    return this->isShownVirtualSpace;
+    return viewProviderParameters.isShownVirtualSpace;
 }
 
 

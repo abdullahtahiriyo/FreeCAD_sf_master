@@ -127,7 +127,7 @@ inline void ViewProviderSketchCoinAttorney::updateGridExtent(ViewProviderSketch 
 
 inline bool ViewProviderSketchCoinAttorney::isShownVirtualSpace(const ViewProviderSketch & vp)
 {
-    return vp.isShownVirtualSpace;
+    return vp.viewProviderParameters.isShownVirtualSpace;
 }
 
 inline std::unique_ptr<SoRayPickAction> ViewProviderSketchCoinAttorney::getRayPickAction(const ViewProviderSketch & vp)
