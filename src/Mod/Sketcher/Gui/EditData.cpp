@@ -57,7 +57,6 @@ using namespace SketcherGui;
 EditData::EditData():
     sketchHandler(0),
     buttonPress(false),
-    handleEscapeButton(false),
     DragPoint(-1),
     DragCurve(-1),
     PreselectPoint(-1),

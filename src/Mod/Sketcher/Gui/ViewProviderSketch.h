@@ -132,6 +132,8 @@ private:
         // Only for colors outside of edit mode, edit mode colors are handled by CoinManager.
         void updateColorProperty(const std::string & string, App::Property * property, float r, float g, float b);
 
+        void updateEscapeKeyBehaviour(const std::string & string, App::Property * property);
+
     private:
         ViewProviderSketch &Client;
         std::map<std::string, std::tuple<std::function<void(const std::string & string, App::Property *)>, App::Property * >> parameterMap;
@@ -158,6 +160,10 @@ private:
         static SbVec2s prvClickPos; //used by double-click-detector
         static SbVec2s prvCursorPos;
         static SbVec2s newCursorPos;
+    };
+
+    struct ViewProviderParameters {
+        bool handleEscapeButton = false;
     };
 
 public:
@@ -458,7 +464,10 @@ private:
     ShortcutListener* listener;
 
     std::unique_ptr<CoinManager> coinManager;
+
     std::unique_ptr<ViewProviderSketch::ParameterObserver> pObserver;
+
+    ViewProviderParameters viewProviderParameters;
 };
 
 } // namespace PartGui

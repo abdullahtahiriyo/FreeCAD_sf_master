@@ -63,7 +63,6 @@ struct EditData {
     // pointer to the active handler for new sketch objects
     DrawSketchHandler *sketchHandler;
     bool buttonPress;
-    bool handleEscapeButton;
 
     // dragged point
     int DragPoint;

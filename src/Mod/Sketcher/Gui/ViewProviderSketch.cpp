@@ -153,16 +153,31 @@ void ViewProviderSketch::ParameterObserver::updateGridSize(const std::string & s
     Client.GridSize.setValue(Base::Quantity::parse(QString::fromLatin1(hGrp->GetGroup("GridSize")->GetASCII("Hist0", "10.0").c_str())).getValue());
 }
 
+void ViewProviderSketch::ParameterObserver::updateEscapeKeyBehaviour(const std::string & string, App::Property * property)
+{
+    (void) property;
+    (void) string;
+
+    ParameterGrp::handle hSketch = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+    Client.viewProviderParameters.handleEscapeButton = !hSketch->GetBool("LeaveSketchWithEscape", true);
+}
+
 void ViewProviderSketch::ParameterObserver::subscribeToParameters()
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
     hGrp->Attach(this);
+
+    ParameterGrp::handle hGrpskg = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+    hGrpskg->Attach(this);
 }
 
 void ViewProviderSketch::ParameterObserver::unsubscribeToParameters()
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
     hGrp->Detach(this);
+
+    ParameterGrp::handle hGrpskg = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+    hGrpskg->Detach(this);
 }
 
 void ViewProviderSketch::ParameterObserver::initParameters()
@@ -196,9 +211,9 @@ void ViewProviderSketch::ParameterObserver::initParameters()
             {[this](const std::string & string, App::Property * property){ updateColorProperty(string, property, 1.f, 1.f, 1.f);}, &Client.LineColor }},
         {"SketchVertexColor",
             {[this](const std::string & string, App::Property * property){ updateColorProperty(string, property, 1.f, 1.f, 1.f);}, &Client.PointColor }},
+        {"updateEscapeKeyBehaviour",
+            {[this](const std::string & string, App::Property * property){ updateEscapeKeyBehaviour(string, property);}, nullptr }},
     };
-
-    //updateColorProperty(const std::string & string, App::Property * property, float r, float g, float b)
 
     for( auto & val : parameterMap){
         auto string     = val.first;
@@ -418,7 +433,7 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
 
                 // More control over Sketcher edit mode Esc key behavior
                 // https://forum.freecadweb.org/viewtopic.php?f=3&t=42207
-                return edit->handleEscapeButton;
+                return viewProviderParameters.handleEscapeButton;
             }
             return false;
         }
@@ -2746,7 +2761,7 @@ bool ViewProviderSketch::setEdit(int ModNum)
     coinManager = std::make_unique<CoinManager>(*this, edit);
 
     ParameterGrp::handle hSketch = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
-    edit->handleEscapeButton = !hSketch->GetBool("LeaveSketchWithEscape", true);
+    viewProviderParameters.handleEscapeButton = !hSketch->GetBool("LeaveSketchWithEscape", true);
 
     auto editDoc = Gui::Application::Instance->editDocument();
     App::DocumentObject *editObj = getSketchObject();
