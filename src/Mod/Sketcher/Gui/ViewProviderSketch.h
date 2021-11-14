@@ -95,7 +95,6 @@ using GeoList = Sketcher::GeoListModel<Part::Geometry *>;
 class SketcherGuiExport ViewProviderSketch : public PartGui::ViewProvider2DObjectGrid
                                             , public PartGui::ViewProviderAttachExtension
                                             , public Gui::SelectionObserver
-                                            , public ParameterGrp::ObserverType
 {
     Q_DECLARE_TR_FUNCTIONS(SketcherGui::ViewProviderSketch)
     /// generates a warning message about constraint conflicts and appends it to the given message
@@ -152,6 +151,13 @@ private:
 
         double xInit, yInit;
         bool relative;
+    };
+
+    struct DoubleClick {
+        static SbTime prvClickTime;
+        static SbVec2s prvClickPos; //used by double-click-detector
+        static SbVec2s prvCursorPos;
+        static SbVec2s newCursorPos;
     };
 
 public:
@@ -314,9 +320,6 @@ public:
     /// signals if the elements list has changed
     boost::signals2::signal<void ()> signalElementsChanged;
 
-    /** Observer for parameter group. */
-    void OnChange(Base::Subject<const char*> &rCaller, const char * sReason) override;
-
     friend class ViewProviderSketchDrawSketchHandlerAttorney;
     friend class ViewProviderSketchCoinAttorney;
     friend class ViewProviderSketchShortcutListenerAttorney;
@@ -339,18 +342,6 @@ protected:
 
     /// get called if a subelement is double clicked while editing
     void editDoubleClicked(void);
-    //@}
-
-    /** @name parameter management */
-    //@{
-    /// set icon & font sizes
-    void initItemsSizes();
-    /// subscribe to parameter groups as an observer
-    void subscribeToParameters();
-    /// unsubscribe to parameter groups as an observer
-    void unsubscribeToParameters();
-    /// updates the sizes of the edit mode inventor node
-    void updateInventorNodeSizes();
     //@}
 
     /** @name Solver Information */
@@ -420,6 +411,10 @@ private:
 
     QFont getApplicationFont() const;
 
+    int defaultFontSizePixels() const;
+
+    int getApplicationLogicalDPIX() const;
+
     double getRotation(SbVec3f pos0, SbVec3f pos1) const;
 
     //********* ViewProviderSketchShortcutListenerAttorney ***********//
@@ -447,11 +442,6 @@ private:
 
     // modes while sketching
     SketchMode Mode;
-
-    static SbTime prvClickTime;
-    static SbVec2s prvClickPos; //used by double-click-detector
-    static SbVec2s prvCursorPos;
-    static SbVec2s newCursorPos;
 
     // reference coordinates for relative operations
     Drag drag;

@@ -76,10 +76,6 @@ struct EditData {
     int PreselectPoint;
     int PreselectCurve;
     int PreselectCross;
-    int MarkerSize;
-    int coinFontSize;
-    int constraintIconSize;
-    double pixelScalingFactor;
     std::set<int> PreselectConstraintSet;
     bool blockedPreselection;
     bool FullyConstrained;

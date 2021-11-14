@@ -227,12 +227,11 @@ void ViewProviderSketch::ParameterObserver::OnChange(Base::Subject<const char*> 
 
 /*************************** ViewProviderSketch **************************/
 
-// Variables for holding previous click
-SbTime  ViewProviderSketch::prvClickTime;
-SbVec2s ViewProviderSketch::prvClickPos;
-SbVec2s ViewProviderSketch::prvCursorPos;
-SbVec2s ViewProviderSketch::newCursorPos;
-
+// Struct for holding previous click information
+SbTime ViewProviderSketch::DoubleClick::prvClickTime;
+SbVec2s ViewProviderSketch::DoubleClick::prvClickPos; //used by double-click-detector
+SbVec2s ViewProviderSketch::DoubleClick::prvCursorPos;
+SbVec2s ViewProviderSketch::DoubleClick::newCursorPos;
 
 //**************************************************************************
 // Construction/Destruction
@@ -278,14 +277,11 @@ ViewProviderSketch::ViewProviderSketch()
     //rubberband selection
     rubberband = new Gui::Rubberband();
 
-
-    subscribeToParameters();
 }
 
 ViewProviderSketch::~ViewProviderSketch()
 {
     delete rubberband;
-    unsubscribeToParameters();
 }
 
 void ViewProviderSketch::slotUndoDocument(const Gui::Document& /*doc*/)
@@ -591,21 +587,21 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     float dci = (float) QApplication::doubleClickInterval()/1000.0f;
 
                     if (done &&
-                        SbVec2f(cursorPos - prvClickPos).length() <  dblClickRadius &&
-                        (SbTime::getTimeOfDay() - prvClickTime).getValue() < dci) {
+                        SbVec2f(cursorPos - DoubleClick::prvClickPos).length() <  dblClickRadius &&
+                        (SbTime::getTimeOfDay() - DoubleClick::prvClickTime).getValue() < dci) {
 
                         // Double Click Event Occurred
                         editDoubleClicked();
                         // Reset Double Click Static Variables
-                        prvClickTime = SbTime();
-                        prvClickPos = SbVec2s(-16000,-16000); //certainly far away from any clickable place, to avoid re-trigger of double-click if next click happens fast.
+                        DoubleClick::prvClickTime = SbTime();
+                        DoubleClick::prvClickPos = SbVec2s(-16000,-16000); //certainly far away from any clickable place, to avoid re-trigger of double-click if next click happens fast.
 
                         Mode = STATUS_NONE;
                     } else {
-                        prvClickTime = SbTime::getTimeOfDay();
-                        prvClickPos = cursorPos;
-                        prvCursorPos = cursorPos;
-                        newCursorPos = cursorPos;
+                        DoubleClick::prvClickTime = SbTime::getTimeOfDay();
+                        DoubleClick::prvClickPos = cursorPos;
+                        DoubleClick::prvCursorPos = cursorPos;
+                        DoubleClick::newCursorPos = cursorPos;
                         if (!done)
                             Mode = STATUS_SKETCH_StartRubberBand;
                     }
@@ -823,7 +819,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     Gui::Selection().clearSelection();
                     return true;
                 case STATUS_SKETCH_UseRubberBand:
-                    doBoxSelection(prvCursorPos, cursorPos, viewer);
+                    doBoxSelection(DoubleClick::prvCursorPos, cursorPos, viewer);
                     rubberband->setWorking(false);
 
                     // a redraw is required in order to clear the rubberband
@@ -1003,7 +999,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
         case STATUS_SELECT_Constraint:
         case STATUS_SKETCH_StartRubberBand:
             short dx, dy;
-            (cursorPos - prvCursorPos).getValue(dx, dy);
+            (cursorPos - DoubleClick::prvCursorPos).getValue(dx, dy);
             if(std::abs(dx) < dragIgnoredDistance && std::abs(dy) < dragIgnoredDistance)
                 return false;
         default:
@@ -1143,7 +1139,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                     // Since the cursor moved from where it was clicked, and this is a relative move,
                     // calculate the click position and use it as initial point.
                     SbLine line2;
-                    getProjectingLine(prvCursorPos, viewer, line2);
+                    getProjectingLine(DoubleClick::prvCursorPos, viewer, line2);
                     getCoordsOnSketchPlane(line2.getPosition(),line2.getDirection(),drag.xInit,drag.yInit);
                     snapToGrid(drag.xInit, drag.yInit);
                 } else {
@@ -1241,11 +1237,11 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
         case STATUS_SKETCH_UseRubberBand: {
             // Here we must use the device-pixel-ratio to compute the correct y coordinate (#0003130)
             qreal dpr = viewer->getGLWidget()->devicePixelRatioF();
-            newCursorPos = cursorPos;
-            rubberband->setCoords(prvCursorPos.getValue()[0],
-                       viewer->getGLWidget()->height()*dpr - prvCursorPos.getValue()[1],
-                       newCursorPos.getValue()[0],
-                       viewer->getGLWidget()->height()*dpr - newCursorPos.getValue()[1]);
+            DoubleClick::newCursorPos = cursorPos;
+            rubberband->setCoords(DoubleClick::prvCursorPos.getValue()[0],
+                       viewer->getGLWidget()->height()*dpr - DoubleClick::prvCursorPos.getValue()[1],
+                       DoubleClick::newCursorPos.getValue()[0],
+                       viewer->getGLWidget()->height()*dpr - DoubleClick::newCursorPos.getValue()[1]);
             viewer->redraw();
             return true;
         }
@@ -2439,95 +2435,6 @@ float ViewProviderSketch::getScaleFactor() const
     }
 }
 
-void ViewProviderSketch::OnChange(Base::Subject<const char*> &rCaller, const char * sReason)
-{
-    (void) rCaller;
-    //ParameterGrp& rclGrp = ((ParameterGrp&)rCaller);
-    if (strcmp(sReason, "ViewScalingFactor") == 0   ||
-        strcmp(sReason, "MarkerSize") == 0          ||
-        strcmp(sReason, "EditSketcherFontSize") == 0 ) {
-        if(edit) { // only if in edit mode, if not it gets updated when entering edit mode
-            initItemsSizes();
-            updateInventorNodeSizes();
-            coinManager->rebuildConstraintNodes();
-            draw();
-        }
-    }
-}
-
-void ViewProviderSketch::subscribeToParameters()
-{
-    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-    hGrp->Attach(this);
-}
-
-void ViewProviderSketch::unsubscribeToParameters()
-{
-    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-    hGrp->Detach(this);
-}
-
-void ViewProviderSketch::updateInventorNodeSizes()
-{
-    assert(edit);
-    edit->PointsDrawStyle->pointSize = 8 * edit->pixelScalingFactor;
-    edit->PointSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_FILLED", edit->MarkerSize);
-    edit->CurvesDrawStyle->lineWidth = 3 * edit->pixelScalingFactor;
-    edit->RootCrossDrawStyle->lineWidth = 2 * edit->pixelScalingFactor;
-    edit->EditCurvesDrawStyle->lineWidth = 3 * edit->pixelScalingFactor;
-    edit->EditMarkersDrawStyle->pointSize = 8 * edit->pixelScalingFactor;
-    edit->EditMarkerSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_LINE", edit->MarkerSize);
-    edit->ConstraintDrawStyle->lineWidth = 1 * edit->pixelScalingFactor;
-    edit->InformationDrawStyle->lineWidth = 1 * edit->pixelScalingFactor;
-}
-
-void ViewProviderSketch::initItemsSizes()
-{
-    //Add scaling to Constraint icons
-    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-    double viewScalingFactor = hGrp->GetFloat("ViewScalingFactor", 1.0);
-    viewScalingFactor = Base::clamp<double>(viewScalingFactor, 0.5, 5.0);
-    int markersize = hGrp->GetInt("MarkerSize", 7);
-
-    int defaultFontSizePixels = QApplication::fontMetrics().height(); // returns height in pixels, not points
-    int sketcherfontSize = hGrp->GetInt("EditSketcherFontSize", defaultFontSizePixels);
-
-    int dpi = QApplication::desktop()->logicalDpiX();
-
-    if(edit) {
-        // simple scaling factor for hardcoded pixel values in the Sketcher
-        edit->pixelScalingFactor = viewScalingFactor * dpi / 96; // 96 ppi is the standard pixel density for which pixel quantities were calculated
-
-        // Coin documentation indicates the size of a font is:
-        // SoSFFloat SoFont::size        Size of font. Defaults to 10.0.
-        //
-        // For 2D rendered bitmap fonts (like for SoText2), this value is the height of a character in screen pixels. For 3D text, this value is the world-space coordinates height of a character in the current units setting (see documentation for SoUnits node).
-        //
-        // However, with hdpi monitors, the coin font labels do not respect the size passed in pixels:
-        // https://forum.freecadweb.org/viewtopic.php?f=3&t=54347&p=467610#p467610
-        // https://forum.freecadweb.org/viewtopic.php?f=10&t=49972&start=40#p467471
-        //
-        // Because I (abdullah) have  96 dpi logical, 82 dpi physical, and I see a 35px font setting for a "1" in a datum label as 34px,
-        // and I see kilsore and Elyas screenshots showing 41px and 61px in higher resolution monitors for the same configuration, I think
-        // that coin pixel size has to be corrected by the logical dpi of the monitor. The rationale is that: a) it obviously needs dpi
-        // correction, b) with physical dpi, the ratio of representation between kilsore and me is too far away.
-        //
-        // This means that the following correction does not have a documented basis, but appears necessary so that the Sketcher is usable in
-        // HDPI monitors.
-
-        edit->coinFontSize = std::lround(sketcherfontSize * 96.0f / dpi);
-        edit->constraintIconSize = std::lround(0.8 * sketcherfontSize);
-
-        // For marker size the global default is used.
-        //
-        // Rationale:
-        // -> Other WBs use the default value as is
-        // -> If a user has a HDPI, he will eventually change the value for the other WBs
-        // -> If we correct the value here in addition, we would get two times a resize
-        edit->MarkerSize = markersize;
-    }
-}
-
 // This function ensures that the geometry used for drawing takes into account:
 // 1. the OCC mandated weight, which is normalised for non-rational BSplines, but not normalised for rational BSplines.
 // That includes properly sizing for drawing any weight constraint.
@@ -2837,9 +2744,6 @@ bool ViewProviderSketch::setEdit(int ModNum)
     assert(!edit);
     edit = new EditData();
     coinManager = std::make_unique<CoinManager>(*this, edit);
-
-    // Init icon, font and marker sizes
-    initItemsSizes();
 
     ParameterGrp::handle hSketch = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
     edit->handleEscapeButton = !hSketch->GetBool("LeaveSketchWithEscape", true);
@@ -3588,6 +3492,15 @@ SbVec2f ViewProviderSketch::getScreenCoordinates(SbVec2f sketchcoordinates) cons
 QFont ViewProviderSketch::getApplicationFont() const
 {
     return QApplication::font();
+}
+
+int ViewProviderSketch::defaultFontSizePixels() const
+{
+    return QApplication::fontMetrics().height();
+}
+
+int ViewProviderSketch::getApplicationLogicalDPIX() const {
+    return QApplication::desktop()->logicalDpiX();
 }
 
 double ViewProviderSketch::getRotation(SbVec3f pos0, SbVec3f pos1) const

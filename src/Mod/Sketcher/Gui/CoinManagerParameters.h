@@ -100,15 +100,19 @@ struct DrawingParameters {
     static SbColor ExprBasedConstrDimColor;
     static SbColor DeactivatedConstrDimColor;
 
-    // Rendering font information
-    int coinFontSize;
-
     // Icon colors
     static QColor constrIcoColor;
     static QColor nonDrivingConstrIcoColor;
     static QColor constrIconSelColor;
     static QColor constrIconPreselColor;
     static QColor constrIconDisabledColor;
+
+    // Rendering sizes (also to support HDPI monitors)
+    double pixelScalingFactor = 1.0;
+    int coinFontSize = 17;
+    int constraintIconSize = 15;
+    int markerSize = 7;
+
 };
 
 /** @brief      Struct for storing the nodes that need to be edited to represent a geometry layer

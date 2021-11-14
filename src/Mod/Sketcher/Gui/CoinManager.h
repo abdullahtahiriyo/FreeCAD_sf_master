@@ -92,10 +92,12 @@ private:
     static inline bool isShownVirtualSpace(const ViewProviderSketch & vp);
     static inline std::unique_ptr<SoRayPickAction> getRayPickAction(const ViewProviderSketch & vp);
 
-    static float getScaleFactor(const ViewProviderSketch & vp);
-    static SbVec2f getScreenCoordinates(const ViewProviderSketch & vp, SbVec2f sketchcoordinates);
-    static QFont getApplicationFont(const ViewProviderSketch & vp);
-    static double getRotation(const ViewProviderSketch & vp, SbVec3f pos0, SbVec3f pos1);
+    static inline float getScaleFactor(const ViewProviderSketch & vp);
+    static inline SbVec2f getScreenCoordinates(const ViewProviderSketch & vp, SbVec2f sketchcoordinates);
+    static inline QFont getApplicationFont(const ViewProviderSketch & vp);
+    static inline double getRotation(const ViewProviderSketch & vp, SbVec3f pos0, SbVec3f pos1);
+    static inline int defaultApplicationFontSizePixels(const ViewProviderSketch & vp);
+    static inline int getApplicationLogicalDPIX(const ViewProviderSketch & vp);
 
     friend class CoinManager;
 };
@@ -137,6 +139,7 @@ class SketcherGuiExport CoinManager
         void updateCurvedEdgeCountSegmentsParameter();
         void updateLineRenderingOrderParameters();
         void updateConstraintPresentationParameters();
+        void updateElementSizeParameters();
 
         template<OverlayVisibilityParameter visibilityparameter>
         void updateOverlayVisibilityParameter();
@@ -372,6 +375,12 @@ private:
     /// Essentially a version of sendConstraintIconToCoin, with a blank icon
     void clearCoinImage(SoImage *soImagePtr);
     //@}
+
+    int defaultApplicationFontSizePixels() const;
+
+    int getApplicationLogicalDPIX() const;
+
+    void updateInventorNodeSizes();
 
 private:
     ViewProviderSketch & viewProvider;

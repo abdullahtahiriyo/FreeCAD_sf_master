@@ -70,6 +70,7 @@
 #include <Base/UnitsApi.h>
 #include <Gui/Utilities.h>
 #include <Base/Converter.h>
+#include <Base/Tools.h>
 
 #include <Base/Vector3D.h>
 
@@ -134,26 +135,35 @@ inline std::unique_ptr<SoRayPickAction> ViewProviderSketchCoinAttorney::getRayPi
     return vp.getRayPickAction();
 }
 
-float ViewProviderSketchCoinAttorney::getScaleFactor(const ViewProviderSketch & vp)
+inline float ViewProviderSketchCoinAttorney::getScaleFactor(const ViewProviderSketch & vp)
 {
     return vp.getScaleFactor();
 }
 
-SbVec2f ViewProviderSketchCoinAttorney::getScreenCoordinates(const ViewProviderSketch & vp, SbVec2f sketchcoordinates)
+inline SbVec2f ViewProviderSketchCoinAttorney::getScreenCoordinates(const ViewProviderSketch & vp, SbVec2f sketchcoordinates)
 {
     return vp.getScreenCoordinates(sketchcoordinates);
 }
 
-QFont ViewProviderSketchCoinAttorney::getApplicationFont(const ViewProviderSketch & vp)
+inline QFont ViewProviderSketchCoinAttorney::getApplicationFont(const ViewProviderSketch & vp)
 {
     return vp.getApplicationFont();
 }
 
-double ViewProviderSketchCoinAttorney::getRotation(const ViewProviderSketch & vp, SbVec3f pos0, SbVec3f pos1)
+inline double ViewProviderSketchCoinAttorney::getRotation(const ViewProviderSketch & vp, SbVec3f pos0, SbVec3f pos1)
 {
     return vp.getRotation(pos0,pos1);
 }
 
+inline int ViewProviderSketchCoinAttorney::defaultApplicationFontSizePixels(const ViewProviderSketch & vp)
+{
+    return vp.defaultFontSizePixels();
+}
+
+inline int ViewProviderSketchCoinAttorney::getApplicationLogicalDPIX(const ViewProviderSketch & vp)
+{
+    return vp.getApplicationLogicalDPIX();
+}
 
 //**************************** ParameterObserver nested class ******************************
 CoinManager::ParameterObserver::ParameterObserver(CoinManager &client): Client(client)
@@ -180,6 +190,8 @@ void CoinManager::ParameterObserver::initParameters()
     updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplinePoleWeightVisible>();
 
     updateConstraintPresentationParameters();
+
+    updateElementSizeParameters();
 }
 
 void CoinManager::ParameterObserver::updateCurvedEdgeCountSegmentsParameter()
@@ -228,6 +240,57 @@ void CoinManager::ParameterObserver::updateOverlayVisibilityParameter()
 
     Client.overlayParameters.visibleInformationChanged = true;
 }
+
+void CoinManager::ParameterObserver::updateElementSizeParameters()
+{
+     //Add scaling to Constraint icons
+    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
+
+    double viewScalingFactor = hGrp->GetFloat("ViewScalingFactor", 1.0);
+    viewScalingFactor = Base::clamp<double>(viewScalingFactor, 0.5, 5.0);
+
+    int markersize = hGrp->GetInt("MarkerSize", 7);
+
+    int defaultFontSizePixels = Client.defaultApplicationFontSizePixels(); // returns height in pixels, not points
+
+    int sketcherfontSize = hGrp->GetInt("EditSketcherFontSize", defaultFontSizePixels);
+
+    int dpi = Client.getApplicationLogicalDPIX();
+
+    // simple scaling factor for hardcoded pixel values in the Sketcher
+    Client.drawingParameters.pixelScalingFactor = viewScalingFactor * dpi / 96; // 96 ppi is the standard pixel density for which pixel quantities were calculated
+
+    // Coin documentation indicates the size of a font is:
+    // SoSFFloat SoFont::size        Size of font. Defaults to 10.0.
+    //
+    // For 2D rendered bitmap fonts (like for SoText2), this value is the height of a character in screen pixels. For 3D text, this value is the world-space coordinates height of a character in the current units setting (see documentation for SoUnits node).
+    //
+    // However, with hdpi monitors, the coin font labels do not respect the size passed in pixels:
+    // https://forum.freecadweb.org/viewtopic.php?f=3&t=54347&p=467610#p467610
+    // https://forum.freecadweb.org/viewtopic.php?f=10&t=49972&start=40#p467471
+    //
+    // Because I (abdullah) have  96 dpi logical, 82 dpi physical, and I see a 35px font setting for a "1" in a datum label as 34px,
+    // and I see kilsore and Elyas screenshots showing 41px and 61px in higher resolution monitors for the same configuration, I think
+    // that coin pixel size has to be corrected by the logical dpi of the monitor. The rationale is that: a) it obviously needs dpi
+    // correction, b) with physical dpi, the ratio of representation between kilsore and me is too far away.
+    //
+    // This means that the following correction does not have a documented basis, but appears necessary so that the Sketcher is usable in
+    // HDPI monitors.
+
+    Client.drawingParameters.coinFontSize = std::lround(sketcherfontSize * 96.0f / dpi);
+    Client.drawingParameters.constraintIconSize = std::lround(0.8 * sketcherfontSize);
+
+    // For marker size the global default is used.
+    //
+    // Rationale:
+    // -> Other WBs use the default value as is
+    // -> If a user has a HDPI, he will eventually change the value for the other WBs
+    // -> If we correct the value here in addition, we would get two times a resize
+    Client.drawingParameters.markerSize = markersize;
+
+    Client.updateInventorNodeSizes();
+}
+
 
 void CoinManager::ParameterObserver::subscribeToParameters()
 {
@@ -289,7 +352,13 @@ void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCalle
         {"ShowDimensionalName",
             [this](){updateConstraintPresentationParameters();}},
         {"DimensionalStringFormat",
-            [this](){updateConstraintPresentationParameters();}}
+            [this](){updateConstraintPresentationParameters();}},
+        {"ViewScalingFactor",
+            [this](){updateElementSizeParameters();}},
+        {"MarkerSize",
+            [this](){updateElementSizeParameters();}},
+        {"EditSketcherFontSize",
+            [this](){updateElementSizeParameters();}},
     };
 
     auto key = str2updatefunction.find(sReason);
@@ -298,7 +367,6 @@ void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCalle
 
         Client.redrawViewProvider(); // redraw with non-temporal geometry
     }
-
 }
 
 //**************************** CoinManager class ******************************
@@ -1499,7 +1567,6 @@ Base::Vector3d CoinManager::seekConstraintPosition(const Base::Vector3d &origPos
 
 void CoinManager::processGeometryConstraintsInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer)
 {
-    drawingParameters.coinFontSize = edit->coinFontSize; // TODO: Evaluate refactoring this after constraints are migrated.
     overlayParameters.rebuildInformationLayer = rebuildinformationlayer;
 
     processGeometry(geolist);
@@ -1520,11 +1587,11 @@ void CoinManager::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers
     assert(edit);
 
     // determine marker size
-    int augmentedmarkersize = edit->MarkerSize;
+    int augmentedmarkersize = drawingParameters.markerSize;
 
     auto supportedsizes = Gui::Inventor::MarkerBitmaps::getSupportedSizes("CIRCLE_LINE");
 
-    auto defaultmarker = std::find(supportedsizes.begin(), supportedsizes.end(), edit->MarkerSize);
+    auto defaultmarker = std::find(supportedsizes.begin(), supportedsizes.end(), drawingParameters.markerSize);
 
     if(defaultmarker != supportedsizes.end()) {
         auto validAugmentationLevels = std::distance(defaultmarker,supportedsizes.end());
@@ -2175,8 +2242,8 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vec
                                             drawingParameters.ConstrDimColor
                                             :drawingParameters.NonDrivingConstrDimColor)
                                         :drawingParameters.DeactivatedConstrDimColor;
-                text->size.setValue(edit->coinFontSize);
-                text->lineWidth = 2 * edit->pixelScalingFactor;
+                text->size.setValue(drawingParameters.coinFontSize);
+                text->lineWidth = 2 * drawingParameters.pixelScalingFactor;
                 text->useAntialiasing = false;
                 SoAnnotation *anno = new SoAnnotation();
                 anno->renderCaching = SoSeparator::OFF;
@@ -2279,7 +2346,7 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vec
                 arrows->norm.setValue(norm);
                 arrows->string = "";
                 arrows->textColor = drawingParameters.ConstrDimColor;
-                arrows->lineWidth = 2 * edit->pixelScalingFactor;
+                arrows->lineWidth = 2 * drawingParameters.pixelScalingFactor;
 
                 // #define CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL 0
                 sep->addChild(arrows);
@@ -2331,12 +2398,12 @@ void CoinManager::createEditModeInventorNodes()
 
     edit->PointsDrawStyle = new SoDrawStyle;
     edit->PointsDrawStyle->setName("PointsDrawStyle");
-    edit->PointsDrawStyle->pointSize = 8 * edit->pixelScalingFactor;
+    edit->PointsDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;
     pointsRoot->addChild(edit->PointsDrawStyle);
 
     edit->PointSet = new SoMarkerSet;
     edit->PointSet->setName("PointSet");
-    edit->PointSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_FILLED", edit->MarkerSize);
+    edit->PointSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_FILLED", drawingParameters.markerSize);
     pointsRoot->addChild(edit->PointSet);
 
     // stuff for the Curves +++++++++++++++++++++++++++++++++++++++
@@ -2357,7 +2424,7 @@ void CoinManager::createEditModeInventorNodes()
 
     edit->CurvesDrawStyle = new SoDrawStyle;
     edit->CurvesDrawStyle->setName("CurvesDrawStyle");
-    edit->CurvesDrawStyle->lineWidth = 3 * edit->pixelScalingFactor;
+    edit->CurvesDrawStyle->lineWidth = 3 * drawingParameters.pixelScalingFactor;
     curvesRoot->addChild(edit->CurvesDrawStyle);
 
     edit->CurveSet = new SoLineSet;
@@ -2377,7 +2444,7 @@ void CoinManager::createEditModeInventorNodes()
 
     edit->RootCrossDrawStyle = new SoDrawStyle;
     edit->RootCrossDrawStyle->setName("RootCrossDrawStyle");
-    edit->RootCrossDrawStyle->lineWidth = 2 * edit->pixelScalingFactor;
+    edit->RootCrossDrawStyle->lineWidth = 2 * drawingParameters.pixelScalingFactor;
     crossRoot->addChild(edit->RootCrossDrawStyle);
 
     edit->RootCrossMaterials = new SoMaterial;
@@ -2407,7 +2474,7 @@ void CoinManager::createEditModeInventorNodes()
 
     edit->EditCurvesDrawStyle = new SoDrawStyle;
     edit->EditCurvesDrawStyle->setName("EditCurvesDrawStyle");
-    edit->EditCurvesDrawStyle->lineWidth = 3 * edit->pixelScalingFactor;
+    edit->EditCurvesDrawStyle->lineWidth = 3 * drawingParameters.pixelScalingFactor;
     editCurvesRoot->addChild(edit->EditCurvesDrawStyle);
 
     edit->EditCurveSet = new SoLineSet;
@@ -2432,12 +2499,12 @@ void CoinManager::createEditModeInventorNodes()
 
     edit->EditMarkersDrawStyle = new SoDrawStyle;
     edit->EditMarkersDrawStyle->setName("EditMarkersDrawStyle");
-    edit->EditMarkersDrawStyle->pointSize = 8 * edit->pixelScalingFactor;
+    edit->EditMarkersDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;
     editMarkersRoot->addChild(edit->EditMarkersDrawStyle);
 
     edit->EditMarkerSet = new SoMarkerSet;
     edit->EditMarkerSet->setName("EditMarkerSet");
-    edit->EditMarkerSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_LINE", edit->MarkerSize);
+    edit->EditMarkerSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_LINE", drawingParameters.markerSize);
     editMarkersRoot->addChild(edit->EditMarkerSet);
 
     // stuff for the edit coordinates ++++++++++++++++++++++++++++++++++++++
@@ -2455,7 +2522,7 @@ void CoinManager::createEditModeInventorNodes()
     Coordsep->addChild(CoordTextMaterials);
 
     SoFont *font = new SoFont();
-    font->size.setValue(edit->coinFontSize);
+    font->size.setValue(drawingParameters.coinFontSize);
 
     Coordsep->addChild(font);
 
@@ -2477,7 +2544,7 @@ void CoinManager::createEditModeInventorNodes()
     // use small line width for the Constraints
     edit->ConstraintDrawStyle = new SoDrawStyle;
     edit->ConstraintDrawStyle->setName("ConstraintDrawStyle");
-    edit->ConstraintDrawStyle->lineWidth = 1 * edit->pixelScalingFactor;
+    edit->ConstraintDrawStyle->lineWidth = 1 * drawingParameters.pixelScalingFactor;
     edit->EditRoot->addChild(edit->ConstraintDrawStyle);
 
     // add the group where all the constraints has its SoSeparator
@@ -2494,7 +2561,7 @@ void CoinManager::createEditModeInventorNodes()
     // use small line width for the information visual
     edit->InformationDrawStyle = new SoDrawStyle;
     edit->InformationDrawStyle->setName("InformationDrawStyle");
-    edit->InformationDrawStyle->lineWidth = 1 * edit->pixelScalingFactor;
+    edit->InformationDrawStyle->lineWidth = 1 * drawingParameters.pixelScalingFactor;
     edit->EditRoot->addChild(edit->InformationDrawStyle);
 
     // add the group where all the information entity has its SoSeparator
@@ -3186,15 +3253,15 @@ QImage CoinManager::renderConstrIcon(const QString &type,
 
     QPixmap pxMap;
     std::stringstream constraintName;
-    constraintName << type.toLatin1().data() << edit->constraintIconSize; // allow resizing by embedding size
+    constraintName << type.toLatin1().data() << drawingParameters.constraintIconSize; // allow resizing by embedding size
     if (! Gui::BitmapFactory().findPixmapInCache(constraintName.str().c_str(), pxMap)) {
-        pxMap = Gui::BitmapFactory().pixmapFromSvg(type.toLatin1().data(),QSizeF(edit->constraintIconSize,edit->constraintIconSize));
+        pxMap = Gui::BitmapFactory().pixmapFromSvg(type.toLatin1().data(),QSizeF(drawingParameters.constraintIconSize, drawingParameters.constraintIconSize));
         Gui::BitmapFactory().addPixmapToCache(constraintName.str().c_str(), pxMap); // Cache for speed, avoiding pixmapFromSvg
     }
     QImage icon = pxMap.toImage();
 
     QFont font = ViewProviderSketchCoinAttorney::getApplicationFont(viewProvider);
-    font.setPixelSize(static_cast<int>(1.0 * edit->constraintIconSize));
+    font.setPixelSize(static_cast<int>(1.0 * drawingParameters.constraintIconSize));
     font.setBold(true);
     QFontMetrics qfm = QFontMetrics(font);
 
@@ -3376,4 +3443,27 @@ void CoinManager::setPositionText(const Base::Vector2d &Pos)
 void CoinManager::resetPositionText(void)
 {
     edit->textX->string = "";
+}
+
+int CoinManager::defaultApplicationFontSizePixels() const {
+    return ViewProviderSketchCoinAttorney::defaultApplicationFontSizePixels(viewProvider);
+}
+
+int CoinManager::getApplicationLogicalDPIX() const {
+    return ViewProviderSketchCoinAttorney::getApplicationLogicalDPIX(viewProvider);
+}
+
+void CoinManager::updateInventorNodeSizes()
+{
+    edit->PointsDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;
+    edit->PointSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_FILLED", drawingParameters.markerSize);
+    edit->CurvesDrawStyle->lineWidth = 3 * drawingParameters.pixelScalingFactor;
+    edit->RootCrossDrawStyle->lineWidth = 2 * drawingParameters.pixelScalingFactor;
+    edit->EditCurvesDrawStyle->lineWidth = 3 * drawingParameters.pixelScalingFactor;
+    edit->EditMarkersDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;
+    edit->EditMarkerSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_LINE", drawingParameters.markerSize);
+    edit->ConstraintDrawStyle->lineWidth = 1 * drawingParameters.pixelScalingFactor;
+    edit->InformationDrawStyle->lineWidth = 1 * drawingParameters.pixelScalingFactor;
+
+    rebuildConstraintNodes();
 }

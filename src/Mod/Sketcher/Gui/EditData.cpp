@@ -63,10 +63,6 @@ EditData::EditData():
     PreselectPoint(-1),
     PreselectCurve(-1),
     PreselectCross(-1),
-    MarkerSize(7),
-    coinFontSize(17), // this value is in pixels, 17 pixels
-    constraintIconSize(15),
-    pixelScalingFactor(1.0),
     blockedPreselection(false),
     FullyConstrained(false),
     //ActSketch(0), // if you are wondering, it went to SketchObject, accessible via getSolvedSketch() and via SketchObject interface as appropriate
