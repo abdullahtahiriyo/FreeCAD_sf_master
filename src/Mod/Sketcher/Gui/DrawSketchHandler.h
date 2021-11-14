@@ -39,6 +39,20 @@ namespace SketcherGui {
 
 class ViewProviderSketch;
 
+
+class ViewProviderSketchDrawSketchHandlerAttorney {
+private:
+    static inline void setPositionText(ViewProviderSketch &vp, const Base::Vector2d &Pos, const SbString &txt);
+    static inline void setPositionText(ViewProviderSketch &vp, const Base::Vector2d &Pos);
+    static inline void resetPositionText(ViewProviderSketch &vp);
+    static inline void drawEdit(ViewProviderSketch &vp, const std::vector<Base::Vector2d> &EditCurve);
+    static inline void drawEditMarkers(ViewProviderSketch &vp, const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
+    static inline void setAxisPickStyle(ViewProviderSketch &vp, bool on);
+
+    friend class DrawSketchHandler;
+};
+
+
 // A Simple data type to hold basic information for suggested constraints
 struct AutoConstraint
 {
@@ -97,7 +111,7 @@ protected:
     /**
      * Sets a cursor for 3D inventor view.
      * pixmap as a cursor image in device independent pixels.
-     * 
+     *
      * \param autoScale - set this to false if pixmap already scaled for HiDPI
      **/
     void setCursor(const QPixmap &pixmap, int x,int y, bool autoScale=true);
@@ -111,6 +125,12 @@ protected:
     unsigned long getCrosshairColor();
     qreal devicePixelRatio();
     void setCrosshairCursor(const char* svgName);
+
+    void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
+    void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
+    void setAxisPickStyle(bool on);
+
+
 
     /**
      * Returns constraints icons scaled to width.
