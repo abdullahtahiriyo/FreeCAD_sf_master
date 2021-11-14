@@ -28,30 +28,13 @@
 # include <Poly_Polygon3D.hxx>
 
 # include <Inventor/actions/SoGetBoundingBoxAction.h>
-# include <Inventor/SoPath.h>
 # include <Inventor/SbBox3f.h>
-# include <Inventor/SbImage.h>
 # include <Inventor/SoPickedPoint.h>
-# include <Inventor/details/SoLineDetail.h>
 # include <Inventor/details/SoPointDetail.h>
-# include <Inventor/nodes/SoBaseColor.h>
-# include <Inventor/nodes/SoCoordinate3.h>
 # include <Inventor/nodes/SoDrawStyle.h>
-# include <Inventor/nodes/SoImage.h>
-# include <Inventor/nodes/SoInfo.h>
 # include <Inventor/nodes/SoLineSet.h>
 # include <Inventor/nodes/SoPointSet.h>
 # include <Inventor/nodes/SoMarkerSet.h>
-# include <Inventor/nodes/SoMaterial.h>
-# include <Inventor/nodes/SoAsciiText.h>
-# include <Inventor/nodes/SoTransform.h>
-# include <Inventor/nodes/SoSeparator.h>
-# include <Inventor/nodes/SoAnnotation.h>
-# include <Inventor/nodes/SoVertexProperty.h>
-# include <Inventor/nodes/SoTranslation.h>
-# include <Inventor/nodes/SoText2.h>
-# include <Inventor/nodes/SoFont.h>
-# include <Inventor/nodes/SoPickStyle.h>
 # include <Inventor/nodes/SoCamera.h>
 # include <Inventor/SbTime.h>
 
@@ -61,7 +44,6 @@
 # include <QColor>
 # include <QDialog>
 # include <QFont>
-# include <QImage>
 # include <QMenu>
 # include <QMessageBox>
 # include <QPainter>
@@ -70,7 +52,6 @@
 # include <QDesktopWidget>
 
 # include <boost_bind_bind.hpp>
-# include <boost/scoped_ptr.hpp>
 #endif
 
 /// Here the FreeCAD includes sorted by Base,App,Gui......
@@ -106,6 +87,7 @@
 #include <Mod/Sketcher/App/Sketch.h>
 #include <Mod/Sketcher/App/GeometryFacade.h>
 #include <Mod/Sketcher/App/GeoList.h>
+#include <Mod/Sketcher/App/SolverGeometryExtension.h>
 
 #include "SoZoomTranslation.h"
 #include "SoDatumLabel.h"
@@ -116,7 +98,6 @@
 #include "TaskSketcherValidation.h"
 #include "CommandConstraints.h"
 #include "ViewProviderSketchGeometryExtension.h"
-#include <Mod/Sketcher/App/SolverGeometryExtension.h>
 
 #include "EditData.h"
 #include "CoinManager.h"
