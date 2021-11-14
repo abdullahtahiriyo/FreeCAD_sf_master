@@ -165,6 +165,11 @@ inline int ViewProviderSketchCoinAttorney::getApplicationLogicalDPIX(const ViewP
     return vp.getApplicationLogicalDPIX();
 }
 
+inline void ViewProviderSketchCoinAttorney::createEditRootNode(ViewProviderSketch & vp)
+{
+    return vp.createEditRootNode();
+}
+
 //**************************** ParameterObserver nested class ******************************
 CoinManager::ParameterObserver::ParameterObserver(CoinManager &client): Client(client)
 {
@@ -372,6 +377,11 @@ void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCalle
 //**************************** CoinManager class ******************************
 
 CoinManager::CoinManager(ViewProviderSketch &vp, EditData * editdata):viewProvider(vp),edit(editdata) {
+
+    // Create Edit Mode Scenograph
+    ViewProviderSketchCoinAttorney::createEditRootNode(viewProvider);
+    createEditModeInventorNodes();
+
     // Create parameter observer and initialise watched parameters
     pObserver = std::make_unique<CoinManager::ParameterObserver>(*this);
 

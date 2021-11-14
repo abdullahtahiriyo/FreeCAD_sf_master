@@ -335,8 +335,6 @@ protected:
 
     /** @name miscelanea editing functions */
     //@{
-    /// set up the edition data structure EditData
-    void createEditInventorNodes(void);
 
     void deactivateHandler();
 
@@ -416,6 +414,8 @@ private:
     int getApplicationLogicalDPIX() const;
 
     double getRotation(SbVec3f pos0, SbVec3f pos1) const;
+
+    void createEditRootNode(void); /// set up the edition data structure EditData
 
     //********* ViewProviderSketchShortcutListenerAttorney ***********//
     void deleteSelected();

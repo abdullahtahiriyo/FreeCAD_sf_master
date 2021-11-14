@@ -2748,8 +2748,6 @@ bool ViewProviderSketch::setEdit(int ModNum)
     ParameterGrp::handle hSketch = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
     edit->handleEscapeButton = !hSketch->GetBool("LeaveSketchWithEscape", true);
 
-    createEditInventorNodes();
-
     auto editDoc = Gui::Application::Instance->editDocument();
     App::DocumentObject *editObj = getSketchObject();
     std::string editSubName;
@@ -2973,7 +2971,7 @@ void ViewProviderSketch::UpdateSolverInformation()
 }
 
 
-void ViewProviderSketch::createEditInventorNodes(void)
+void ViewProviderSketch::createEditRootNode(void)
 {
     assert(edit);
 
@@ -2983,9 +2981,6 @@ void ViewProviderSketch::createEditInventorNodes(void)
     edit->EditRoot->setName("Sketch_EditRoot");
     pcRoot->addChild(edit->EditRoot);
     edit->EditRoot->renderCaching = SoSeparator::OFF ;
-
-    // 2 - Delegate edit mode coin node creation and management
-    coinManager->createEditModeInventorNodes();
 }
 
 void ViewProviderSketch::unsetEdit(int ModNum)

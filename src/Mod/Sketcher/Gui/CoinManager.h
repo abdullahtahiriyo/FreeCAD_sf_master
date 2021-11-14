@@ -99,6 +99,8 @@ private:
     static inline int defaultApplicationFontSizePixels(const ViewProviderSketch & vp);
     static inline int getApplicationLogicalDPIX(const ViewProviderSketch & vp);
 
+    static inline void createEditRootNode(ViewProviderSketch & vp);
+
     friend class CoinManager;
 };
 
