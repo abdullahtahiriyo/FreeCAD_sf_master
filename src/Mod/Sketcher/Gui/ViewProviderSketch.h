@@ -452,7 +452,7 @@ private:
     // reference coordinates for relative operations
     Drag drag;
 
-    Gui::Rubberband* rubberband;
+    std::unique_ptr<Gui::Rubberband> rubberband;
 
     std::string editDocName;
     std::string editObjName;

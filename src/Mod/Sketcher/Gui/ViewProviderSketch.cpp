@@ -290,13 +290,12 @@ ViewProviderSketch::ViewProviderSketch()
     sPixmap = "Sketcher_Sketch";
 
     //rubberband selection
-    rubberband = new Gui::Rubberband();
+    rubberband = std::make_unique<Gui::Rubberband>();
 
 }
 
 ViewProviderSketch::~ViewProviderSketch()
 {
-    delete rubberband;
 }
 
 void ViewProviderSketch::slotUndoDocument(const Gui::Document& /*doc*/)
@@ -3136,7 +3135,7 @@ void ViewProviderSketch::setEditViewer(Gui::View3DInventorViewer* viewer, int Mo
     SoNode* root = viewer->getSceneGraph();
     static_cast<Gui::SoFCUnifiedSelection*>(root)->selectionRole.setValue(false);
 
-    viewer->addGraphicsItem(rubberband);
+    viewer->addGraphicsItem(rubberband.get());
     rubberband->setViewer(viewer);
 
     viewer->setupEditingRoot();
@@ -3144,7 +3143,7 @@ void ViewProviderSketch::setEditViewer(Gui::View3DInventorViewer* viewer, int Mo
 
 void ViewProviderSketch::unsetEditViewer(Gui::View3DInventorViewer* viewer)
 {
-    viewer->removeGraphicsItem(rubberband);
+    viewer->removeGraphicsItem(rubberband.get());
     viewer->setEditing(false);
     SoNode* root = viewer->getSceneGraph();
     static_cast<Gui::SoFCUnifiedSelection*>(root)->selectionRole.setValue(true);
