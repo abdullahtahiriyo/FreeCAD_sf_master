@@ -32,6 +32,8 @@
 
 #include "CoinManagerParameters.h"
 
+#include <Mod/Sketcher/App/GeoList.h>
+
 class SbVec3f;
 class SoRayPickAction;
 class SoPickedPoint;
@@ -53,9 +55,6 @@ namespace Part {
 namespace Sketcher {
     class Constraint;
     class PropertyConstraintList;
-
-    template < typename T >
-    class GeoListModel;
 };
 
 namespace SketcherGui {
@@ -63,9 +62,8 @@ namespace SketcherGui {
 struct EditData;
 class ViewProviderSketch;
 
-using GeoList = Sketcher::GeoListModel<Part::Geometry *>;
-using GeoListFacade = Sketcher::GeoListModel<std::unique_ptr<const Sketcher::GeometryFacade>>;
-
+using GeoList = Sketcher::GeoList;
+using GeoListFacade = Sketcher::GeoListFacade;
 
 /** @brief      Attorney class for limiting access to viewprovider
  *  @details
@@ -87,15 +85,26 @@ private:
     static inline bool constraintHasExpression(const ViewProviderSketch &vp, int constrid);
     static inline const std::vector<Sketcher::Constraint *> getConstraints(const ViewProviderSketch & vp);
     static inline const GeoList getGeoList(const ViewProviderSketch & vp);
+    static inline const GeoListFacade getGeoListFacade(const ViewProviderSketch & vp);
     static inline Base::Placement getEditingPlacement(const ViewProviderSketch & vp);
     static inline void updateGridExtent(ViewProviderSketch & vp, float minx, float maxx, float miny, float maxy);
     static inline bool isShownVirtualSpace(const ViewProviderSketch & vp);
     static inline std::unique_ptr<SoRayPickAction> getRayPickAction(const ViewProviderSketch & vp);
 
-    static float getScaleFactor(const ViewProviderSketch & vp);
-    static SbVec2f getScreenCoordinates(const ViewProviderSketch & vp, SbVec2f sketchcoordinates);
-    static QFont getApplicationFont(const ViewProviderSketch & vp);
-    static double getRotation(const ViewProviderSketch & vp, SbVec3f pos0, SbVec3f pos1);
+    static inline float getScaleFactor(const ViewProviderSketch & vp);
+    static inline SbVec2f getScreenCoordinates(const ViewProviderSketch & vp, SbVec2f sketchcoordinates);
+    static inline QFont getApplicationFont(const ViewProviderSketch & vp);
+    static inline double getRotation(const ViewProviderSketch & vp, SbVec3f pos0, SbVec3f pos1);
+    static inline int defaultApplicationFontSizePixels(const ViewProviderSketch & vp);
+    static inline int getApplicationLogicalDPIX(const ViewProviderSketch & vp);
+
+    static inline bool isSketchInvalid(const ViewProviderSketch & vp);
+    static inline bool isSketchFullyConstrained(const ViewProviderSketch & vp);
+    static inline bool haveConstraintsInvalidGeometry(const ViewProviderSketch & vp);
+
+    static inline void addNodeToRoot(ViewProviderSketch & vp, SoSeparator * node);
+
+    static inline void removeNodeFromRoot(ViewProviderSketch & vp, SoSeparator * node);
 
     friend class CoinManager;
 };
@@ -137,6 +146,7 @@ class SketcherGuiExport CoinManager
         void updateCurvedEdgeCountSegmentsParameter();
         void updateLineRenderingOrderParameters();
         void updateConstraintPresentationParameters();
+        void updateElementSizeParameters();
 
         template<OverlayVisibilityParameter visibilityparameter>
         void updateOverlayVisibilityParameter();
@@ -222,8 +232,8 @@ public:
 
     /** @name update coin colors*/
     //@{
-    void updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid);
-    void updateConstraintColor(std::vector<Sketcher::Constraint *> constraints);
+    void updateColor();
+    void updateColor(const GeoList & geolist); // overload to be used with temporal geometry.
     //@}
 
 
@@ -256,6 +266,11 @@ public:
     void setPositionText(const Base::Vector2d &Pos);
     void resetPositionText(void);
 
+    /// The client is responsible for unref-ing the SoGroup to release the memory.
+    SoGroup* getSelectedConstraints();
+
+    SoSeparator* getRootEditNode();
+
 private:
     // This function populates the coin nodes with the information of the current geometry
     void processGeometry(const GeoList & geolist);
@@ -272,6 +287,9 @@ private:
 
     // updates the parameters to be used for the Overlay information layer
     void updateOverlayParameters();
+
+    void updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid);
+    void updateConstraintColor(const std::vector<Sketcher::Constraint *> & constraints);
 
     // causes the ViewProvider to draw
     void redrawViewProvider();
@@ -309,6 +327,27 @@ private:
     /*! See constrColor() */
     int constrColorPriority(int constraintId);
 
+    // TODO: Review and refactor where these structs and types relating constraints
+    // should actually go.
+
+    // helper data structures for the constraint rendering
+    std::vector<Sketcher::ConstraintType> vConstrType;
+
+    // For each of the combined constraint icons drawn, also create a vector
+    // of bounding boxes and associated constraint IDs, to go from the icon's
+    // pixel coordinates to the relevant constraint IDs.
+    //
+    // The outside map goes from a string representation of a set of constraint
+    // icons (like the one used by the constraint IDs we insert into the Coin
+    // rendering tree) to a vector of those bounding boxes paired with relevant
+    // constraint IDs.
+
+    using ConstrIconBB = std::pair<QRect, std::set<int> >;
+    using ConstrIconBBVec = std::vector<ConstrIconBB>;
+
+    std::map<QString, ConstrIconBBVec> combinedConstrBoxes;
+
+
     /// Internal type used for drawing constraint icons
     struct constrIconQueueItem {
         /// Type of constraint the icon represents.  Eg: "small/Constraint_PointOnObject_sm"
@@ -336,12 +375,7 @@ private:
         bool visible;
     };
 
-    /// Internal type used for drawing constraint icons
-    typedef std::vector<constrIconQueueItem> IconQueue;
-    /// For constraint icon bounding boxes
-    typedef std::pair<QRect, std::set<int> > ConstrIconBB;
-    /// For constraint icon bounding boxes
-    typedef std::vector<ConstrIconBB> ConstrIconBBVec;
+    using IconQueue = std::vector<constrIconQueueItem>;
 
     void combineConstraintIcons(IconQueue iconQueue);
 
@@ -373,6 +407,14 @@ private:
     void clearCoinImage(SoImage *soImagePtr);
     //@}
 
+    int defaultApplicationFontSizePixels() const;
+
+    int getApplicationLogicalDPIX() const;
+
+    void updateInventorNodeSizes();
+
+    SoSeparator * getConstraintIdSeparator(int i);
+
 private:
     ViewProviderSketch & viewProvider;
     std::unique_ptr<CoinManager::ParameterObserver> pObserver;
@@ -382,6 +424,8 @@ private:
     AnalysisResults analysisResults;
     OverlayParameters overlayParameters;
     ConstraintParameters constraintParameters;
+
+    EditModeScenegraphNodes editModeScenegraphNodes;
 
 };
 
