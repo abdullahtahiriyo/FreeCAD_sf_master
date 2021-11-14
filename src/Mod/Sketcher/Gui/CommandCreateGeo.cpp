@@ -6694,6 +6694,7 @@ public:
 
     virtual void deactivated(ViewProviderSketch *sketchgui)
     {
+        Q_UNUSED(sketchgui);
         setAxisPickStyle(true);
     }
 
@@ -6878,6 +6879,7 @@ namespace SketcherGui {
 
         virtual void deactivated(ViewProviderSketch *sketchgui)
         {
+            Q_UNUSED(sketchgui);
             setAxisPickStyle(true);
         }
 

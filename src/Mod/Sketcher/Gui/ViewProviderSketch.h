@@ -109,6 +109,51 @@ class SketcherGuiExport ViewProviderSketch : public PartGui::ViewProvider2DObjec
 
     PROPERTY_HEADER_WITH_OVERRIDE(SketcherGui::ViewProviderSketch);
 
+private:
+    class ParameterObserver : public ParameterGrp::ObserverType
+    {
+    public:
+        ParameterObserver(ViewProviderSketch & client);
+        ~ParameterObserver();
+
+        void initParameters();
+
+        void subscribeToParameters();
+
+        void unsubscribeToParameters();
+
+        /** Observer for parameter group. */
+        void OnChange(Base::Subject<const char*> &rCaller, const char * sReason) override;
+
+    private:
+
+        void updateBoolProperty(const std::string & string, App::Property * property, bool defaultvalue);
+        void updateGridSize(const std::string & string, App::Property * property);
+
+        // Only for colors outside of edit mode, edit mode colors are handled by CoinManager.
+        void updateColorProperty(const std::string & string, App::Property * property, float r, float g, float b);
+
+    private:
+        ViewProviderSketch &Client;
+        std::map<std::string, std::tuple<std::function<void(const std::string & string, App::Property *)>, App::Property * >> parameterMap;
+    };
+
+    class Drag {
+    public:
+        Drag() {
+            reset();
+        }
+
+        void reset() {
+            xInit = 0;
+            yInit = 0;
+            relative = false;
+        }
+
+        double xInit, yInit;
+        bool relative;
+    };
+
 public:
     /// constructor
     ViewProviderSketch();
@@ -393,7 +438,7 @@ private:
     void setAxisPickStyle(bool on);
     //@}
 
-protected:
+private:
     boost::signals2::connection connectUndoDocument;
     boost::signals2::connection connectRedoDocument;
 
@@ -409,8 +454,7 @@ protected:
     static SbVec2s newCursorPos;
 
     // reference coordinates for relative operations
-    double xInit,yInit;
-    bool relative;
+    Drag drag;
 
     Gui::Rubberband* rubberband;
 
@@ -424,6 +468,7 @@ protected:
     ShortcutListener* listener;
 
     std::unique_ptr<CoinManager> coinManager;
+    std::unique_ptr<ViewProviderSketch::ParameterObserver> pObserver;
 };
 
 } // namespace PartGui
