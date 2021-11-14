@@ -135,8 +135,7 @@ public:
     void activateHandler(DrawSketchHandler *newHandler);
     /// removes the active handler
     void purgeHandler(void);
-    /// set the pick style of the sketch coordinate axes
-    void setAxisPickStyle(bool on);
+
     //@}
 
 
@@ -172,12 +171,6 @@ public:
 
     /// helper change the color of the sketch according to selection and solver status
     void updateColor(void);
-
-    /// draw the edit curve
-    void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
-
-    /// draw the edit markers
-    void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
     //@}
 
     /** @name Selection functions */
@@ -279,7 +272,7 @@ public:
     /** Observer for parameter group. */
     void OnChange(Base::Subject<const char*> &rCaller, const char * sReason) override;
 
-    friend class DrawSketchHandler;
+    friend class ViewProviderSketchDrawSketchHandlerAttorney;
     friend class ViewProviderSketchCoinAttorney;
     friend class ViewProviderSketchShortcutListenerAttorney;
 
@@ -357,16 +350,6 @@ private:
                            SbLine&) const;
     //@}
 
-    /** @name Drawhandler private interface */
-    //@{
-    /// Required for DrawHandle
-    // TODO: Consider writing an attorney to limit
-    // the access of DrawHandler to ViewProvider and improve encapsulation
-    // and prevent uncontrolled grow of dependencies.
-    void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
-    void setPositionText(const Base::Vector2d &Pos);
-    void resetPositionText(void);
-    //@}
 
     /** @name Attorney functions*/
     //@{
@@ -394,8 +377,20 @@ private:
 
     double getRotation(SbVec3f pos0, SbVec3f pos1) const;
 
-    // ViewProviderSketchShortcutListenerAttorney
+    //********* ViewProviderSketchShortcutListenerAttorney ***********//
     void deleteSelected();
+
+    //********* ViewProviderSketchDrawSketchHandlerAttorney **********//
+    void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
+    void setPositionText(const Base::Vector2d &Pos);
+    void resetPositionText(void);
+
+    /// draw the edit curve
+    void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
+    /// draw the edit markers
+    void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
+    /// set the pick style of the sketch coordinate axes
+    void setAxisPickStyle(bool on);
     //@}
 
 protected:
