@@ -134,6 +134,10 @@ private:
 
         void updateEscapeKeyBehaviour(const std::string & string, App::Property * property);
 
+        void updateAutoRecompute(const std::string & string, App::Property * property);
+
+        void updateRecalculateInitialSolutionWhileDragging(const std::string & string, App::Property * property);
+
     private:
         ViewProviderSketch &Client;
         std::map<std::string, std::tuple<std::function<void(const std::string & string, App::Property *)>, App::Property * >> parameterMap;
@@ -164,6 +168,8 @@ private:
 
     struct ViewProviderParameters {
         bool handleEscapeButton = false;
+        bool autoRecompute = false;
+        bool recalculateInitialSolutionWhileDragging = false;
     };
 
 public:

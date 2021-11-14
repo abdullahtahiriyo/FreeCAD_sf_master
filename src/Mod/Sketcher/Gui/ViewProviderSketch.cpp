@@ -162,6 +162,25 @@ void ViewProviderSketch::ParameterObserver::updateEscapeKeyBehaviour(const std::
     Client.viewProviderParameters.handleEscapeButton = !hSketch->GetBool("LeaveSketchWithEscape", true);
 }
 
+void ViewProviderSketch::ParameterObserver::updateAutoRecompute(const std::string & string, App::Property * property)
+{
+    (void) property;
+    (void) string;
+
+    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+    Client.viewProviderParameters.autoRecompute = hGrp->GetBool("AutoRecompute",false);
+}
+
+void ViewProviderSketch::ParameterObserver::updateRecalculateInitialSolutionWhileDragging(const std::string & string, App::Property * property)
+{
+    (void) property;
+    (void) string;
+
+    ParameterGrp::handle hGrp2 = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+
+    Client.viewProviderParameters.recalculateInitialSolutionWhileDragging = hGrp2->GetBool("RecalculateInitialSolutionWhileDragging",true);
+}
+
 void ViewProviderSketch::ParameterObserver::subscribeToParameters()
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
@@ -169,6 +188,9 @@ void ViewProviderSketch::ParameterObserver::subscribeToParameters()
 
     ParameterGrp::handle hGrpskg = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
     hGrpskg->Attach(this);
+
+    ParameterGrp::handle hGrp2 = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+    hGrp2->Attach(this);
 }
 
 void ViewProviderSketch::ParameterObserver::unsubscribeToParameters()
@@ -178,6 +200,9 @@ void ViewProviderSketch::ParameterObserver::unsubscribeToParameters()
 
     ParameterGrp::handle hGrpskg = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
     hGrpskg->Detach(this);
+
+    ParameterGrp::handle hGrp2 = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+    hGrp2->Detach(this);
 }
 
 void ViewProviderSketch::ParameterObserver::initParameters()
@@ -213,6 +238,10 @@ void ViewProviderSketch::ParameterObserver::initParameters()
             {[this](const std::string & string, App::Property * property){ updateColorProperty(string, property, 1.f, 1.f, 1.f);}, &Client.PointColor }},
         {"updateEscapeKeyBehaviour",
             {[this](const std::string & string, App::Property * property){ updateEscapeKeyBehaviour(string, property);}, nullptr }},
+        {"AutoRecompute",
+            {[this](const std::string & string, App::Property * property){ updateAutoRecompute(string, property);}, nullptr }},
+        {"RecalculateInitialSolutionWhileDragging",
+            {[this](const std::string & string, App::Property * property){ updateRecalculateInitialSolutionWhileDragging(string, property);}, nullptr }},
     };
 
     for( auto & val : parameterMap){
@@ -2759,9 +2788,6 @@ bool ViewProviderSketch::setEdit(int ModNum)
     edit = new EditData();
     coinManager = std::make_unique<CoinManager>(*this, edit);
 
-    ParameterGrp::handle hSketch = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
-    viewProviderParameters.handleEscapeButton = !hSketch->GetBool("LeaveSketchWithEscape", true);
-
     auto editDoc = Gui::Application::Instance->editDocument();
     App::DocumentObject *editObj = getSketchObject();
     std::string editSubName;
@@ -2845,9 +2871,7 @@ bool ViewProviderSketch::setEdit(int ModNum)
         ->signalRedoDocument.connect(boost::bind(&ViewProviderSketch::slotRedoDocument, this, bp::_1));
 
     // Enable solver initial solution update while dragging.
-    ParameterGrp::handle hGrp2 = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
-
-    getSketchObject()->setRecalculateInitialSolutionWhileMovingPoint(hGrp2->GetBool("RecalculateInitialSolutionWhileDragging",true));
+    getSketchObject()->setRecalculateInitialSolutionWhileMovingPoint(viewProviderParameters.recalculateInitialSolutionWhileDragging);
 
     // intercept del key press from main app
     listener = new ShortcutListener(this);
@@ -3344,10 +3368,7 @@ bool ViewProviderSketch::onDelete(const std::vector<std::string> &subList)
         // as there is an event filter installed that intercepts the del key event. So now we do
         // need to tidy up after ourselves again.
 
-        ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
-        bool autoRecompute = hGrp->GetBool("AutoRecompute",false);
-
-        if (autoRecompute) {
+        if (viewProviderParameters.autoRecompute) {
             Gui::Command::updateActive();
         }
         else {
