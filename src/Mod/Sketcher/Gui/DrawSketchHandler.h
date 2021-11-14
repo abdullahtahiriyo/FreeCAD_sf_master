@@ -47,6 +47,7 @@ private:
     static inline void setPositionText(ViewProviderSketch &vp, const Base::Vector2d &Pos);
     static inline void resetPositionText(ViewProviderSketch &vp);
     static inline void drawEdit(ViewProviderSketch &vp, const std::vector<Base::Vector2d> &EditCurve);
+    static inline void drawEditMarkers(ViewProviderSketch &vp, const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
 
     friend class DrawSketchHandler;
 };
@@ -126,6 +127,7 @@ protected:
     void setCrosshairCursor(const char* svgName);
 
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
+    void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
 
 
 

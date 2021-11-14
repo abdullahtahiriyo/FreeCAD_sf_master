@@ -172,11 +172,6 @@ public:
 
     /// helper change the color of the sketch according to selection and solver status
     void updateColor(void);
-
-
-
-    /// draw the edit markers
-    void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
     //@}
 
     /** @name Selection functions */
@@ -383,16 +378,18 @@ private:
 
     double getRotation(SbVec3f pos0, SbVec3f pos1) const;
 
-    // ViewProviderSketchShortcutListenerAttorney
+    //********* ViewProviderSketchShortcutListenerAttorney ***********//
     void deleteSelected();
 
-    // ViewProviderSketchDrawSketchHandlerAttorney
+    //********* ViewProviderSketchDrawSketchHandlerAttorney **********//
     void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
     void setPositionText(const Base::Vector2d &Pos);
     void resetPositionText(void);
 
     /// draw the edit curve
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
+    /// draw the edit markers
+    void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
     //@}
 
 protected:
