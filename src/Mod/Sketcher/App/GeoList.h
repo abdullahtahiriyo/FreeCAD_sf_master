@@ -81,7 +81,13 @@ protected:
 public:
     ~GeoListModel();
 
+    // Explicit deletion to show intent (not that it is needed)
+    GeoListModel(const GeoListModel &) = delete;
+    GeoListModel& operator=(const GeoListModel&) = delete;
+
+    // enable move syntaxis
     GeoListModel(GeoListModel &&) = default;
+    GeoListModel& operator=(GeoListModel&&) = default;
 
     /**
      * GeoListModel manages the lifetime of its internal std::vector. This means that while the actual ownership
