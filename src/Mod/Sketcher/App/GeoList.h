@@ -31,6 +31,8 @@
 #include <vector>
 #include <memory>
 
+#include <Mod/Sketcher/App/GeometryFacade.h>
+
 namespace Base {
     template< typename T >
     class Vector3;
@@ -41,8 +43,9 @@ namespace Part {
 }
 
 namespace Sketcher {
-    class GeometryFacade;
     enum PointPos : int;
+
+    class GeometryFacade;
 }
 
 namespace Sketcher {
@@ -71,12 +74,14 @@ protected:
     * @param intgeocount: the number of internal geometries (non external) in the list.
     * @param ownerT: indicates whether the GeoListModel takes ownership of the elements of the std::vector<T> (for pointers)
     */
-    explicit GeoListModel(std::vector<T> && geometrylist, int intgeocount, bool ownerT = false);
+    inline explicit GeoListModel(std::vector<T> && geometrylist, int intgeocount, bool ownerT = false);
 
-    explicit GeoListModel(const std::vector<T> & geometrylist, int intgeocount, bool ownerT = false);
+    inline explicit GeoListModel(const std::vector<T> & geometrylist, int intgeocount, bool ownerT = false);
 
 public:
     ~GeoListModel();
+
+    GeoListModel(GeoListModel &&) = default;
 
     /**
      * GeoListModel manages the lifetime of its internal std::vector. This means that while the actual ownership
@@ -142,6 +147,69 @@ private:
     int intGeoCount;
     bool OwnerT;
 };
+
+
+// Vector is moved
+template <typename T>
+inline GeoListModel<T>::GeoListModel(  std::vector<T> && geometrylist,
+                                int intgeocount,
+                                bool ownerT): geomlist(std::move(geometrylist)),
+                                              intGeoCount(intgeocount),
+                                              OwnerT(ownerT)
+{
+
+}
+
+// Vector is shallow copied (copy constructed)
+template <typename T>
+inline GeoListModel<T>::GeoListModel(  const std::vector<T> & geometrylist,
+                                int intgeocount,
+                                bool ownerT): geomlist(geometrylist), // copy constructed here
+                                              intGeoCount(intgeocount),
+                                              OwnerT(ownerT)
+{
+
+}
+
+
+template <>
+inline GeoListModel<std::unique_ptr< const Sketcher::GeometryFacade>>::GeoListModel(
+                                std::vector<std::unique_ptr<const Sketcher::GeometryFacade>> && geometrylist,
+                                int intgeocount,
+                                bool ownerT) :  geomlist(std::move(geometrylist)),
+                                                intGeoCount(intgeocount),
+                                                OwnerT(false)
+{
+    // GeometryFacades hold the responsibility for releasing the resources.
+    //
+    // This means that each GeometryFacade that is passed to the GeoListModel,
+    // must set the ownership (GF->setOwner(true)), if it should be the owner.
+    // Otherwise, it follows the default behaviour that some other class, which
+    // created the pointer, is responsible for freeing it.
+    //
+    // Under the Single Responsibility Principle GeoListModel cannot be made
+    // responsible for releasing those pointers.
+    assert(ownerT == false);
+}
+
+template <>
+inline GeoListModel<std::unique_ptr< const Sketcher::GeometryFacade>>::GeoListModel(
+                                const std::vector<std::unique_ptr< const Sketcher::GeometryFacade>> & geometrylist,
+                                int intgeocount,
+                                bool ownerT):   intGeoCount(intgeocount),
+                                                OwnerT(false)
+{
+    // GeometryFacades are movable, but not copiable, so they need to be reconstructed (shallow copy of vector)
+    // Under the Single Responsibility Principle, these will not take over a responsibility that shall be enforced
+    // on the original GeometryFacade. Use the move version of getGeoListModel if moving the responsibility is intended.
+    assert(ownerT == false);
+
+    geomlist.reserve(geometrylist.size());
+
+    for(auto & v : geometrylist) {
+        geomlist.push_back(GeometryFacade::getFacade(v->getGeometry()));
+    }
+}
 
 using GeoList = GeoListModel<Part::Geometry *>;
 using GeoListFacade = GeoListModel<std::unique_ptr<const Sketcher::GeometryFacade>>;

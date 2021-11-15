@@ -117,7 +117,7 @@ inline const GeoList ViewProviderSketchCoinAttorney::getGeoList(const ViewProvid
 
 const GeoListFacade ViewProviderSketchCoinAttorney::getGeoListFacade(const ViewProviderSketch & vp)
 {
-    return vp.getGeoListFacade();
+    return  vp.getGeoListFacade();
 }
 
 inline Base::Placement ViewProviderSketchCoinAttorney::getEditingPlacement(const ViewProviderSketch & vp)
@@ -1797,22 +1797,20 @@ void CoinManager::updateCoinManagerColors()
 
 void CoinManager::updateColor()
 {
-    auto geolistfacade = ViewProviderSketchCoinAttorney::getGeoListFacade();
+    auto geolistfacade = ViewProviderSketchCoinAttorney::getGeoListFacade(viewProvider);
 
-    bool sketchinvalid = ViewProviderSketchCoinAttorney::isSketchInvalid();
+    bool sketchinvalid = ViewProviderSketchCoinAttorney::isSketchInvalid(viewProvider);
 
-    coinManager->updateGeometryColor(geolistfacade, sketchinvalid);
+    updateGeometryColor(geolistfacade, sketchinvalid);
 
     // update constraint color
 
-    auto constraints = ViewProviderSketchCoinAttorney::getConstraints();
+    auto constraints = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
 
-    if(ViewProviderSketchCoinAttorney::haveConstraintsInvalidGeometry())
+    if(ViewProviderSketchCoinAttorney::haveConstraintsInvalidGeometry(viewProvider))
         return;
 
-    auto constraints = getSketchObject()->Constraints.getValues();
-
-    coinManager->updateConstraintColor(constraints);
+    updateConstraintColor(constraints);
 }
 
 

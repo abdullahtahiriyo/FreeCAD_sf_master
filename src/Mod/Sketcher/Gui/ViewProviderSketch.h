@@ -24,6 +24,8 @@
 #ifndef SKETCHERGUI_VIEWPROVIDERSKETCH_H
 #define SKETCHERGUI_VIEWPROVIDERSKETCH_H
 
+#include <memory>
+
 #include <Mod/Part/Gui/ViewProvider2DObject.h>
 #include <Mod/Part/Gui/ViewProviderAttachExtension.h>
 #include <Mod/Part/App/BodyBase.h>
@@ -36,6 +38,8 @@
 #include <QCoreApplication>
 #include <Gui/Document.h>
 #include "ShortcutListener.h"
+
+#include <Mod/Sketcher/App/GeoList.h>
 
 class TopoDS_Shape;
 class TopoDS_Face;
@@ -73,9 +77,6 @@ namespace Sketcher {
     class Constraint;
     class Sketch;
     class SketchObject;
-
-    template < typename T >
-    class GeoListModel;
 }
 
 namespace SketcherGui {
@@ -84,7 +85,9 @@ struct EditData;
 class CoinManager;
 class DrawSketchHandler;
 
-using GeoList = Sketcher::GeoListModel<Part::Geometry *>;
+using GeoList = Sketcher::GeoList;
+using GeoListFacade = Sketcher::GeoListFacade;
+
 
 /** The Sketch ViewProvider
   * This class handles mainly the drawing and editing of the sketch.
@@ -415,7 +418,7 @@ private:
     // gets the list of geometry of the sketchobject or of the solver instance
     const GeoList getGeoList() const;
 
-    const GeoListFacade getGeoListFacade() const;
+    GeoListFacade getGeoListFacade() const;
 
     Base::Placement getEditingPlacement() const;
 

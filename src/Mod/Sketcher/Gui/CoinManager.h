@@ -32,6 +32,8 @@
 
 #include "CoinManagerParameters.h"
 
+#include <Mod/Sketcher/App/GeoList.h>
+
 class SbVec3f;
 class SoRayPickAction;
 class SoPickedPoint;
@@ -53,9 +55,6 @@ namespace Part {
 namespace Sketcher {
     class Constraint;
     class PropertyConstraintList;
-
-    template < typename T >
-    class GeoListModel;
 };
 
 namespace SketcherGui {
@@ -63,9 +62,8 @@ namespace SketcherGui {
 struct EditData;
 class ViewProviderSketch;
 
-using GeoList = Sketcher::GeoListModel<Part::Geometry *>;
-using GeoListFacade = Sketcher::GeoListModel<std::unique_ptr<const Sketcher::GeometryFacade>>;
-
+using GeoList = Sketcher::GeoList;
+using GeoListFacade = Sketcher::GeoListFacade;
 
 /** @brief      Attorney class for limiting access to viewprovider
  *  @details

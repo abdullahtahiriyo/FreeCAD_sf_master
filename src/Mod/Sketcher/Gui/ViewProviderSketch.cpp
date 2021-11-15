@@ -3534,7 +3534,8 @@ double ViewProviderSketch::getRotation(SbVec3f pos0, SbVec3f pos1) const
     }
 }
 
-const GeoListFacade ViewProviderSketch::getGeoListFacade() const
+
+GeoListFacade ViewProviderSketch::getGeoListFacade() const
 {
     auto tempGeoFacade = getSketchObject()->getCompleteGeometryFacade();
 
