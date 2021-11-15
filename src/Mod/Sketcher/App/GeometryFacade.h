@@ -118,8 +118,12 @@ public: // Utility methods
     static bool getBlocked(const Part::Geometry * geometry);
 
 public:
+    // Explicit deletion to show intent (not that it is needed)
     GeometryFacade(const GeometryFacade&) = delete;
+    GeometryFacade& operator=(const GeometryFacade&) = delete;
+
     GeometryFacade(GeometryFacade&&) = default;
+    GeometryFacade& operator=(GeometryFacade&&) = default;
 
     ~GeometryFacade();
     void setGeometry(Part::Geometry *geometry);
