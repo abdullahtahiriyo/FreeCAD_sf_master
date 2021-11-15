@@ -115,6 +115,11 @@ inline const GeoList ViewProviderSketchCoinAttorney::getGeoList(const ViewProvid
     return vp.getGeoList();
 }
 
+const GeoListFacade ViewProviderSketchCoinAttorney::getGeoListFacade(const ViewProviderSketch & vp)
+{
+    return  vp.getGeoListFacade();
+}
+
 inline Base::Placement ViewProviderSketchCoinAttorney::getEditingPlacement(const ViewProviderSketch & vp)
 {
     return vp.getEditingPlacement();
@@ -165,9 +170,29 @@ inline int ViewProviderSketchCoinAttorney::getApplicationLogicalDPIX(const ViewP
     return vp.getApplicationLogicalDPIX();
 }
 
-inline void ViewProviderSketchCoinAttorney::createEditRootNode(ViewProviderSketch & vp)
+inline bool ViewProviderSketchCoinAttorney::isSketchInvalid(const ViewProviderSketch & vp)
 {
-    return vp.createEditRootNode();
+    return vp.isSketchInvalid();
+}
+
+inline bool ViewProviderSketchCoinAttorney::isSketchFullyConstrained(const ViewProviderSketch & vp)
+{
+    return vp.isSketchFullyConstrained();
+}
+
+inline bool ViewProviderSketchCoinAttorney::haveConstraintsInvalidGeometry(const ViewProviderSketch & vp)
+{
+    return vp.haveConstraintsInvalidGeometry();
+}
+
+inline void ViewProviderSketchCoinAttorney::addNodeToRoot(ViewProviderSketch & vp, SoSeparator * node)
+{
+    vp.addNodeToRoot(node);
+}
+
+inline void ViewProviderSketchCoinAttorney::removeNodeFromRoot(ViewProviderSketch & vp, SoSeparator * node)
+{
+    vp.removeNodeFromRoot(node);
 }
 
 //**************************** ParameterObserver nested class ******************************
@@ -379,7 +404,6 @@ void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCalle
 CoinManager::CoinManager(ViewProviderSketch &vp, EditData * editdata):viewProvider(vp),edit(editdata) {
 
     // Create Edit Mode Scenograph
-    ViewProviderSketchCoinAttorney::createEditRootNode(viewProvider);
     createEditModeInventorNodes();
 
     // Create parameter observer and initialise watched parameters
@@ -387,7 +411,12 @@ CoinManager::CoinManager(ViewProviderSketch &vp, EditData * editdata):viewProvid
 
 }
 
-CoinManager::~CoinManager() {}
+CoinManager::~CoinManager()
+{
+    Gui::coinRemoveAllChildren(editModeScenegraphNodes.EditRoot);
+    ViewProviderSketchCoinAttorney::removeNodeFromRoot(viewProvider, editModeScenegraphNodes.EditRoot);
+    editModeScenegraphNodes.EditRoot->unref();
+}
 
 
 void CoinManager::processGeometry(const GeoList & geolist)
@@ -397,11 +426,11 @@ void CoinManager::processGeometry(const GeoList & geolist)
 
     // Define the coin nodes that will be filled in with the single layer
     GeometryLayerNodes geometryLayerNodes {
-        edit->PointsMaterials,
-        edit->CurvesMaterials,
-        edit->PointsCoordinate,
-        edit->CurvesCoordinate,
-        edit->CurveSet
+        editModeScenegraphNodes.PointsMaterials,
+        editModeScenegraphNodes.CurvesMaterials,
+        editModeScenegraphNodes.PointsCoordinate,
+        editModeScenegraphNodes.CurvesCoordinate,
+        editModeScenegraphNodes.CurveSet
     };
 
     // process geometry layer
@@ -411,8 +440,8 @@ void CoinManager::processGeometry(const GeoList & geolist)
     gcconv.convert(geolayer);
 
     // set cross coordinates
-    edit->RootCrossSet->numVertices.set1Value(0,2);
-    edit->RootCrossSet->numVertices.set1Value(1,2);
+    editModeScenegraphNodes.RootCrossSet->numVertices.set1Value(0,2);
+    editModeScenegraphNodes.RootCrossSet->numVertices.set1Value(1,2);
 
     edit->CurvIdToGeoId = gcconv.getCurveMap();
     edit->PointIdToGeoId = gcconv.getPointMap();
@@ -427,20 +456,20 @@ void CoinManager::processGeometry(const GeoList & geolist)
 
 void CoinManager::updateAxesLength()
 {
-    edit->RootCrossCoordinate->point.set1Value(0,SbVec3f(-analysisResults.boundingBoxMagnitudeOrder, 0.0f, drawingParameters.zCross));
-    edit->RootCrossCoordinate->point.set1Value(1,SbVec3f(analysisResults.boundingBoxMagnitudeOrder, 0.0f, drawingParameters.zCross));
-    edit->RootCrossCoordinate->point.set1Value(2,SbVec3f(0.0f, -analysisResults.boundingBoxMagnitudeOrder, drawingParameters.zCross));
-    edit->RootCrossCoordinate->point.set1Value(3,SbVec3f(0.0f, analysisResults.boundingBoxMagnitudeOrder, drawingParameters.zCross));
+    editModeScenegraphNodes.RootCrossCoordinate->point.set1Value(0,SbVec3f(-analysisResults.boundingBoxMagnitudeOrder, 0.0f, drawingParameters.zCross));
+    editModeScenegraphNodes.RootCrossCoordinate->point.set1Value(1,SbVec3f(analysisResults.boundingBoxMagnitudeOrder, 0.0f, drawingParameters.zCross));
+    editModeScenegraphNodes.RootCrossCoordinate->point.set1Value(2,SbVec3f(0.0f, -analysisResults.boundingBoxMagnitudeOrder, drawingParameters.zCross));
+    editModeScenegraphNodes.RootCrossCoordinate->point.set1Value(3,SbVec3f(0.0f, analysisResults.boundingBoxMagnitudeOrder, drawingParameters.zCross));
 }
 
 void CoinManager::processGeometryInformationOverlay(const GeoList & geolist)
 {
     if(overlayParameters.rebuildInformationLayer) {
         // every time we start with empty information overlay
-        Gui::coinRemoveAllChildren(edit->infoGroup);
+        Gui::coinRemoveAllChildren(editModeScenegraphNodes.infoGroup);
     }
 
-    auto ioconv = InformationOverlayCoinConverter(edit->infoGroup, overlayParameters, drawingParameters);
+    auto ioconv = InformationOverlayCoinConverter(editModeScenegraphNodes.infoGroup, overlayParameters, drawingParameters);
 
     // geometry information layer for bsplines, as they need a second round now that max curvature is known
     for (auto geoid : analysisResults.bsplineGeoIds) {
@@ -465,17 +494,17 @@ void CoinManager::updateVirtualSpace()
 
     bool isshownvirtualspace = ViewProviderSketchCoinAttorney::isShownVirtualSpace(viewProvider);
 
-    if(constrlist.size() == edit->vConstrType.size()) {
+    if(constrlist.size() == vConstrType.size()) {
 
-        edit->constrGroup->enable.setNum(constrlist.size());
+        editModeScenegraphNodes.constrGroup->enable.setNum(constrlist.size());
 
-        SbBool *sws = edit->constrGroup->enable.startEditing();
+        SbBool *sws = editModeScenegraphNodes.constrGroup->enable.startEditing();
 
         for (size_t i = 0; i < constrlist.size(); i++)
             sws[i] = !(constrlist[i]->isInVirtualSpace != isshownvirtualspace); // XOR of constraint mode and VP mode
 
 
-        edit->constrGroup->enable.finishEditing();
+        editModeScenegraphNodes.constrGroup->enable.finishEditing();
     }
 }
 
@@ -496,11 +525,11 @@ void CoinManager::processConstraints(const GeoList & geolist)
     // reset point if the constraint type has changed
 Restart:
     // check if a new constraint arrived
-    if (constrlist.size() != edit->vConstrType.size())
+    if (constrlist.size() != vConstrType.size())
         rebuildConstraintNodes(geolist);
 
-    assert(int(constrlist.size()) == edit->constrGroup->getNumChildren());
-    assert(int(edit->vConstrType.size()) == edit->constrGroup->getNumChildren());
+    assert(int(constrlist.size()) == editModeScenegraphNodes.constrGroup->getNumChildren());
+    assert(int(vConstrType.size()) == editModeScenegraphNodes.constrGroup->getNumChildren());
 
     // update the virtual space
     updateVirtualSpace();
@@ -522,15 +551,15 @@ Restart:
     for (std::vector<Sketcher::Constraint *>::const_iterator it=constrlist.begin();
          it != constrlist.end(); ++it, i++) {
         // check if the type has changed
-        if ((*it)->Type != edit->vConstrType[i]) {
+        if ((*it)->Type != vConstrType[i]) {
             // clearing the type vector will force a rebuild of the visual nodes
-            edit->vConstrType.clear();
+            vConstrType.clear();
             //TODO: The 'goto' here is unsafe as it can happen that we cause an endless loop (see bug #0001956).
             goto Restart;
         }
         try{//because calculateNormalAtPoint, used in there, can throw
             // root separator for this constraint
-            SoSeparator *sep = static_cast<SoSeparator *>(edit->constrGroup->getChild(i));
+            SoSeparator *sep = static_cast<SoSeparator *>(editModeScenegraphNodes.constrGroup->getChild(i));
             const Constraint *Constr = *it;
 
             if(Constr->First < -extGeoCount || Constr->First >= intGeoCount
@@ -667,7 +696,7 @@ Restart:
                                 }
                             }
 
-                            Base::Vector3d relpos = seekConstraintPosition(midpos, norm, dir, 2.5, edit->constrGroup->getChild(i));
+                            Base::Vector3d relpos = seekConstraintPosition(midpos, norm, dir, 2.5,  editModeScenegraphNodes.constrGroup->getChild(i));
 
                             auto translation = static_cast<SoZoomTranslation *>(sep->getChild(static_cast<int>(ConstraintNodePosition::FirstTranslationIndex)));
 
@@ -691,14 +720,14 @@ Restart:
                             norm1 = Base::Vector3d(-dir1.y,dir1.x,0.);
                             norm2 = norm1;
 
-                            Base::Vector3d relpos1 = seekConstraintPosition(midpos1, norm1, dir1, 4.0, edit->constrGroup->getChild(i));
+                            Base::Vector3d relpos1 = seekConstraintPosition(midpos1, norm1, dir1, 4.0,  editModeScenegraphNodes.constrGroup->getChild(i));
 
                             auto translation = static_cast<SoZoomTranslation *>(sep->getChild(static_cast<int>(ConstraintNodePosition::FirstTranslationIndex)));
 
                             translation->abPos = SbVec3f(midpos1.x, midpos1.y, drawingParameters.zConstr);
                             translation->translation = SbVec3f(relpos1.x, relpos1.y, 0);
 
-                            Base::Vector3d relpos2 = seekConstraintPosition(midpos2, norm2, dir2, 4.0, edit->constrGroup->getChild(i));
+                            Base::Vector3d relpos2 = seekConstraintPosition(midpos2, norm2, dir2, 4.0,  editModeScenegraphNodes.constrGroup->getChild(i));
 
                             Base::Vector3d secondPos = midpos2 - midpos1;
 
@@ -796,7 +825,7 @@ Restart:
                             twoIcons = true;
                         }
 
-                        Base::Vector3d relpos1 = seekConstraintPosition(midpos1, norm1, dir1, 4.0, edit->constrGroup->getChild(i));
+                        Base::Vector3d relpos1 = seekConstraintPosition(midpos1, norm1, dir1, 4.0,  editModeScenegraphNodes.constrGroup->getChild(i));
 
                         auto translation = static_cast<SoZoomTranslation *>(sep->getChild(static_cast<int>(ConstraintNodePosition::FirstTranslationIndex)));
 
@@ -804,7 +833,7 @@ Restart:
                         translation->translation = SbVec3f(relpos1.x, relpos1.y, 0);
 
                         if (twoIcons) {
-                            Base::Vector3d relpos2 = seekConstraintPosition(midpos2, norm2, dir2, 4.0, edit->constrGroup->getChild(i));
+                            Base::Vector3d relpos2 = seekConstraintPosition(midpos2, norm2, dir2, 4.0,  editModeScenegraphNodes.constrGroup->getChild(i));
 
                             Base::Vector3d secondPos = midpos2 - midpos1;
                             auto translation = static_cast<SoZoomTranslation *>(sep->getChild(static_cast<int>(ConstraintNodePosition::SecondTranslationIndex)));
@@ -989,8 +1018,8 @@ Restart:
                             norm2 = Base::Vector3d(-dir2.y,dir2.x,0.);
                         }
 
-                        Base::Vector3d relpos1 = seekConstraintPosition(midpos1, norm1, dir1, 4.0, edit->constrGroup->getChild(i));
-                        Base::Vector3d relpos2 = seekConstraintPosition(midpos2, norm2, dir2, 4.0, edit->constrGroup->getChild(i));
+                        Base::Vector3d relpos1 = seekConstraintPosition(midpos1, norm1, dir1, 4.0, editModeScenegraphNodes.constrGroup->getChild(i));
+                        Base::Vector3d relpos2 = seekConstraintPosition(midpos2, norm2, dir2, 4.0, editModeScenegraphNodes.constrGroup->getChild(i));
 
                         auto translation = static_cast<SoZoomTranslation *>(sep->getChild(static_cast<int>(ConstraintNodePosition::FirstTranslationIndex)));
 
@@ -1111,7 +1140,7 @@ Restart:
                             norm.Normalize();
                             Base::Vector3d dir = norm; dir.RotateZ(-M_PI/2.0);
 
-                            relPos = seekConstraintPosition(pos, norm, dir, 2.5, edit->constrGroup->getChild(i));
+                            relPos = seekConstraintPosition(pos, norm, dir, 2.5, editModeScenegraphNodes.constrGroup->getChild(i));
 
                             auto translation = static_cast<SoZoomTranslation *>(sep->getChild(static_cast<int>(ConstraintNodePosition::FirstTranslationIndex)));
 
@@ -1135,8 +1164,8 @@ Restart:
                                 Base::Vector3d norm1 = Base::Vector3d(-dir1.y,dir1.x,0.f);
                                 Base::Vector3d norm2 = Base::Vector3d(-dir2.y,dir2.x,0.f);
 
-                                Base::Vector3d relpos1 = seekConstraintPosition(midpos1, norm1, dir1, 4.0, edit->constrGroup->getChild(i));
-                                Base::Vector3d relpos2 = seekConstraintPosition(midpos2, norm2, dir2, 4.0, edit->constrGroup->getChild(i));
+                                Base::Vector3d relpos1 = seekConstraintPosition(midpos1, norm1, dir1, 4.0, editModeScenegraphNodes.constrGroup->getChild(i));
+                                Base::Vector3d relpos2 = seekConstraintPosition(midpos2, norm2, dir2, 4.0, editModeScenegraphNodes.constrGroup->getChild(i));
 
                                 auto translation = static_cast<SoZoomTranslation *>(sep->getChild(static_cast<int>(ConstraintNodePosition::FirstTranslationIndex)));
 
@@ -1545,7 +1574,7 @@ Base::Vector3d CoinManager::seekConstraintPosition(const Base::Vector3d &origPos
         rp->setPickAll(true);
         rp->setRay(SbVec3f(freePos.x, freePos.y, -1.f), SbVec3f(0, 0, 1) );
         //problem
-        rp->apply(edit->constrGroup); // We could narrow it down to just the SoGroup containing the constraints
+        rp->apply(editModeScenegraphNodes.constrGroup); // We could narrow it down to just the SoGroup containing the constraints
 
         // returns a copy of the point
         SoPickedPoint *pp = rp->getPickedPoint();
@@ -1612,14 +1641,14 @@ void CoinManager::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers
         augmentedmarkersize = *std::next(defaultmarker, augmentationlevel);
     }
 
-    edit->EditMarkerSet->markerIndex.startEditing();
-    edit->EditMarkerSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_LINE", augmentedmarkersize);
+    editModeScenegraphNodes.EditMarkerSet->markerIndex.startEditing();
+    editModeScenegraphNodes.EditMarkerSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_LINE", augmentedmarkersize);
 
     // add the points to set
-    edit->EditMarkersCoordinate->point.setNum(EditMarkers.size());
-    edit->EditMarkersMaterials->diffuseColor.setNum(EditMarkers.size());
-    SbVec3f *verts = edit->EditMarkersCoordinate->point.startEditing();
-    SbColor *color = edit->EditMarkersMaterials->diffuseColor.startEditing();
+    editModeScenegraphNodes.EditMarkersCoordinate->point.setNum(EditMarkers.size());
+    editModeScenegraphNodes.EditMarkersMaterials->diffuseColor.setNum(EditMarkers.size());
+    SbVec3f *verts = editModeScenegraphNodes.EditMarkersCoordinate->point.startEditing();
+    SbColor *color = editModeScenegraphNodes.EditMarkersMaterials->diffuseColor.startEditing();
 
     int i=0; // setting up the line set
     for (std::vector<Base::Vector2d>::const_iterator it = EditMarkers.begin(); it != EditMarkers.end(); ++it,i++) {
@@ -1627,21 +1656,21 @@ void CoinManager::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers
         color[i] = drawingParameters.InformationColor;
     }
 
-    edit->EditMarkersCoordinate->point.finishEditing();
-    edit->EditMarkersMaterials->diffuseColor.finishEditing();
-    edit->EditMarkerSet->markerIndex.finishEditing();
+    editModeScenegraphNodes.EditMarkersCoordinate->point.finishEditing();
+    editModeScenegraphNodes.EditMarkersMaterials->diffuseColor.finishEditing();
+    editModeScenegraphNodes.EditMarkerSet->markerIndex.finishEditing();
 }
 
 void CoinManager::drawEdit(const std::vector<Base::Vector2d> &EditCurve)
 {
     assert(edit);
 
-    edit->EditCurveSet->numVertices.setNum(1);
-    edit->EditCurvesCoordinate->point.setNum(EditCurve.size());
-    edit->EditCurvesMaterials->diffuseColor.setNum(EditCurve.size());
-    SbVec3f *verts = edit->EditCurvesCoordinate->point.startEditing();
-    int32_t *index = edit->EditCurveSet->numVertices.startEditing();
-    SbColor *color = edit->EditCurvesMaterials->diffuseColor.startEditing();
+    editModeScenegraphNodes.EditCurveSet->numVertices.setNum(1);
+    editModeScenegraphNodes.EditCurvesCoordinate->point.setNum(EditCurve.size());
+    editModeScenegraphNodes.EditCurvesMaterials->diffuseColor.setNum(EditCurve.size());
+    SbVec3f *verts = editModeScenegraphNodes.EditCurvesCoordinate->point.startEditing();
+    int32_t *index = editModeScenegraphNodes.EditCurveSet->numVertices.startEditing();
+    SbColor *color = editModeScenegraphNodes.EditCurvesMaterials->diffuseColor.startEditing();
 
     int i=0; // setting up the line set
     for (std::vector<Base::Vector2d>::const_iterator it = EditCurve.begin(); it != EditCurve.end(); ++it,i++) {
@@ -1650,9 +1679,9 @@ void CoinManager::drawEdit(const std::vector<Base::Vector2d> &EditCurve)
     }
 
     index[0] = EditCurve.size();
-    edit->EditCurvesCoordinate->point.finishEditing();
-    edit->EditCurveSet->numVertices.finishEditing();
-    edit->EditCurvesMaterials->diffuseColor.finishEditing();
+    editModeScenegraphNodes.EditCurvesCoordinate->point.finishEditing();
+    editModeScenegraphNodes.EditCurveSet->numVertices.finishEditing();
+    editModeScenegraphNodes.EditCurvesMaterials->diffuseColor.finishEditing();
 }
 
 void CoinManager::setPreselectPoint(int PreselectPoint)
@@ -1664,7 +1693,7 @@ void CoinManager::setPreselectPoint(int PreselectPoint)
         else if (edit->PreselectCross == 0)
             oldPtId = 0;
         int newPtId = PreselectPoint + 1;
-        SbVec3f *pverts = edit->PointsCoordinate->point.startEditing();
+        SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
         float x,y,z;
         if (oldPtId != -1 &&
             edit->SelPointSet.find(oldPtId) == edit->SelPointSet.end()) {
@@ -1676,7 +1705,7 @@ void CoinManager::setPreselectPoint(int PreselectPoint)
         pverts[newPtId].getValue(x,y,z);
         pverts[newPtId].setValue(x,y,drawingParameters.zHighlight);
         edit->PreselectPoint = PreselectPoint;
-        edit->PointsCoordinate->point.finishEditing();
+        editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
     }
 }
 
@@ -1691,11 +1720,11 @@ void CoinManager::resetPreselectPoint(void)
         if (oldPtId != -1 &&
             edit->SelPointSet.find(oldPtId) == edit->SelPointSet.end()) {
             // send to background
-            SbVec3f *pverts = edit->PointsCoordinate->point.startEditing();
+            SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
             float x,y,z;
             pverts[oldPtId].getValue(x,y,z);
             pverts[oldPtId].setValue(x,y,drawingParameters.zLowPoints);
-            edit->PointsCoordinate->point.finishEditing();
+            editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
         }
         edit->PreselectPoint = -1;
     }
@@ -1705,13 +1734,13 @@ void CoinManager::addSelectPoint(int SelectPoint)
 {
     if (edit) {
         int PtId = SelectPoint + 1;
-        SbVec3f *pverts = edit->PointsCoordinate->point.startEditing();
+        SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
         // bring to foreground
         float x,y,z;
         pverts[PtId].getValue(x,y,z);
         pverts[PtId].setValue(x,y,drawingParameters.zHighlight);
         edit->SelPointSet.insert(PtId);
-        edit->PointsCoordinate->point.finishEditing();
+        editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
     }
 }
 
@@ -1719,20 +1748,20 @@ void CoinManager::removeSelectPoint(int SelectPoint)
 {
     if (edit) {
         int PtId = SelectPoint + 1;
-        SbVec3f *pverts = edit->PointsCoordinate->point.startEditing();
+        SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
         // send to background
         float x,y,z;
         pverts[PtId].getValue(x,y,z);
         pverts[PtId].setValue(x,y,drawingParameters.zLowPoints);
         edit->SelPointSet.erase(PtId);
-        edit->PointsCoordinate->point.finishEditing();
+        editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
     }
 }
 
 void CoinManager::clearSelectPoints(void)
 {
     if (edit) {
-        SbVec3f *pverts = edit->PointsCoordinate->point.startEditing();
+        SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
         // send to background
         float x,y,z;
         for (std::set<int>::const_iterator it=edit->SelPointSet.begin();
@@ -1740,7 +1769,7 @@ void CoinManager::clearSelectPoints(void)
             pverts[*it].getValue(x,y,z);
             pverts[*it].setValue(x,y,drawingParameters.zLowPoints);
         }
-        edit->PointsCoordinate->point.finishEditing();
+        editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
         edit->SelPointSet.clear();
     }
 }
@@ -1778,10 +1807,44 @@ void CoinManager::updateCoinManagerColors()
     updateColor(drawingParameters.CurveExternalColor, "ExternalColor");
     updateColor(drawingParameters.PreselectColor, "HighlightColor");
     updateColor(drawingParameters.SelectColor, "SelectionColor");
-
-
-
 }
+
+void CoinManager::updateColor()
+{
+    auto geolistfacade = ViewProviderSketchCoinAttorney::getGeoListFacade(viewProvider);
+
+    bool sketchinvalid = ViewProviderSketchCoinAttorney::isSketchInvalid(viewProvider);
+
+    updateGeometryColor(geolistfacade, sketchinvalid);
+
+    // update constraint color
+
+    auto constraints = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
+
+    if(ViewProviderSketchCoinAttorney::haveConstraintsInvalidGeometry(viewProvider))
+        return;
+
+    updateConstraintColor(constraints);
+}
+
+void CoinManager::updateColor(const GeoList & geolist)
+{
+    auto geolistfacade = Sketcher::getGeoListFacade(geolist);
+
+    bool sketchinvalid = ViewProviderSketchCoinAttorney::isSketchInvalid(viewProvider);
+
+    updateGeometryColor(geolistfacade, sketchinvalid);
+
+    // update constraint color
+
+    auto constraints = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
+
+    if(ViewProviderSketchCoinAttorney::haveConstraintsInvalidGeometry(viewProvider))
+        return;
+
+    updateConstraintColor(constraints);
+}
+
 
 void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid)
 {
@@ -1825,14 +1888,14 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
 
     // Update Colors
 
-    int PtNum = edit->PointsMaterials->diffuseColor.getNum();
-    SbColor *pcolor = edit->PointsMaterials->diffuseColor.startEditing();
-    int CurvNum = edit->CurvesMaterials->diffuseColor.getNum();
-    SbColor *color = edit->CurvesMaterials->diffuseColor.startEditing();
-    SbColor *crosscolor = edit->RootCrossMaterials->diffuseColor.startEditing();
+    int PtNum = editModeScenegraphNodes.PointsMaterials->diffuseColor.getNum();
+    SbColor *pcolor = editModeScenegraphNodes.PointsMaterials->diffuseColor.startEditing();
+    int CurvNum = editModeScenegraphNodes.CurvesMaterials->diffuseColor.getNum();
+    SbColor *color = editModeScenegraphNodes.CurvesMaterials->diffuseColor.startEditing();
+    SbColor *crosscolor = editModeScenegraphNodes.RootCrossMaterials->diffuseColor.startEditing();
 
-    SbVec3f *verts = edit->CurvesCoordinate->point.startEditing();
-    SbVec3f *pverts = edit->PointsCoordinate->point.startEditing();
+    SbVec3f *verts = editModeScenegraphNodes.CurvesCoordinate->point.startEditing();
+    SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
 
     float x,y,z;
 
@@ -1841,7 +1904,7 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
         for (int  i=0; i < PtNum; i++)
             pcolor[i] = drawingParameters.InvalidSketchColor;
     }
-    else if (edit->FullyConstrained) {
+    else if (ViewProviderSketchCoinAttorney::isSketchFullyConstrained(viewProvider)) {
         for (int  i=0; i < PtNum; i++)
             pcolor[i] = drawingParameters.FullyConstrainedColor;
     }
@@ -1946,7 +2009,7 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
         int GeoId = edit->CurvIdToGeoId[i];
         // CurvId has several vertices associated to 1 material
         //edit->CurveSet->numVertices => [i] indicates number of vertex for line i.
-        int indexes = (edit->CurveSet->numVertices[i]);
+        int indexes = (editModeScenegraphNodes.CurveSet->numVertices[i]);
 
         bool selected = (edit->SelCurvSet.find(GeoId) != edit->SelCurvSet.end());
         bool preselected = (edit->PreselectCurve == GeoId);
@@ -2007,7 +2070,7 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
                 verts[j] = SbVec3f(x,y,zConstrLine);
             }
         }
-        else if (edit->FullyConstrained) {
+        else if (ViewProviderSketchCoinAttorney::isSketchFullyConstrained(viewProvider)) {
             color[i] = drawingParameters.FullyConstrainedColor;
             for (int k=j; j<k+indexes; j++) {
                 verts[j].getValue(x,y,z);
@@ -2046,25 +2109,25 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
         crosscolor[1] = drawingParameters.CrossColorV;
 
     // end editing
-    edit->CurvesMaterials->diffuseColor.finishEditing();
-    edit->PointsMaterials->diffuseColor.finishEditing();
-    edit->RootCrossMaterials->diffuseColor.finishEditing();
-    edit->CurvesCoordinate->point.finishEditing();
-    edit->CurveSet->numVertices.finishEditing();
+    editModeScenegraphNodes.CurvesMaterials->diffuseColor.finishEditing();
+    editModeScenegraphNodes.PointsMaterials->diffuseColor.finishEditing();
+    editModeScenegraphNodes.RootCrossMaterials->diffuseColor.finishEditing();
+    editModeScenegraphNodes.CurvesCoordinate->point.finishEditing();
+    editModeScenegraphNodes.CurveSet->numVertices.finishEditing();
 }
 
-void CoinManager::updateConstraintColor(std::vector<Sketcher::Constraint *> constraints)
+void CoinManager::updateConstraintColor(const std::vector<Sketcher::Constraint *> &constraints)
 {
     // Because coincident constraints are selected using the point color, we need to edit the point materials.
     // TODO: Review this
-    int PtNum = edit->PointsMaterials->diffuseColor.getNum();
-    SbColor *pcolor = edit->PointsMaterials->diffuseColor.startEditing();
+    int PtNum = editModeScenegraphNodes.PointsMaterials->diffuseColor.getNum();
+    SbColor *pcolor = editModeScenegraphNodes.PointsMaterials->diffuseColor.startEditing();
 
-    int maxNumberOfConstraints = std::min(edit->constrGroup->getNumChildren(), static_cast<int>(constraints.size()));
+    int maxNumberOfConstraints = std::min(editModeScenegraphNodes.constrGroup->getNumChildren(), static_cast<int>(constraints.size()));
 
     // colors of the constraints
     for (int i = 0; i < maxNumberOfConstraints; i++) {
-        SoSeparator *s = static_cast<SoSeparator *>(edit->constrGroup->getChild(i));
+        SoSeparator *s = static_cast<SoSeparator *>(editModeScenegraphNodes.constrGroup->getChild(i));
 
         // Check Constraint Type
         Sketcher::Constraint* constraint = constraints[i];
@@ -2129,7 +2192,7 @@ void CoinManager::updateConstraintColor(std::vector<Sketcher::Constraint *> cons
                     case EllipseMinorDiameter:
                     {
                         // color line
-                        int CurvNum = edit->CurvesMaterials->diffuseColor.getNum();
+                        int CurvNum = editModeScenegraphNodes.CurvesMaterials->diffuseColor.getNum();
                         for (int  i=0; i < CurvNum; i++) {
                             int cGeoId = edit->CurvIdToGeoId[i];
 
@@ -2180,7 +2243,7 @@ void CoinManager::updateConstraintColor(std::vector<Sketcher::Constraint *> cons
         }
     }
 
-    edit->PointsMaterials->diffuseColor.finishEditing();
+    editModeScenegraphNodes.PointsMaterials->diffuseColor.finishEditing();
 
 }
 
@@ -2196,9 +2259,9 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist)
     const std::vector<Sketcher::Constraint *> &constrlist = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
 
     // clean up
-    Gui::coinRemoveAllChildren(edit->constrGroup);
+    Gui::coinRemoveAllChildren(editModeScenegraphNodes.constrGroup);
 
-    edit->vConstrType.clear();
+    vConstrType.clear();
 
     // Get sketch normal
     Base::Vector3d RN(0,0,1);
@@ -2260,8 +2323,8 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vec
                 anno->addChild(text);
                 // #define CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL 0
                 sep->addChild(text);
-                edit->constrGroup->addChild(anno);
-                edit->vConstrType.push_back((*it)->Type);
+                editModeScenegraphNodes.constrGroup->addChild(anno);
+                vConstrType.push_back((*it)->Type);
                 // nodes not needed
                 sep->unref();
                 mat->unref();
@@ -2288,11 +2351,11 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vec
                 sep->addChild(new SoInfo());
 
                 // remember the type of this constraint node
-                edit->vConstrType.push_back((*it)->Type);
+                vConstrType.push_back((*it)->Type);
             }
             break;
             case Coincident: // no visual for coincident so far
-                edit->vConstrType.push_back(Coincident);
+                vConstrType.push_back(Coincident);
                 break;
             case Parallel:
             case Perpendicular:
@@ -2314,7 +2377,7 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vec
                 sep->addChild(new SoInfo());
 
                 // remember the type of this constraint node
-                edit->vConstrType.push_back((*it)->Type);
+                vConstrType.push_back((*it)->Type);
             }
             break;
             case PointOnObject:
@@ -2347,7 +2410,7 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vec
                     }
                 }
 
-                edit->vConstrType.push_back((*it)->Type);
+                vConstrType.push_back((*it)->Type);
             }
             break;
             case Symmetric:
@@ -2367,19 +2430,19 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vec
                 // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_CONSTRAINTID 3
                 sep->addChild(new SoInfo());
 
-                edit->vConstrType.push_back((*it)->Type);
+                vConstrType.push_back((*it)->Type);
             }
             break;
             case InternalAlignment:
             {
-                edit->vConstrType.push_back((*it)->Type);
+                vConstrType.push_back((*it)->Type);
             }
             break;
             default:
-                edit->vConstrType.push_back((*it)->Type);
+                vConstrType.push_back((*it)->Type);
         }
 
-        edit->constrGroup->addChild(sep);
+        editModeScenegraphNodes.constrGroup->addChild(sep);
         // decrement ref counter again
         sep->unref();
         mat->unref();
@@ -2390,106 +2453,114 @@ void CoinManager::createEditModeInventorNodes()
 {
     assert(edit);
 
+    // 1 - Create the edit root node
+    editModeScenegraphNodes.EditRoot = new SoSeparator;
+    editModeScenegraphNodes.EditRoot->ref();
+    editModeScenegraphNodes.EditRoot->setName("Sketch_EditRoot");
+    ViewProviderSketchCoinAttorney::addNodeToRoot(viewProvider, editModeScenegraphNodes.EditRoot);
+    editModeScenegraphNodes.EditRoot->renderCaching = SoSeparator::OFF ;
+
+
     // stuff for the points ++++++++++++++++++++++++++++++++++++++
     SoSeparator* pointsRoot = new SoSeparator;
-    edit->EditRoot->addChild(pointsRoot);
-    edit->PointsMaterials = new SoMaterial;
-    edit->PointsMaterials->setName("PointsMaterials");
-    pointsRoot->addChild(edit->PointsMaterials);
+    editModeScenegraphNodes.EditRoot->addChild(pointsRoot);
+    editModeScenegraphNodes.PointsMaterials = new SoMaterial;
+    editModeScenegraphNodes.PointsMaterials->setName("PointsMaterials");
+    pointsRoot->addChild(editModeScenegraphNodes.PointsMaterials);
 
     SoMaterialBinding *MtlBind = new SoMaterialBinding;
     MtlBind->setName("PointsMaterialBinding");
     MtlBind->value = SoMaterialBinding::PER_VERTEX;
     pointsRoot->addChild(MtlBind);
 
-    edit->PointsCoordinate = new SoCoordinate3;
-    edit->PointsCoordinate->setName("PointsCoordinate");
-    pointsRoot->addChild(edit->PointsCoordinate);
+    editModeScenegraphNodes.PointsCoordinate = new SoCoordinate3;
+    editModeScenegraphNodes.PointsCoordinate->setName("PointsCoordinate");
+    pointsRoot->addChild(editModeScenegraphNodes.PointsCoordinate);
 
-    edit->PointsDrawStyle = new SoDrawStyle;
-    edit->PointsDrawStyle->setName("PointsDrawStyle");
-    edit->PointsDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;
-    pointsRoot->addChild(edit->PointsDrawStyle);
+    editModeScenegraphNodes.PointsDrawStyle = new SoDrawStyle;
+    editModeScenegraphNodes.PointsDrawStyle->setName("PointsDrawStyle");
+    editModeScenegraphNodes.PointsDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;
+    pointsRoot->addChild(editModeScenegraphNodes.PointsDrawStyle);
 
-    edit->PointSet = new SoMarkerSet;
-    edit->PointSet->setName("PointSet");
-    edit->PointSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_FILLED", drawingParameters.markerSize);
-    pointsRoot->addChild(edit->PointSet);
+    editModeScenegraphNodes.PointSet = new SoMarkerSet;
+    editModeScenegraphNodes.PointSet->setName("PointSet");
+    editModeScenegraphNodes.PointSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_FILLED", drawingParameters.markerSize);
+    pointsRoot->addChild(editModeScenegraphNodes.PointSet);
 
     // stuff for the Curves +++++++++++++++++++++++++++++++++++++++
     SoSeparator* curvesRoot = new SoSeparator;
-    edit->EditRoot->addChild(curvesRoot);
-    edit->CurvesMaterials = new SoMaterial;
-    edit->CurvesMaterials->setName("CurvesMaterials");
-    curvesRoot->addChild(edit->CurvesMaterials);
+    editModeScenegraphNodes.EditRoot->addChild(curvesRoot);
+    editModeScenegraphNodes.CurvesMaterials = new SoMaterial;
+    editModeScenegraphNodes.CurvesMaterials->setName("CurvesMaterials");
+    curvesRoot->addChild(editModeScenegraphNodes.CurvesMaterials);
 
     MtlBind = new SoMaterialBinding;
     MtlBind->setName("CurvesMaterialsBinding");
     MtlBind->value = SoMaterialBinding::PER_FACE;
     curvesRoot->addChild(MtlBind);
 
-    edit->CurvesCoordinate = new SoCoordinate3;
-    edit->CurvesCoordinate->setName("CurvesCoordinate");
-    curvesRoot->addChild(edit->CurvesCoordinate);
+    editModeScenegraphNodes.CurvesCoordinate = new SoCoordinate3;
+    editModeScenegraphNodes.CurvesCoordinate->setName("CurvesCoordinate");
+    curvesRoot->addChild(editModeScenegraphNodes.CurvesCoordinate);
 
-    edit->CurvesDrawStyle = new SoDrawStyle;
-    edit->CurvesDrawStyle->setName("CurvesDrawStyle");
-    edit->CurvesDrawStyle->lineWidth = 3 * drawingParameters.pixelScalingFactor;
-    curvesRoot->addChild(edit->CurvesDrawStyle);
+    editModeScenegraphNodes.CurvesDrawStyle = new SoDrawStyle;
+    editModeScenegraphNodes.CurvesDrawStyle->setName("CurvesDrawStyle");
+    editModeScenegraphNodes.CurvesDrawStyle->lineWidth = 3 * drawingParameters.pixelScalingFactor;
+    curvesRoot->addChild(editModeScenegraphNodes.CurvesDrawStyle);
 
-    edit->CurveSet = new SoLineSet;
-    edit->CurveSet->setName("CurvesLineSet");
-    curvesRoot->addChild(edit->CurveSet);
+    editModeScenegraphNodes.CurveSet = new SoLineSet;
+    editModeScenegraphNodes.CurveSet->setName("CurvesLineSet");
+    curvesRoot->addChild(editModeScenegraphNodes.CurveSet);
 
     // stuff for the RootCross lines +++++++++++++++++++++++++++++++++++++++
     SoGroup* crossRoot = new Gui::SoSkipBoundingGroup;
-    edit->pickStyleAxes = new SoPickStyle();
-    edit->pickStyleAxes->style = SoPickStyle::SHAPE;
-    crossRoot->addChild(edit->pickStyleAxes);
-    edit->EditRoot->addChild(crossRoot);
+    editModeScenegraphNodes.pickStyleAxes = new SoPickStyle();
+    editModeScenegraphNodes.pickStyleAxes->style = SoPickStyle::SHAPE;
+    crossRoot->addChild(editModeScenegraphNodes.pickStyleAxes);
+    editModeScenegraphNodes.EditRoot->addChild(crossRoot);
     MtlBind = new SoMaterialBinding;
     MtlBind->setName("RootCrossMaterialBinding");
     MtlBind->value = SoMaterialBinding::PER_FACE;
     crossRoot->addChild(MtlBind);
 
-    edit->RootCrossDrawStyle = new SoDrawStyle;
-    edit->RootCrossDrawStyle->setName("RootCrossDrawStyle");
-    edit->RootCrossDrawStyle->lineWidth = 2 * drawingParameters.pixelScalingFactor;
-    crossRoot->addChild(edit->RootCrossDrawStyle);
+    editModeScenegraphNodes.RootCrossDrawStyle = new SoDrawStyle;
+    editModeScenegraphNodes.RootCrossDrawStyle->setName("RootCrossDrawStyle");
+    editModeScenegraphNodes.RootCrossDrawStyle->lineWidth = 2 * drawingParameters.pixelScalingFactor;
+    crossRoot->addChild(editModeScenegraphNodes.RootCrossDrawStyle);
 
-    edit->RootCrossMaterials = new SoMaterial;
-    edit->RootCrossMaterials->setName("RootCrossMaterials");
-    edit->RootCrossMaterials->diffuseColor.set1Value(0, drawingParameters.CrossColorH);
-    edit->RootCrossMaterials->diffuseColor.set1Value(1, drawingParameters.CrossColorV);
-    crossRoot->addChild(edit->RootCrossMaterials);
+    editModeScenegraphNodes.RootCrossMaterials = new SoMaterial;
+    editModeScenegraphNodes.RootCrossMaterials->setName("RootCrossMaterials");
+    editModeScenegraphNodes.RootCrossMaterials->diffuseColor.set1Value(0, drawingParameters.CrossColorH);
+    editModeScenegraphNodes.RootCrossMaterials->diffuseColor.set1Value(1, drawingParameters.CrossColorV);
+    crossRoot->addChild(editModeScenegraphNodes.RootCrossMaterials);
 
-    edit->RootCrossCoordinate = new SoCoordinate3;
-    edit->RootCrossCoordinate->setName("RootCrossCoordinate");
-    crossRoot->addChild(edit->RootCrossCoordinate);
+    editModeScenegraphNodes.RootCrossCoordinate = new SoCoordinate3;
+    editModeScenegraphNodes.RootCrossCoordinate->setName("RootCrossCoordinate");
+    crossRoot->addChild(editModeScenegraphNodes.RootCrossCoordinate);
 
-    edit->RootCrossSet = new SoLineSet;
-    edit->RootCrossSet->setName("RootCrossLineSet");
-    crossRoot->addChild(edit->RootCrossSet);
+    editModeScenegraphNodes.RootCrossSet = new SoLineSet;
+    editModeScenegraphNodes.RootCrossSet->setName("RootCrossLineSet");
+    crossRoot->addChild(editModeScenegraphNodes.RootCrossSet);
 
     // stuff for the EditCurves +++++++++++++++++++++++++++++++++++++++
     SoSeparator* editCurvesRoot = new SoSeparator;
-    edit->EditRoot->addChild(editCurvesRoot);
-    edit->EditCurvesMaterials = new SoMaterial;
-    edit->EditCurvesMaterials->setName("EditCurvesMaterials");
-    editCurvesRoot->addChild(edit->EditCurvesMaterials);
+    editModeScenegraphNodes.EditRoot->addChild(editCurvesRoot);
+    editModeScenegraphNodes.EditCurvesMaterials = new SoMaterial;
+    editModeScenegraphNodes.EditCurvesMaterials->setName("EditCurvesMaterials");
+    editCurvesRoot->addChild(editModeScenegraphNodes.EditCurvesMaterials);
 
-    edit->EditCurvesCoordinate = new SoCoordinate3;
-    edit->EditCurvesCoordinate->setName("EditCurvesCoordinate");
-    editCurvesRoot->addChild(edit->EditCurvesCoordinate);
+    editModeScenegraphNodes.EditCurvesCoordinate = new SoCoordinate3;
+    editModeScenegraphNodes.EditCurvesCoordinate->setName("EditCurvesCoordinate");
+    editCurvesRoot->addChild(editModeScenegraphNodes.EditCurvesCoordinate);
 
-    edit->EditCurvesDrawStyle = new SoDrawStyle;
-    edit->EditCurvesDrawStyle->setName("EditCurvesDrawStyle");
-    edit->EditCurvesDrawStyle->lineWidth = 3 * drawingParameters.pixelScalingFactor;
-    editCurvesRoot->addChild(edit->EditCurvesDrawStyle);
+    editModeScenegraphNodes.EditCurvesDrawStyle = new SoDrawStyle;
+    editModeScenegraphNodes.EditCurvesDrawStyle->setName("EditCurvesDrawStyle");
+    editModeScenegraphNodes.EditCurvesDrawStyle->lineWidth = 3 * drawingParameters.pixelScalingFactor;
+    editCurvesRoot->addChild(editModeScenegraphNodes.EditCurvesDrawStyle);
 
-    edit->EditCurveSet = new SoLineSet;
-    edit->EditCurveSet->setName("EditCurveLineSet");
-    editCurvesRoot->addChild(edit->EditCurveSet);
+    editModeScenegraphNodes.EditCurveSet = new SoLineSet;
+    editModeScenegraphNodes.EditCurveSet->setName("EditCurveLineSet");
+    editCurvesRoot->addChild(editModeScenegraphNodes.EditCurveSet);
 
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
     float transparency;
@@ -2498,24 +2569,24 @@ void CoinManager::createEditModeInventorNodes()
 
     // stuff for the EditMarkers +++++++++++++++++++++++++++++++++++++++
     SoSeparator* editMarkersRoot = new SoSeparator;
-    edit->EditRoot->addChild(editMarkersRoot);
-    edit->EditMarkersMaterials = new SoMaterial;
-    edit->EditMarkersMaterials->setName("EditMarkersMaterials");
-    editMarkersRoot->addChild(edit->EditMarkersMaterials);
+    editModeScenegraphNodes.EditRoot->addChild(editMarkersRoot);
+    editModeScenegraphNodes.EditMarkersMaterials = new SoMaterial;
+    editModeScenegraphNodes.EditMarkersMaterials->setName("EditMarkersMaterials");
+    editMarkersRoot->addChild(editModeScenegraphNodes.EditMarkersMaterials);
 
-    edit->EditMarkersCoordinate = new SoCoordinate3;
-    edit->EditMarkersCoordinate->setName("EditMarkersCoordinate");
-    editMarkersRoot->addChild(edit->EditMarkersCoordinate);
+    editModeScenegraphNodes.EditMarkersCoordinate = new SoCoordinate3;
+    editModeScenegraphNodes.EditMarkersCoordinate->setName("EditMarkersCoordinate");
+    editMarkersRoot->addChild(editModeScenegraphNodes.EditMarkersCoordinate);
 
-    edit->EditMarkersDrawStyle = new SoDrawStyle;
-    edit->EditMarkersDrawStyle->setName("EditMarkersDrawStyle");
-    edit->EditMarkersDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;
-    editMarkersRoot->addChild(edit->EditMarkersDrawStyle);
+    editModeScenegraphNodes.EditMarkersDrawStyle = new SoDrawStyle;
+    editModeScenegraphNodes.EditMarkersDrawStyle->setName("EditMarkersDrawStyle");
+    editModeScenegraphNodes.EditMarkersDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;
+    editMarkersRoot->addChild(editModeScenegraphNodes.EditMarkersDrawStyle);
 
-    edit->EditMarkerSet = new SoMarkerSet;
-    edit->EditMarkerSet->setName("EditMarkerSet");
-    edit->EditMarkerSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_LINE", drawingParameters.markerSize);
-    editMarkersRoot->addChild(edit->EditMarkerSet);
+    editModeScenegraphNodes.EditMarkerSet = new SoMarkerSet;
+    editModeScenegraphNodes.EditMarkerSet->setName("EditMarkerSet");
+    editModeScenegraphNodes.EditMarkerSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_LINE", drawingParameters.markerSize);
+    editMarkersRoot->addChild(editModeScenegraphNodes.EditMarkerSet);
 
     // stuff for the edit coordinates ++++++++++++++++++++++++++++++++++++++
     SoSeparator *Coordsep = new SoSeparator();
@@ -2536,57 +2607,57 @@ void CoinManager::createEditModeInventorNodes()
 
     Coordsep->addChild(font);
 
-    edit->textPos = new SoTranslation();
-    Coordsep->addChild(edit->textPos);
+    editModeScenegraphNodes.textPos = new SoTranslation();
+    Coordsep->addChild(editModeScenegraphNodes.textPos);
 
-    edit->textX = new SoText2();
-    edit->textX->justification = SoText2::LEFT;
-    edit->textX->string = "";
-    Coordsep->addChild(edit->textX);
-    edit->EditRoot->addChild(Coordsep);
+    editModeScenegraphNodes.textX = new SoText2();
+    editModeScenegraphNodes.textX->justification = SoText2::LEFT;
+    editModeScenegraphNodes.textX->string = "";
+    Coordsep->addChild(editModeScenegraphNodes.textX);
+    editModeScenegraphNodes.EditRoot->addChild(Coordsep);
 
     // group node for the Constraint visual +++++++++++++++++++++++++++++++++++
     MtlBind = new SoMaterialBinding;
     MtlBind->setName("ConstraintMaterialBinding");
     MtlBind->value = SoMaterialBinding::OVERALL ;
-    edit->EditRoot->addChild(MtlBind);
+    editModeScenegraphNodes.EditRoot->addChild(MtlBind);
 
     // use small line width for the Constraints
-    edit->ConstraintDrawStyle = new SoDrawStyle;
-    edit->ConstraintDrawStyle->setName("ConstraintDrawStyle");
-    edit->ConstraintDrawStyle->lineWidth = 1 * drawingParameters.pixelScalingFactor;
-    edit->EditRoot->addChild(edit->ConstraintDrawStyle);
+    editModeScenegraphNodes.ConstraintDrawStyle = new SoDrawStyle;
+    editModeScenegraphNodes.ConstraintDrawStyle->setName("ConstraintDrawStyle");
+    editModeScenegraphNodes.ConstraintDrawStyle->lineWidth = 1 * drawingParameters.pixelScalingFactor;
+   editModeScenegraphNodes.EditRoot->addChild(editModeScenegraphNodes.ConstraintDrawStyle);
 
     // add the group where all the constraints has its SoSeparator
-    edit->constrGroup = new SmSwitchboard();
-    edit->constrGroup->setName("ConstraintGroup");
-    edit->EditRoot->addChild(edit->constrGroup);
+    editModeScenegraphNodes.constrGroup = new SmSwitchboard();
+    editModeScenegraphNodes.constrGroup->setName("ConstraintGroup");
+    editModeScenegraphNodes.EditRoot->addChild(editModeScenegraphNodes.constrGroup);
 
     // group node for the Geometry information visual +++++++++++++++++++++++++++++++++++
     MtlBind = new SoMaterialBinding;
     MtlBind->setName("InformationMaterialBinding");
     MtlBind->value = SoMaterialBinding::OVERALL ;
-    edit->EditRoot->addChild(MtlBind);
+    editModeScenegraphNodes.EditRoot->addChild(MtlBind);
 
     // use small line width for the information visual
-    edit->InformationDrawStyle = new SoDrawStyle;
-    edit->InformationDrawStyle->setName("InformationDrawStyle");
-    edit->InformationDrawStyle->lineWidth = 1 * drawingParameters.pixelScalingFactor;
-    edit->EditRoot->addChild(edit->InformationDrawStyle);
+    editModeScenegraphNodes.InformationDrawStyle = new SoDrawStyle;
+    editModeScenegraphNodes.InformationDrawStyle->setName("InformationDrawStyle");
+    editModeScenegraphNodes.InformationDrawStyle->lineWidth = 1 * drawingParameters.pixelScalingFactor;
+    editModeScenegraphNodes.EditRoot->addChild(editModeScenegraphNodes.InformationDrawStyle);
 
     // add the group where all the information entity has its SoSeparator
-    edit->infoGroup = new SoGroup();
-    edit->infoGroup->setName("InformationGroup");
-    edit->EditRoot->addChild(edit->infoGroup);
+    editModeScenegraphNodes.infoGroup = new SoGroup();
+    editModeScenegraphNodes.infoGroup->setName("InformationGroup");
+    editModeScenegraphNodes.EditRoot->addChild(editModeScenegraphNodes.infoGroup);
 }
 
 void CoinManager::setAxisPickStyle(bool on)
 {
     assert(edit);
     if (on)
-        edit->pickStyleAxes->style = SoPickStyle::SHAPE;
+        editModeScenegraphNodes.pickStyleAxes->style = SoPickStyle::SHAPE;
     else
-        edit->pickStyleAxes->style = SoPickStyle::UNPICKABLE;
+        editModeScenegraphNodes.pickStyleAxes->style = SoPickStyle::UNPICKABLE;
 }
 
 void CoinManager::redrawViewProvider()
@@ -2719,8 +2790,8 @@ CoinManager::PreselectionResult CoinManager::detectPreselection(SoPickedPoint * 
     SoNode *tail = path->getTail(); // Tail is directly the node containing points and curves
 
     // checking for a hit in the points
-    if (tail == edit->PointSet) {
-        const SoDetail *point_detail = Point->getDetail(edit->PointSet);
+    if (tail == editModeScenegraphNodes.PointSet) {
+        const SoDetail *point_detail = Point->getDetail(editModeScenegraphNodes.PointSet);
         if (point_detail && point_detail->getTypeId() == SoPointDetail::getClassTypeId()) {
             // get the index
             result.ptIndex = static_cast<const SoPointDetail *>(point_detail)->getCoordinateIndex();
@@ -2730,16 +2801,16 @@ CoinManager::PreselectionResult CoinManager::detectPreselection(SoPickedPoint * 
         }
     } else {
         // checking for a hit in the curves
-        if (tail == edit->CurveSet) {
-            const SoDetail *curve_detail = Point->getDetail(edit->CurveSet);
+        if (tail == editModeScenegraphNodes.CurveSet) {
+            const SoDetail *curve_detail = Point->getDetail(editModeScenegraphNodes.CurveSet);
             if (curve_detail && curve_detail->getTypeId() == SoLineDetail::getClassTypeId()) {
                 // get the index
                 int curveIndex = static_cast<const SoLineDetail *>(curve_detail)->getLineIndex();
                 result.geoIndex = edit->CurvIdToGeoId[curveIndex];
             }
         // checking for a hit in the axes
-        } else if (tail == edit->RootCrossSet) {
-            const SoDetail *cross_detail = Point->getDetail(edit->RootCrossSet);
+        } else if (tail == editModeScenegraphNodes.RootCrossSet) {
+            const SoDetail *cross_detail = Point->getDetail(editModeScenegraphNodes.RootCrossSet);
             if (cross_detail && cross_detail->getTypeId() == SoLineDetail::getClassTypeId()) {
                 // get the index (reserve index 0 for root point)
                 int CrossIndex = static_cast<const SoLineDetail *>(cross_detail)->getLineIndex();
@@ -2767,15 +2838,15 @@ std::set<int> CoinManager::detectPreselectionConstr(const SoPickedPoint *Point,
     // Get the constraints' tail
     SoNode *tailFather2 = path->getNode(path->getLength()-3);
 
-    if (tailFather2 != edit->constrGroup)
+    if (tailFather2 != editModeScenegraphNodes.constrGroup)
         return constrIndices;
 
 
     SoNode *tail = path->getTail();
     SoNode *tailFather = path->getNode(path->getLength()-2);
 
-    for (int i=0; i < edit->constrGroup->getNumChildren(); ++i) {
-        if (edit->constrGroup->getChild(i) == tailFather) {
+    for (int i=0; i < editModeScenegraphNodes.constrGroup->getNumChildren(); ++i) {
+        if (editModeScenegraphNodes.constrGroup->getChild(i) == tailFather) {
             SoSeparator *sep = static_cast<SoSeparator *>(tailFather);
             if (sep->getNumChildren() > static_cast<int>(ConstraintNodePosition::FirstConstraintIdIndex)) {
                 SoInfo *constrIds = NULL;
@@ -2792,7 +2863,7 @@ std::set<int> CoinManager::detectPreselectionConstr(const SoPickedPoint *Point,
 
                 if (constrIds) {
                     QString constrIdsStr = QString::fromLatin1(constrIds->string.getValue().getString());
-                    if (edit->combinedConstrBoxes.count(constrIdsStr) && dynamic_cast<SoImage *>(tail)) {
+                    if (combinedConstrBoxes.count(constrIdsStr) && dynamic_cast<SoImage *>(tail)) {
                         // If it's a combined constraint icon
 
                         // Screen dimensions of the icon
@@ -2845,8 +2916,8 @@ std::set<int> CoinManager::detectPreselectionConstr(const SoPickedPoint *Point,
                             iconY = cursorPos[1] - iconCoords[1] + iconSize[1]/2;
                         iconY = iconSize[1] - iconY;
 
-                        for (ConstrIconBBVec::iterator b = edit->combinedConstrBoxes[constrIdsStr].begin();
-                            b != edit->combinedConstrBoxes[constrIdsStr].end(); ++b) {
+                        for (ConstrIconBBVec::iterator b = combinedConstrBoxes[constrIdsStr].begin();
+                            b != combinedConstrBoxes[constrIdsStr].end(); ++b) {
 
 #ifdef FC_DEBUG
                             // Useful code to debug coordinates and bounding boxes that does not need to be compiled in for
@@ -2964,13 +3035,13 @@ void CoinManager::drawConstraintIcons(const GeoList & geolist)
         }
 
         // Double-check that we can safely access the Inventor nodes
-        if (constrId >= edit->constrGroup->getNumChildren()) {
+        if (constrId >= editModeScenegraphNodes.constrGroup->getNumChildren()) {
             Base::Console().Warning("Can't update constraint icons because view is not in sync with sketch\n");
             break;
         }
 
         // Find the Constraint Icon SoImage Node
-        SoSeparator *sep = static_cast<SoSeparator *>(edit->constrGroup->getChild(constrId));
+        SoSeparator *sep = static_cast<SoSeparator *>(editModeScenegraphNodes.constrGroup->getChild(constrId));
         int numChildren = sep->getNumChildren();
 
         SbVec3f absPos;
@@ -3048,7 +3119,7 @@ void CoinManager::combineConstraintIcons(IconQueue iconQueue)
     float maxDistSquared = pow(ViewProviderSketchCoinAttorney::getScaleFactor(viewProvider), 2);
 
     // There's room for optimisation here; we could reuse the combined icons...
-    edit->combinedConstrBoxes.clear();
+    combinedConstrBoxes.clear();
 
     while(!iconQueue.empty()) {
         // A group starts with an item popped off the back of our initial queue
@@ -3242,7 +3313,7 @@ void CoinManager::drawMergedConstraintIcons(IconQueue iconQueue)
         }
     }
 
-    edit->combinedConstrBoxes[idString] = boundingBoxes;
+    combinedConstrBoxes[idString] = boundingBoxes;
     thisInfo->string.setValue(idString.toLatin1().data());
     sendConstraintIconToCoin(compositeIcon, thisDest);
 }
@@ -3439,8 +3510,8 @@ int CoinManager::constrColorPriority(int constraintId)
 
 void CoinManager::setPositionText(const Base::Vector2d &Pos, const SbString &text)
 {
-    edit->textX->string = text;
-    edit->textPos->translation = SbVec3f(Pos.x, Pos.y, drawingParameters.zText);
+    editModeScenegraphNodes.textX->string = text;
+    editModeScenegraphNodes.textPos->translation = SbVec3f(Pos.x, Pos.y, drawingParameters.zText);
 }
 
 void CoinManager::setPositionText(const Base::Vector2d &Pos)
@@ -3452,7 +3523,7 @@ void CoinManager::setPositionText(const Base::Vector2d &Pos)
 
 void CoinManager::resetPositionText(void)
 {
-    edit->textX->string = "";
+    editModeScenegraphNodes.textX->string = "";
 }
 
 int CoinManager::defaultApplicationFontSizePixels() const {
@@ -3465,15 +3536,41 @@ int CoinManager::getApplicationLogicalDPIX() const {
 
 void CoinManager::updateInventorNodeSizes()
 {
-    edit->PointsDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;
-    edit->PointSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_FILLED", drawingParameters.markerSize);
-    edit->CurvesDrawStyle->lineWidth = 3 * drawingParameters.pixelScalingFactor;
-    edit->RootCrossDrawStyle->lineWidth = 2 * drawingParameters.pixelScalingFactor;
-    edit->EditCurvesDrawStyle->lineWidth = 3 * drawingParameters.pixelScalingFactor;
-    edit->EditMarkersDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;
-    edit->EditMarkerSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_LINE", drawingParameters.markerSize);
-    edit->ConstraintDrawStyle->lineWidth = 1 * drawingParameters.pixelScalingFactor;
-    edit->InformationDrawStyle->lineWidth = 1 * drawingParameters.pixelScalingFactor;
+    editModeScenegraphNodes.PointsDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;
+    editModeScenegraphNodes.PointSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_FILLED", drawingParameters.markerSize);
+    editModeScenegraphNodes.CurvesDrawStyle->lineWidth = 3 * drawingParameters.pixelScalingFactor;
+    editModeScenegraphNodes.RootCrossDrawStyle->lineWidth = 2 * drawingParameters.pixelScalingFactor;
+    editModeScenegraphNodes.EditCurvesDrawStyle->lineWidth = 3 * drawingParameters.pixelScalingFactor;
+    editModeScenegraphNodes.EditMarkersDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;
+    editModeScenegraphNodes.EditMarkerSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_LINE", drawingParameters.markerSize);
+    editModeScenegraphNodes.ConstraintDrawStyle->lineWidth = 1 * drawingParameters.pixelScalingFactor;
+    editModeScenegraphNodes.InformationDrawStyle->lineWidth = 1 * drawingParameters.pixelScalingFactor;
 
     rebuildConstraintNodes();
+}
+
+SoSeparator * CoinManager::getConstraintIdSeparator(int i)
+{
+    return dynamic_cast<SoSeparator *>(editModeScenegraphNodes.constrGroup->getChild(i));
+}
+
+SoGroup* CoinManager::getSelectedConstraints()
+{
+    SoGroup* group = new SoGroup();
+    group->ref();
+
+    for (int i=0; i < editModeScenegraphNodes.constrGroup->getNumChildren(); i++) {
+        if (edit->SelConstraintSet.find(i) != edit->SelConstraintSet.end()) {
+            SoSeparator *sep = getConstraintIdSeparator(i);
+            if (sep)
+                group->addChild(sep);
+        }
+    }
+
+    return group;
+}
+
+SoSeparator* CoinManager::getRootEditNode()
+{
+    return editModeScenegraphNodes.EditRoot;
 }

@@ -55,42 +55,8 @@ using namespace SketcherGui;
 // Construction/Destruction
 
 EditData::EditData():
-    sketchHandler(0),
-    buttonPress(false),
-    DragPoint(-1),
-    DragCurve(-1),
     PreselectPoint(-1),
     PreselectCurve(-1),
     PreselectCross(-1),
-    blockedPreselection(false),
-    FullyConstrained(false),
-    //ActSketch(0), // if you are wondering, it went to SketchObject, accessible via getSolvedSketch() and via SketchObject interface as appropriate
-    EditRoot(0),
-    PointsMaterials(0),
-    CurvesMaterials(0),
-    RootCrossMaterials(0),
-    EditCurvesMaterials(0),
-    EditMarkersMaterials(0),
-    PointsCoordinate(0),
-    CurvesCoordinate(0),
-    RootCrossCoordinate(0),
-    EditCurvesCoordinate(0),
-    EditMarkersCoordinate(0),
-    CurveSet(0),
-    RootCrossSet(0),
-    EditCurveSet(0),
-    EditMarkerSet(0),
-    PointSet(0),
-    textX(0),
-    textPos(0),
-    constrGroup(0),
-    infoGroup(0),
-    pickStyleAxes(0),
-    PointsDrawStyle(0),
-    CurvesDrawStyle(0),
-    RootCrossDrawStyle(0),
-    EditCurvesDrawStyle(0),
-    EditMarkersDrawStyle(0),
-    ConstraintDrawStyle(0),
-    InformationDrawStyle(0)
+    blockedPreselection(false)
     {}

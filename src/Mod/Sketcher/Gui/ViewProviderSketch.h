@@ -24,6 +24,8 @@
 #ifndef SKETCHERGUI_VIEWPROVIDERSKETCH_H
 #define SKETCHERGUI_VIEWPROVIDERSKETCH_H
 
+#include <memory>
+
 #include <Mod/Part/Gui/ViewProvider2DObject.h>
 #include <Mod/Part/Gui/ViewProviderAttachExtension.h>
 #include <Mod/Part/App/BodyBase.h>
@@ -36,6 +38,8 @@
 #include <QCoreApplication>
 #include <Gui/Document.h>
 #include "ShortcutListener.h"
+
+#include <Mod/Sketcher/App/GeoList.h>
 
 class TopoDS_Shape;
 class TopoDS_Face;
@@ -73,9 +77,6 @@ namespace Sketcher {
     class Constraint;
     class Sketch;
     class SketchObject;
-
-    template < typename T >
-    class GeoListModel;
 }
 
 namespace SketcherGui {
@@ -84,7 +85,9 @@ struct EditData;
 class CoinManager;
 class DrawSketchHandler;
 
-using GeoList = Sketcher::GeoListModel<Part::Geometry *>;
+using GeoList = Sketcher::GeoList;
+using GeoListFacade = Sketcher::GeoListFacade;
+
 
 /** The Sketch ViewProvider
   * This class handles mainly the drawing and editing of the sketch.
@@ -146,17 +149,28 @@ private:
     class Drag {
     public:
         Drag() {
-            reset();
+            resetVector();
         }
 
-        void reset() {
+        void resetVector() {
             xInit = 0;
             yInit = 0;
             relative = false;
         }
 
-        double xInit, yInit;
-        bool relative;
+        void resetIds() {
+            DragPoint = -1;
+            DragCurve = -1;
+            DragConstraintSet.clear();
+        }
+
+        double xInit, yInit;                // starting point of the dragging operation
+        bool relative;                      // whether the dragging move vector is relative or absolute
+
+
+        int DragPoint = -1;                 // dragged point id
+        int DragCurve = -1;                 // dragged curve id
+        std::set<int> DragConstraintSet;    // dragged constraints ids
     };
 
     struct DoubleClick {
@@ -172,6 +186,7 @@ private:
         bool recalculateInitialSolutionWhileDragging = false;
 
         bool isShownVirtualSpace = false; // indicates whether the present virtual space view is the Real Space or the Virtual Space (virtual space 1 or 2)
+        bool buttonPress = false;
     };
 
 public:
@@ -203,6 +218,10 @@ public:
 
     //@}
 
+
+    // TODO: SketchMode should be refactored. DrawSketchHandler, its inheritance and free functions should access this mode via the DrawSketchHandler
+    // Attorney. I will not refactor this at this moment, as the refactor will be even more extensive and difficult to review. But this should be done
+    // in a second stage.
 
     /** @name modus handling */
     //@{
@@ -254,7 +273,6 @@ public:
     /** @name preselection functions */
     //@{
     /// helper to detect preselection
-    bool detectAndShowPreselection (SoPickedPoint * Point, const SbVec2s &cursorPos);
     int getPreselectPoint(void) const;
     int getPreselectCurve(void) const;
     int getPreselectCross(void) const;
@@ -398,6 +416,12 @@ private:
                            SbLine&) const;
     //@}
 
+    /** @name preselection functions */
+    //@{
+    /// helper to detect preselection
+    bool detectAndShowPreselection (SoPickedPoint * Point, const SbVec2s &cursorPos);
+    //@}
+
 
     /** @name Attorney functions*/
     //@{
@@ -415,6 +439,8 @@ private:
     // gets the list of geometry of the sketchobject or of the solver instance
     const GeoList getGeoList() const;
 
+    GeoListFacade getGeoListFacade() const;
+
     Base::Placement getEditingPlacement() const;
 
     std::unique_ptr<SoRayPickAction> getRayPickAction() const;
@@ -429,7 +455,15 @@ private:
 
     double getRotation(SbVec3f pos0, SbVec3f pos1) const;
 
-    void createEditRootNode(void); /// set up the edition data structure EditData
+    bool isSketchInvalid() const;
+
+    bool isSketchFullyConstrained() const;
+
+    bool haveConstraintsInvalidGeometry() const;
+
+    void addNodeToRoot(SoSeparator * node);
+
+    void removeNodeFromRoot(SoSeparator * node);
 
     //********* ViewProviderSketchShortcutListenerAttorney ***********//
     void deleteSelected();
@@ -471,6 +505,8 @@ private:
     std::unique_ptr<CoinManager> coinManager;
 
     std::unique_ptr<ViewProviderSketch::ParameterObserver> pObserver;
+
+    std::unique_ptr<DrawSketchHandler> sketchHandler;
 
     ViewProviderParameters viewProviderParameters;
 };
