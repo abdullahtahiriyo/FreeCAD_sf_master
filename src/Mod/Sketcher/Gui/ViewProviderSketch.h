@@ -415,6 +415,8 @@ private:
     // gets the list of geometry of the sketchobject or of the solver instance
     const GeoList getGeoList() const;
 
+    const GeoListFacade getGeoListFacade() const;
+
     Base::Placement getEditingPlacement() const;
 
     std::unique_ptr<SoRayPickAction> getRayPickAction() const;
@@ -430,6 +432,10 @@ private:
     double getRotation(SbVec3f pos0, SbVec3f pos1) const;
 
     void createEditRootNode(void); /// set up the edition data structure EditData
+
+    bool isSketchInvalid() const;
+
+    bool haveConstraintsInvalidGeometry() const;
 
     //********* ViewProviderSketchShortcutListenerAttorney ***********//
     void deleteSelected();

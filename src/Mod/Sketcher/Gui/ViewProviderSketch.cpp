@@ -355,7 +355,8 @@ void ViewProviderSketch::forceUpdateData()
     }
 }
 
-// handler management ***************************************************************
+/***************************** handler management ************************************/
+
 void ViewProviderSketch::activateHandler(DrawSketchHandler *newHandler)
 {
     assert(edit);
@@ -1501,8 +1502,6 @@ void ViewProviderSketch::moveConstraint(int constNum, const Base::Vector2d &toPo
     draw(true,false);
 }
 
-
-
 bool ViewProviderSketch::isSelectable(void) const
 {
     if (isEditing())
@@ -2431,29 +2430,7 @@ void ViewProviderSketch::updateColor(void)
 {
     assert(edit);
 
-    // update geometry color
-
-    auto tempGeoFacade = getSketchObject()->getCompleteGeometryFacade();
-
-    int intGeoCount = getSketchObject()->getHighestCurveIndex() + 1;
-
-    auto geolistfacade = GeoListFacade::getGeoListModel(tempGeoFacade, intGeoCount);
-
-    bool sketchinvalid =    getSketchObject()->getLastHasRedundancies()           ||
-                            getSketchObject()->getLastHasConflicts()              ||
-                            getSketchObject()->getLastHasMalformedConstraints();
-
-    coinManager->updateGeometryColor(geolistfacade, sketchinvalid);
-
-    // update constraint color
-
-    if(getSketchObject()->Constraints.hasInvalidGeometry())
-        return;
-
-    auto constraints = getSketchObject()->Constraints.getValues();
-
-    coinManager->updateConstraintColor(constraints);
-
+    coinManager->updateColor();
 }
 
 bool ViewProviderSketch::doubleClicked(void)
@@ -3555,4 +3532,29 @@ double ViewProviderSketch::getRotation(SbVec3f pos0, SbVec3f pos1) const
     catch (const Base::DivisionByZeroError&) {
         return 0;
     }
+}
+
+const GeoListFacade ViewProviderSketch::getGeoListFacade() const
+{
+    auto tempGeoFacade = getSketchObject()->getCompleteGeometryFacade();
+
+    int intGeoCount = getSketchObject()->getHighestCurveIndex() + 1;
+
+    auto geolistfacade = GeoListFacade::getGeoListModel(std::move(tempGeoFacade), intGeoCount);
+
+    return geolistfacade;
+}
+
+bool ViewProviderSketch::isSketchInvalid() const
+{
+
+    bool sketchinvalid =    getSketchObject()->getLastHasRedundancies()           ||
+                            getSketchObject()->getLastHasConflicts()              ||
+                            getSketchObject()->getLastHasMalformedConstraints();
+    return sketchinvalid;
+}
+
+bool ViewProviderSketch::haveConstraintsInvalidGeometry() const
+{
+    return getSketchObject()->Constraints.hasInvalidGeometry();
 }

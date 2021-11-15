@@ -115,6 +115,11 @@ inline const GeoList ViewProviderSketchCoinAttorney::getGeoList(const ViewProvid
     return vp.getGeoList();
 }
 
+const GeoListFacade ViewProviderSketchCoinAttorney::getGeoListFacade(const ViewProviderSketch & vp)
+{
+    return vp.getGeoListFacade();
+}
+
 inline Base::Placement ViewProviderSketchCoinAttorney::getEditingPlacement(const ViewProviderSketch & vp)
 {
     return vp.getEditingPlacement();
@@ -168,6 +173,16 @@ inline int ViewProviderSketchCoinAttorney::getApplicationLogicalDPIX(const ViewP
 inline void ViewProviderSketchCoinAttorney::createEditRootNode(ViewProviderSketch & vp)
 {
     return vp.createEditRootNode();
+}
+
+inline bool ViewProviderSketchCoinAttorney::isSketchInvalid(const ViewProviderSketch & vp)
+{
+    return vp.isSketchInvalid();
+}
+
+inline bool ViewProviderSketchCoinAttorney::haveConstraintsInvalidGeometry(const ViewProviderSketch & vp)
+{
+    return vp.haveConstraintsInvalidGeometry();
 }
 
 //**************************** ParameterObserver nested class ******************************
@@ -1778,10 +1793,28 @@ void CoinManager::updateCoinManagerColors()
     updateColor(drawingParameters.CurveExternalColor, "ExternalColor");
     updateColor(drawingParameters.PreselectColor, "HighlightColor");
     updateColor(drawingParameters.SelectColor, "SelectionColor");
-
-
-
 }
+
+void CoinManager::updateColor()
+{
+    auto geolistfacade = ViewProviderSketchCoinAttorney::getGeoListFacade();
+
+    bool sketchinvalid = ViewProviderSketchCoinAttorney::isSketchInvalid();
+
+    coinManager->updateGeometryColor(geolistfacade, sketchinvalid);
+
+    // update constraint color
+
+    auto constraints = ViewProviderSketchCoinAttorney::getConstraints();
+
+    if(ViewProviderSketchCoinAttorney::haveConstraintsInvalidGeometry())
+        return;
+
+    auto constraints = getSketchObject()->Constraints.getValues();
+
+    coinManager->updateConstraintColor(constraints);
+}
+
 
 void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid)
 {
@@ -2053,7 +2086,7 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
     edit->CurveSet->numVertices.finishEditing();
 }
 
-void CoinManager::updateConstraintColor(std::vector<Sketcher::Constraint *> constraints)
+void CoinManager::updateConstraintColor(const std::vector<Sketcher::Constraint *> &constraints)
 {
     // Because coincident constraints are selected using the point color, we need to edit the point materials.
     // TODO: Review this

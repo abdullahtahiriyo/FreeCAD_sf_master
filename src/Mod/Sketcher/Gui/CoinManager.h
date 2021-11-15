@@ -87,6 +87,7 @@ private:
     static inline bool constraintHasExpression(const ViewProviderSketch &vp, int constrid);
     static inline const std::vector<Sketcher::Constraint *> getConstraints(const ViewProviderSketch & vp);
     static inline const GeoList getGeoList(const ViewProviderSketch & vp);
+    static inline const GeoListFacade getGeoListFacade(const ViewProviderSketch & vp);
     static inline Base::Placement getEditingPlacement(const ViewProviderSketch & vp);
     static inline void updateGridExtent(ViewProviderSketch & vp, float minx, float maxx, float miny, float maxy);
     static inline bool isShownVirtualSpace(const ViewProviderSketch & vp);
@@ -100,6 +101,9 @@ private:
     static inline int getApplicationLogicalDPIX(const ViewProviderSketch & vp);
 
     static inline void createEditRootNode(ViewProviderSketch & vp);
+
+    static inline bool isSketchInvalid(const ViewProviderSketch & vp);
+    static inline bool haveConstraintsInvalidGeometry(const ViewProviderSketch & vp);
 
     friend class CoinManager;
 };
@@ -227,8 +231,7 @@ public:
 
     /** @name update coin colors*/
     //@{
-    void updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid);
-    void updateConstraintColor(std::vector<Sketcher::Constraint *> constraints);
+    void updateColor();
     //@}
 
 
@@ -277,6 +280,9 @@ private:
 
     // updates the parameters to be used for the Overlay information layer
     void updateOverlayParameters();
+
+    void updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid);
+    void updateConstraintColor(const std::vector<Sketcher::Constraint *> & constraints);
 
     // causes the ViewProvider to draw
     void redrawViewProvider();
