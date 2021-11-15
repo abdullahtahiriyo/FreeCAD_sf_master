@@ -58,7 +58,7 @@ using namespace std;
 using namespace SketcherGui;
 using namespace Sketcher;
 
-bool SketcherGui::tryAutoUtils(Sketcher::SketchObject* obj, bool &autoremoveredundants)
+bool SketcherGui::tryAutoRecompute(Sketcher::SketchObject* obj, bool &autoremoveredundants)
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
     bool autoUtils = hGrp->GetBool("AutoUtils",false);
@@ -80,18 +80,18 @@ bool SketcherGui::tryAutoUtils(Sketcher::SketchObject* obj, bool &autoremoveredu
     return autoUtils;
 }
 
-bool SketcherGui::tryAutoUtils(Sketcher::SketchObject* obj)
+bool SketcherGui::tryAutoRecompute(Sketcher::SketchObject* obj)
 {
     bool autoremoveredundants;
 
-    return tryAutoUtils(obj,autoremoveredundants);
+    return tryAutoRecompute(obj,autoremoveredundants);
 }
 
-void SketcherGui::tryAutoUtilsIfNotSolve(Sketcher::SketchObject* obj)
+void SketcherGui::tryAutoRecomputeIfNotSolve(Sketcher::SketchObject* obj)
 {
     bool autoremoveredundants;
 
-    if(!tryAutoUtils(obj,autoremoveredundants)) {
+    if(!tryAutoRecompute(obj,autoremoveredundants)) {
         obj->solve();
 
         if(autoremoveredundants) {
