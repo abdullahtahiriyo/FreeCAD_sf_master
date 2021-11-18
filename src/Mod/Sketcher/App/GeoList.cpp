@@ -257,4 +257,17 @@ template class GeoListModel<Part::Geometry *>;
 template class GeoListModel<std::unique_ptr<const Sketcher::GeometryFacade>>;
 
 
-} // namespace SketcherGui
+} // namespace Sketcher
+
+GeoListFacade Sketcher::getGeoListFacade(const GeoList & geolist)
+{
+    std::vector<std::unique_ptr<const GeometryFacade>> facade;
+    facade.reserve( geolist.geomlist.size());
+
+    for(auto geo : geolist.geomlist)
+        facade.push_back(GeometryFacade::getFacade(geo));
+
+    auto geolistfacade = GeoListFacade::getGeoListModel(std::move(facade), geolist.getInternalCount());
+
+    return geolistfacade;
+}

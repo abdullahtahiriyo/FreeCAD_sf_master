@@ -157,6 +157,8 @@ private:
 using GeoList = GeoListModel<Part::Geometry *>;
 using GeoListFacade = GeoListModel<std::unique_ptr<const Sketcher::GeometryFacade>>;
 
+GeoListFacade getGeoListFacade(const GeoList & geolist);
+
 } // namespace Sketcher
 
 
