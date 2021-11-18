@@ -105,37 +105,7 @@ struct EditData {
     std::map<QString, ConstrIconBBVec> combinedConstrBoxes;
 
     // nodes for the visuals
-    SoSeparator   *EditRoot;
-    SoMaterial    *PointsMaterials;
-    SoMaterial    *CurvesMaterials;
-    SoMaterial    *RootCrossMaterials;
-    SoMaterial    *EditCurvesMaterials;
-    SoMaterial    *EditMarkersMaterials;
-    SoCoordinate3 *PointsCoordinate;
-    SoCoordinate3 *CurvesCoordinate;
-    SoCoordinate3 *RootCrossCoordinate;
-    SoCoordinate3 *EditCurvesCoordinate;
-    SoCoordinate3 *EditMarkersCoordinate;
-    SoLineSet     *CurveSet;
-    SoLineSet     *RootCrossSet;
-    SoLineSet     *EditCurveSet;
-    SoMarkerSet   *EditMarkerSet;
-    SoMarkerSet   *PointSet;
 
-    SoText2       *textX;
-    SoTranslation *textPos;
-
-    SmSwitchboard *constrGroup;
-    SoGroup       *infoGroup;
-    SoPickStyle   *pickStyleAxes;
-
-    SoDrawStyle * PointsDrawStyle;
-    SoDrawStyle * CurvesDrawStyle;
-    SoDrawStyle * RootCrossDrawStyle;
-    SoDrawStyle * EditCurvesDrawStyle;
-    SoDrawStyle * EditMarkersDrawStyle;
-    SoDrawStyle * ConstraintDrawStyle;
-    SoDrawStyle * InformationDrawStyle;
 };
 
 } // namespace SketcherGui

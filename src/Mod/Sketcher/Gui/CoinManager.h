@@ -98,10 +98,12 @@ private:
     static inline int defaultApplicationFontSizePixels(const ViewProviderSketch & vp);
     static inline int getApplicationLogicalDPIX(const ViewProviderSketch & vp);
 
-    static inline void createEditRootNode(ViewProviderSketch & vp);
-
     static inline bool isSketchInvalid(const ViewProviderSketch & vp);
     static inline bool haveConstraintsInvalidGeometry(const ViewProviderSketch & vp);
+
+    static inline void addNodeToRoot(ViewProviderSketch & vp, SoSeparator * node);
+
+    static inline void removeNodeFromRoot(ViewProviderSketch & vp, SoSeparator * node);
 
     friend class CoinManager;
 };
@@ -263,6 +265,11 @@ public:
     void setPositionText(const Base::Vector2d &Pos);
     void resetPositionText(void);
 
+    /// The client is responsible for unref-ing the SoGroup to release the memory.
+    SoGroup* getSelectedConstraints();
+
+    SoSeparator* getRootEditNode();
+
 private:
     // This function populates the coin nodes with the information of the current geometry
     void processGeometry(const GeoList & geolist);
@@ -389,6 +396,8 @@ private:
 
     void updateInventorNodeSizes();
 
+    SoSeparator * getConstraintIdSeparator(int i);
+
 private:
     ViewProviderSketch & viewProvider;
     std::unique_ptr<CoinManager::ParameterObserver> pObserver;
@@ -398,6 +407,8 @@ private:
     AnalysisResults analysisResults;
     OverlayParameters overlayParameters;
     ConstraintParameters constraintParameters;
+
+    EditModeScenegraphNodes editModeScenegraphNodes;
 
 };
 

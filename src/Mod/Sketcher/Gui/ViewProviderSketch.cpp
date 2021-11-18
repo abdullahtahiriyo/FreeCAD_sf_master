@@ -1822,16 +1822,7 @@ void ViewProviderSketch::centerSelection()
     if (!view || !edit)
         return;
 
-    SoGroup* group = new SoGroup();
-    group->ref();
-
-    for (int i=0; i < edit->constrGroup->getNumChildren(); i++) {
-        if (edit->SelConstraintSet.find(i) != edit->SelConstraintSet.end()) {
-            SoSeparator *sep = dynamic_cast<SoSeparator *>(edit->constrGroup->getChild(i));
-            if (sep)
-                group->addChild(sep);
-        }
-    }
+    SoGroup* group = coinManager->getSelectedConstraints();
 
     Gui::View3DInventorViewer* viewer = view->getViewer();
     SoGetBoundingBoxAction action(viewer->getSoRenderManager()->getViewportRegion());
@@ -2442,7 +2433,7 @@ bool ViewProviderSketch::doubleClicked(void)
 float ViewProviderSketch::getScaleFactor() const
 {
     assert(edit);
-    Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(edit->EditRoot);
+    Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(coinManager->getRootEditNode());
     if (mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())) {
         Gui::View3DInventorViewer *viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
         SoCamera* camera = viewer->getSoRenderManager()->getCamera();
@@ -2984,19 +2975,6 @@ void ViewProviderSketch::UpdateSolverInformation()
     }
 }
 
-
-void ViewProviderSketch::createEditRootNode(void)
-{
-    assert(edit);
-
-    // 1 - Create the edit root node
-    edit->EditRoot = new SoSeparator;
-    edit->EditRoot->ref();
-    edit->EditRoot->setName("Sketch_EditRoot");
-    pcRoot->addChild(edit->EditRoot);
-    edit->EditRoot->renderCaching = SoSeparator::OFF ;
-}
-
 void ViewProviderSketch::unsetEdit(int ModNum)
 {
     Q_UNUSED(ModNum);
@@ -3010,10 +2988,6 @@ void ViewProviderSketch::unsetEdit(int ModNum)
     if (edit) {
         if (edit->sketchHandler)
             deactivateHandler();
-
-        Gui::coinRemoveAllChildren(edit->EditRoot);
-        pcRoot->removeChild(edit->EditRoot);
-        edit->EditRoot->unref();
 
         coinManager = nullptr;
         delete edit;
@@ -3436,7 +3410,7 @@ bool ViewProviderSketch::constraintHasExpression(int constrid) const
 std::unique_ptr<SoRayPickAction> ViewProviderSketch::getRayPickAction() const
 {
     assert(edit);
-    Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(edit->EditRoot);
+    Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(coinManager->getRootEditNode());
     if (!(mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())))
         return nullptr;
     Gui::View3DInventorViewer *viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
@@ -3513,7 +3487,7 @@ double ViewProviderSketch::getRotation(SbVec3f pos0, SbVec3f pos1) const
 {
     double x0,y0,x1,y1;
 
-    Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(edit->EditRoot);
+    Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(coinManager->getRootEditNode());
     if (!(mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())))
         return 0;
     Gui::View3DInventorViewer *viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
@@ -3558,4 +3532,14 @@ bool ViewProviderSketch::isSketchInvalid() const
 bool ViewProviderSketch::haveConstraintsInvalidGeometry() const
 {
     return getSketchObject()->Constraints.hasInvalidGeometry();
+}
+
+void ViewProviderSketch::addNodeToRoot(SoSeparator * node)
+{
+    pcRoot->addChild(node);
+}
+
+void ViewProviderSketch::removeNodeFromRoot(SoSeparator * node)
+{
+    pcRoot->removeChild(node);
 }

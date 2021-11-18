@@ -434,11 +434,13 @@ private:
 
     double getRotation(SbVec3f pos0, SbVec3f pos1) const;
 
-    void createEditRootNode(void); /// set up the edition data structure EditData
-
     bool isSketchInvalid() const;
 
     bool haveConstraintsInvalidGeometry() const;
+
+    void addNodeToRoot(SoSeparator * node);
+
+    void removeNodeFromRoot(SoSeparator * node);
 
     //********* ViewProviderSketchShortcutListenerAttorney ***********//
     void deleteSelected();
