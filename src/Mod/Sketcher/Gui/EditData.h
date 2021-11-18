@@ -29,20 +29,6 @@
 
 #include <qrect.h>
 
-#include <Inventor/SbColor.h>
-
-class SoSeparator;
-class SoMaterial;
-class SoCoordinate3;
-class SoLineSet;
-class SoMarkerSet;
-class SoText2;
-class SoTranslation;
-class SmSwitchboard;
-class SoGroup;
-class SoPickStyle;
-class SoDrawStyle;
-
 namespace Sketcher {
     enum ConstraintType : int;
     enum PointPos : int;
@@ -71,7 +57,6 @@ struct EditData {
     // dragged constraints
     std::set<int> DragConstraintSet;
 
-    SbColor PreselectOldColor;
     int PreselectPoint;
     int PreselectCurve;
     int PreselectCross;
