@@ -230,6 +230,7 @@ public:
     /** @name update coin colors*/
     //@{
     void updateColor();
+    void updateColor(const GeoList & geolist); // overload to be used with temporal geometry.
     //@}
 
 

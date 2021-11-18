@@ -1813,6 +1813,24 @@ void CoinManager::updateColor()
     updateConstraintColor(constraints);
 }
 
+void CoinManager::updateColor(const GeoList & geolist)
+{
+    auto geolistfacade = Sketcher::getGeoListFacade(geolist);
+
+    bool sketchinvalid = ViewProviderSketchCoinAttorney::isSketchInvalid(viewProvider);
+
+    updateGeometryColor(geolistfacade, sketchinvalid);
+
+    // update constraint color
+
+    auto constraints = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
+
+    if(ViewProviderSketchCoinAttorney::haveConstraintsInvalidGeometry(viewProvider))
+        return;
+
+    updateConstraintColor(constraints);
+}
+
 
 void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid)
 {

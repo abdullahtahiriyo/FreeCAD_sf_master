@@ -2626,7 +2626,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
     // Avoids unneeded calls to pixmapFromSvg
     if(Mode==STATUS_NONE || Mode==STATUS_SKETCH_UseHandler) {
        coinManager->drawConstraintIcons(geolist);
-       this->updateColor();
+       coinManager->updateColor(geolist);
     }
 
     Gui::MDIView *mdi = this->getActiveView();
