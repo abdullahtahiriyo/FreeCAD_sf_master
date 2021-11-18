@@ -47,7 +47,7 @@ namespace SketcherGui {
 struct EditData {
     EditData();
     // pointer to the active handler for new sketch objects
-    DrawSketchHandler *sketchHandler;
+
     bool buttonPress;
 
     // dragged point
@@ -62,12 +62,14 @@ struct EditData {
     int PreselectCross;
     std::set<int> PreselectConstraintSet;
     bool blockedPreselection;
+
     bool FullyConstrained;
 
     // container to track our own selected parts
     std::set<int> SelPointSet;
     std::set<int> SelCurvSet; // also holds cross axes at -1 and -2
     std::set<int> SelConstraintSet;
+
     std::vector<int> CurvIdToGeoId; // conversion of SoLineSet index to GeoId
     std::vector<int> PointIdToGeoId; // conversion of SoCoordinate3 index to GeoId
     std::map<std::pair<int, Sketcher::PointPos>, int> GeoIdPointPosToPointId; // conversion of [GeoId,Pos] to PointId

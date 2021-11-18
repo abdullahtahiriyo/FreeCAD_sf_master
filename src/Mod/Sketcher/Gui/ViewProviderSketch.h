@@ -483,6 +483,8 @@ private:
 
     std::unique_ptr<ViewProviderSketch::ParameterObserver> pObserver;
 
+    std::unique_ptr<DrawSketchHandler> sketchHandler;
+
     ViewProviderParameters viewProviderParameters;
 };
 

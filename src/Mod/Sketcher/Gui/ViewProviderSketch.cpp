@@ -291,7 +291,8 @@ ViewProviderSketch::ViewProviderSketch()
     Mode(STATUS_NONE),
     listener(0),
     coinManager(nullptr),
-    pObserver(std::make_unique<ViewProviderSketch::ParameterObserver>(*this))
+    pObserver(std::make_unique<ViewProviderSketch::ParameterObserver>(*this)),
+    sketchHandler(nullptr)
 {
     PartGui::ViewProviderAttachExtension::initExtension(this);
 
@@ -359,12 +360,13 @@ void ViewProviderSketch::forceUpdateData()
 
 void ViewProviderSketch::activateHandler(DrawSketchHandler *newHandler)
 {
-    assert(edit);
-    assert(edit->sketchHandler == 0);
-    edit->sketchHandler = newHandler;
+    assert(coinManager);
+    assert(sketchHandler == nullptr);
+
+    sketchHandler = std::unique_ptr<DrawSketchHandler>(newHandler);
     Mode = STATUS_SKETCH_UseHandler;
-    edit->sketchHandler->sketchgui = this;
-    edit->sketchHandler->activated(this);
+    sketchHandler->sketchgui = this;
+    sketchHandler->activated(this);
 
     // make sure receiver has focus so immediately pressing Escape will be handled by
     // ViewProviderSketch::keyPressed() and dismiss the active handler, and not the entire
@@ -376,16 +378,16 @@ void ViewProviderSketch::activateHandler(DrawSketchHandler *newHandler)
 void ViewProviderSketch::deactivateHandler()
 {
     assert(edit);
-    if(edit->sketchHandler != 0){
+    if(sketchHandler){
         std::vector<Base::Vector2d> editCurve;
         editCurve.clear();
         drawEdit(editCurve); // erase any line
         resetPositionText();
-        edit->sketchHandler->deactivated(this);
-        edit->sketchHandler->unsetCursor();
-        delete(edit->sketchHandler);
+        sketchHandler->deactivated(this);
+        sketchHandler->unsetCursor();
+        sketchHandler = nullptr;
     }
-    edit->sketchHandler = 0;
+
     Mode = STATUS_NONE;
 }
 
@@ -419,9 +421,9 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
     case SoKeyboardEvent::ESCAPE:
         {
             // make the handler quit but not the edit mode
-            if (edit && edit->sketchHandler) {
+            if (edit && sketchHandler) {
                 if (!pressed)
-                    edit->sketchHandler->quit();
+                    sketchHandler->quit();
                 return true;
             }
             if (edit && (edit->DragConstraintSet.empty() == false)) {
@@ -467,8 +469,8 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
         }
     default:
         {
-            if (edit && edit->sketchHandler)
-                edit->sketchHandler->registerPressedKey(pressed,key);
+            if (edit && sketchHandler)
+                sketchHandler->registerPressedKey(pressed,key);
         }
     }
 
@@ -652,7 +654,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     return done;
                 }
                 case STATUS_SKETCH_UseHandler:
-                    return edit->sketchHandler->pressButton(Base::Vector2d(x,y));
+                    return sketchHandler->pressButton(Base::Vector2d(x,y));
                 default:
                     return false;
             }
@@ -871,7 +873,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     Mode = STATUS_NONE;
                     return true;
                 case STATUS_SKETCH_UseHandler: {
-                    return edit->sketchHandler->releaseButton(Base::Vector2d(x,y));
+                    return sketchHandler->releaseButton(Base::Vector2d(x,y));
                 }
                 case STATUS_NONE:
                 default:
@@ -885,7 +887,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
             switch (Mode) {
                 case STATUS_SKETCH_UseHandler:
                     // make the handler quit
-                    edit->sketchHandler->quit();
+                    sketchHandler->quit();
                     return true;
                 case STATUS_NONE:
                     {
@@ -1266,7 +1268,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
             }
             return true;
         case STATUS_SKETCH_UseHandler:
-            edit->sketchHandler->mouseMove(Base::Vector2d(x,y));
+            sketchHandler->mouseMove(Base::Vector2d(x,y));
             if (preselectChanged) {
                 coinManager->drawConstraintIcons();
                 this->updateColor();
@@ -1521,7 +1523,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
         bool handled=false;
         if (Mode == STATUS_SKETCH_UseHandler) {
             App::AutoTransaction committer;
-            handled = edit->sketchHandler->onSelectionChanged(msg);
+            handled = sketchHandler->onSelectionChanged(msg);
         }
         if (handled)
             return;
@@ -1655,8 +1657,8 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                         edit->PreselectCross = -1;
                         edit->PreselectConstraintSet.clear();
 
-                        if (edit->sketchHandler)
-                            edit->sketchHandler->applyCursor();
+                        if (sketchHandler)
+                            sketchHandler->applyCursor();
                         this->updateColor();
                     }
                     else if (shapetype.size() > 6 && shapetype.substr(0,6) == "Vertex") {
@@ -1666,8 +1668,8 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                         edit->PreselectCross = -1;
                         edit->PreselectConstraintSet.clear();
 
-                        if (edit->sketchHandler)
-                            edit->sketchHandler->applyCursor();
+                        if (sketchHandler)
+                            sketchHandler->applyCursor();
                         this->updateColor();
                     }
                 }
@@ -1678,8 +1680,8 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
             edit->PreselectCurve = -1;
             edit->PreselectCross = -1;
             edit->PreselectConstraintSet.clear();
-            if (edit->sketchHandler)
-                edit->sketchHandler->applyCursor();
+            if (sketchHandler)
+                sketchHandler->applyCursor();
             this->updateColor();
         }
     }
@@ -1707,8 +1709,8 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
                 edit->PreselectCurve = -1;
                 edit->PreselectCross = -1;
                 edit->PreselectConstraintSet.clear();
-                if (edit->sketchHandler)
-                    edit->sketchHandler->applyCursor();
+                if (sketchHandler)
+                    sketchHandler->applyCursor();
                 return true;
             }
         } else if (result.geoIndex != -1 && result.geoIndex != edit->PreselectCurve) {  // if a new curve is hit
@@ -1728,8 +1730,8 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
                 edit->PreselectCurve = result.geoIndex;
                 edit->PreselectCross = -1;
                 edit->PreselectConstraintSet.clear();
-                if (edit->sketchHandler)
-                    edit->sketchHandler->applyCursor();
+                if (sketchHandler)
+                    sketchHandler->applyCursor();
                 return true;
             }
         } else if (result.axes != CoinManager::PreselectionResult::Axes::None  && static_cast<int>(result.axes) != edit->PreselectCross) {  // if a cross line is hit
@@ -1754,8 +1756,8 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
                 edit->PreselectCurve = -1;
                 edit->PreselectCross = static_cast<int>(result.axes);
                 edit->PreselectConstraintSet.clear();
-                if (edit->sketchHandler)
-                    edit->sketchHandler->applyCursor();
+                if (sketchHandler)
+                    sketchHandler->applyCursor();
                 return true;
             }
         } else if (result.constrIndices.empty() == false && result.constrIndices != edit->PreselectConstraintSet) { // if a constraint is hit
@@ -1778,8 +1780,8 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
                 edit->PreselectCurve = -1;
                 edit->PreselectCross = -1;
                 edit->PreselectConstraintSet = result.constrIndices;
-                if (edit->sketchHandler)
-                    edit->sketchHandler->applyCursor();
+                if (sketchHandler)
+                    sketchHandler->applyCursor();
                 return true;//Preselection changed
             }
         } else if ((result.ptIndex == -1 && result.geoIndex == -1 &&
@@ -1792,8 +1794,8 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
             edit->PreselectCross = -1;
             edit->PreselectConstraintSet.clear();
             edit->blockedPreselection = false;
-            if (edit->sketchHandler)
-                edit->sketchHandler->applyCursor();
+            if (sketchHandler)
+                sketchHandler->applyCursor();
             return true;
         }
         Gui::Selection().setPreselectCoord(Point->getPoint()[0]
@@ -1807,8 +1809,8 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
         edit->PreselectCross = -1;
         edit->PreselectConstraintSet.clear();
         edit->blockedPreselection = false;
-        if (edit->sketchHandler)
-            edit->sketchHandler->applyCursor();
+        if (sketchHandler)
+            sketchHandler->applyCursor();
         return true;
     }
 
@@ -2986,7 +2988,7 @@ void ViewProviderSketch::unsetEdit(int ModNum)
     }
 
     if (edit) {
-        if (edit->sketchHandler)
+        if (sketchHandler)
             deactivateHandler();
 
         coinManager = nullptr;

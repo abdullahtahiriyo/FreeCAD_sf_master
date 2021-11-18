@@ -55,7 +55,6 @@ using namespace SketcherGui;
 // Construction/Destruction
 
 EditData::EditData():
-    sketchHandler(0),
     buttonPress(false),
     DragPoint(-1),
     DragCurve(-1),
