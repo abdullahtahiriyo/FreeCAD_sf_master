@@ -48,7 +48,7 @@ struct EditData {
     EditData();
     // pointer to the active handler for new sketch objects
 
-    bool buttonPress;
+
 
     // dragged point
     int DragPoint;

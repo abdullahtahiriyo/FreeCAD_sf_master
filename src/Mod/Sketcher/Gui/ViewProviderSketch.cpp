@@ -457,9 +457,9 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
                 // #0001479: 'Escape' key dismissing dialog cancels Sketch editing
                 // If we receive a button release event but not a press event before
                 // then ignore this one.
-                if (!pressed && !edit->buttonPress)
+                if (!pressed && !viewProviderParameters.buttonPress)
                     return true;
-                edit->buttonPress = pressed;
+               viewProviderParameters.buttonPress = pressed;
 
                 // More control over Sketcher edit mode Esc key behavior
                 // https://forum.freecadweb.org/viewtopic.php?f=3&t=42207
