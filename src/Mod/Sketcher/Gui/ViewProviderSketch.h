@@ -264,19 +264,8 @@ public:
 
     /// Observer message from the Selection
     virtual void onSelectionChanged(const Gui::SelectionChanges& msg) override;
-
-    /// box selection method
-    void doBoxSelection(const SbVec2s &startPos, const SbVec2s &endPos,
-                        const Gui::View3DInventorViewer *viewer);
     //@}
 
-    /** @name preselection functions */
-    //@{
-    /// helper to detect preselection
-    int getPreselectPoint(void) const;
-    int getPreselectCurve(void) const;
-    int getPreselectCross(void) const;
-    //@}
 
     /** @name Access to Sketch and Solver objects */
     //@{
@@ -420,8 +409,17 @@ private:
     //@{
     /// helper to detect preselection
     bool detectAndShowPreselection (SoPickedPoint * Point, const SbVec2s &cursorPos);
+    int getPreselectPoint(void) const;
+    int getPreselectCurve(void) const;
+    int getPreselectCross(void) const;
     //@}
 
+    /** @name Selection functions */
+    //@{
+    /// box selection method
+    void doBoxSelection(const SbVec2s &startPos, const SbVec2s &endPos,
+                        const Gui::View3DInventorViewer *viewer);
+    //@}
 
     /** @name Attorney functions*/
     //@{
