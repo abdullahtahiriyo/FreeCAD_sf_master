@@ -426,28 +426,28 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
                     sketchHandler->quit();
                 return true;
             }
-            if (edit && (edit->DragConstraintSet.empty() == false)) {
+            if (edit && (drag.DragConstraintSet.empty() == false)) {
                 if (!pressed) {
-                    edit->DragConstraintSet.clear();
+                    drag.DragConstraintSet.clear();
                 }
                 return true;
             }
-            if (edit && edit->DragCurve >= 0) {
+            if (edit && drag.DragCurve >= 0) {
                 if (!pressed) {
-                    getSketchObject()->movePoint(edit->DragCurve, Sketcher::none, Base::Vector3d(0,0,0), true);
-                    edit->DragCurve = -1;
+                    getSketchObject()->movePoint(drag.DragCurve, Sketcher::none, Base::Vector3d(0,0,0), true);
+                    drag.DragCurve = -1;
                     resetPositionText();
                     Mode = STATUS_NONE;
                 }
                 return true;
             }
-            if (edit && edit->DragPoint >= 0) {
+            if (edit && drag.DragPoint >= 0) {
                 if (!pressed) {
                     int GeoId;
                     Sketcher::PointPos PosId;
-                    getSketchObject()->getGeoVertexIndex(edit->DragPoint, GeoId, PosId);
+                    getSketchObject()->getGeoVertexIndex(drag.DragPoint, GeoId, PosId);
                     getSketchObject()->movePoint(GeoId, PosId, Base::Vector3d(0,0,0), true);
-                    edit->DragPoint = -1;
+                    drag.DragPoint = -1;
                     resetPositionText();
                     Mode = STATUS_NONE;
                 }
@@ -677,9 +677,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                                                          ,pp->getPoint()[0]
                                                          ,pp->getPoint()[1]
                                                          ,pp->getPoint()[2]);
-                            this->edit->DragPoint = -1;
-                            this->edit->DragCurve = -1;
-                            this->edit->DragConstraintSet.clear();
+                            drag.resetIds();
                         }
                     }
                     Mode = STATUS_NONE;
@@ -702,9 +700,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                                                          ,pp->getPoint()[0]
                                                          ,pp->getPoint()[1]
                                                          ,pp->getPoint()[2]);
-                            this->edit->DragPoint = -1;
-                            this->edit->DragCurve = -1;
-                            this->edit->DragConstraintSet.clear();
+                            drag.resetIds();
                         }
                     }
                     Mode = STATUS_NONE;
@@ -728,9 +724,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                                                          ,pp->getPoint()[0]
                                                          ,pp->getPoint()[1]
                                                          ,pp->getPoint()[2]);
-                            this->edit->DragPoint = -1;
-                            this->edit->DragCurve = -1;
-                            this->edit->DragConstraintSet.clear();
+                            drag.resetIds();
                         }
                     }
                     Mode = STATUS_NONE;
@@ -751,19 +745,17 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                                                              ,pp->getPoint()[0]
                                                              ,pp->getPoint()[1]
                                                              ,pp->getPoint()[2]);
-                                this->edit->DragPoint = -1;
-                                this->edit->DragCurve = -1;
-                                this->edit->DragConstraintSet.clear();
+                                drag.resetIds();
                             }
                         }
                     }
                     Mode = STATUS_NONE;
                     return true;
                 case STATUS_SKETCH_DragPoint:
-                    if (edit->DragPoint != -1) {
+                    if (drag.DragPoint != -1) {
                         int GeoId;
                         Sketcher::PointPos PosId;
-                        getSketchObject()->getGeoVertexIndex(edit->DragPoint, GeoId, PosId);
+                        getSketchObject()->getGeoVertexIndex(drag.DragPoint, GeoId, PosId);
                         if (GeoId != Sketcher::Constraint::GeoUndef && PosId != Sketcher::none) {
                             getDocument()->openCommand(QT_TRANSLATE_NOOP("Command", "Drag Point"));
                             try {
@@ -778,16 +770,16 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                                 Base::Console().Error("Drag point: %s\n", e.what());
                             }
                         }
-                        coinManager->setPreselectPoint(edit->DragPoint);
-                        edit->DragPoint = -1;
+                        coinManager->setPreselectPoint(drag.DragPoint);
+                        drag.DragPoint = -1;
                         //updateColor();
                     }
                     resetPositionText();
                     Mode = STATUS_NONE;
                     return true;
                 case STATUS_SKETCH_DragCurve:
-                    if (edit->DragCurve != -1) {
-                        const Part::Geometry *geo = getSketchObject()->getGeometry(edit->DragCurve);
+                    if (drag.DragCurve != -1) {
+                        const Part::Geometry *geo = getSketchObject()->getGeometry(drag.DragCurve);
                         if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId() ||
                             geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId() ||
                             geo->getTypeId() == Part::GeomCircle::getClassTypeId() ||
@@ -798,7 +790,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                             geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
                             getDocument()->openCommand(QT_TRANSLATE_NOOP("Command", "Drag Curve"));
 
-                            auto geo = getSketchObject()->getGeometry(edit->DragCurve);
+                            auto geo = getSketchObject()->getGeometry(drag.DragCurve);
                             auto gf = GeometryFacade::getFacade(geo);
 
                             Base::Vector3d vec(x-drag.xInit,y-drag.yInit,0);
@@ -828,7 +820,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
 
                             try {
                                 Gui::cmdAppObjectArgs(getObject(), "movePoint(%i,%i,App.Vector(%f,%f,0),%i)"
-                                        ,edit->DragCurve, Sketcher::none, vec.x, vec.y, drag.relative ? 1 : 0);
+                                        ,drag.DragCurve, Sketcher::none, vec.x, vec.y, drag.relative ? 1 : 0);
                                 getDocument()->commitCommand();
 
                                 tryAutoRecomputeIfNotSolve(getSketchObject());
@@ -838,23 +830,23 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                                 Base::Console().Error("Drag curve: %s\n", e.what());
                             }
                         }
-                        edit->PreselectCurve = edit->DragCurve;
-                        edit->DragCurve = -1;
+                        edit->PreselectCurve = drag.DragCurve;
+                        drag.DragCurve = -1;
                         //updateColor();
                     }
                     resetPositionText();
                     Mode = STATUS_NONE;
                     return true;
                 case STATUS_SKETCH_DragConstraint:
-                    if (edit->DragConstraintSet.empty() == false) {
+                    if (drag.DragConstraintSet.empty() == false) {
                         getDocument()->openCommand(QT_TRANSLATE_NOOP("Command", "Drag Constraint"));
-                        auto idset = edit->DragConstraintSet;
+                        auto idset = drag.DragConstraintSet;
                         for(int id : idset) {
                             moveConstraint(id, Base::Vector2d(x, y));
                             //updateColor();
                         }
-                        edit->PreselectConstraintSet = edit->DragConstraintSet;
-                        edit->DragConstraintSet.clear();
+                        edit->PreselectConstraintSet = drag.DragConstraintSet;
+                        drag.DragConstraintSet.clear();
                         getDocument()->commitCommand();
                     }
                     Mode = STATUS_NONE;
@@ -1088,15 +1080,15 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
             return false;
         case STATUS_SELECT_Point:
             if (!getSolvedSketch().hasConflicts() &&
-                edit->PreselectPoint != -1 && edit->DragPoint != edit->PreselectPoint) {
+                edit->PreselectPoint != -1 && drag.DragPoint != edit->PreselectPoint) {
                 Mode = STATUS_SKETCH_DragPoint;
-                edit->DragPoint = edit->PreselectPoint;
+                drag.DragPoint = edit->PreselectPoint;
                 int GeoId;
                 Sketcher::PointPos PosId;
-                getSketchObject()->getGeoVertexIndex(edit->DragPoint, GeoId, PosId);
+                getSketchObject()->getGeoVertexIndex(drag.DragPoint, GeoId, PosId);
                 if (GeoId != Sketcher::Constraint::GeoUndef && PosId != Sketcher::none) {
                     getSketchObject()->initTemporaryMove(GeoId, PosId, false);
-                    drag.reset();
+                    drag.resetVector();
                 }
             } else {
                 Mode = STATUS_NONE;
@@ -1108,10 +1100,10 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
             return true;
         case STATUS_SELECT_Edge:
             if (!getSolvedSketch().hasConflicts() &&
-                edit->PreselectCurve != -1 && edit->DragCurve != edit->PreselectCurve) {
+                edit->PreselectCurve != -1 && drag.DragCurve != edit->PreselectCurve) {
                 Mode = STATUS_SKETCH_DragCurve;
-                edit->DragCurve = edit->PreselectCurve;
-                const Part::Geometry *geo = getSketchObject()->getGeometry(edit->DragCurve);
+                drag.DragCurve = edit->PreselectCurve;
+                const Part::Geometry *geo = getSketchObject()->getGeometry(drag.DragCurve);
 
                 // BSpline Control points are edge draggable only if their radius is movable
                 // This is because dragging gives unwanted cosmetic results due to the scale ratio.
@@ -1129,7 +1121,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
 
                         // The B-Spline is constrained to be non-rational (equal weights), moving produces a bad effect
                         // because OCCT will normalize the values of the weights.
-                        auto grp = getSolvedSketch().getDependencyGroup(edit->DragCurve, Sketcher::none);
+                        auto grp = getSolvedSketch().getDependencyGroup(drag.DragCurve, Sketcher::none);
 
                         int bsplinegeoid = -1;
 
@@ -1138,7 +1130,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                         for( auto c : getSketchObject()->Constraints.getValues()) {
                             if( c->Type == Sketcher::InternalAlignment &&
                                 c->AlignmentType == BSplineControlPoint &&
-                                c->First == edit->DragCurve ) {
+                                c->First == drag.DragCurve ) {
 
                                 bsplinegeoid = c->Second;
                                 break;
@@ -1188,10 +1180,10 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                     getCoordsOnSketchPlane(line2.getPosition(),line2.getDirection(),drag.xInit,drag.yInit);
                     snapToGrid(drag.xInit, drag.yInit);
                 } else {
-                    drag.reset();
+                    drag.resetVector();
                 }
 
-                getSketchObject()->initTemporaryMove(edit->DragCurve, Sketcher::none, false);
+                getSketchObject()->initTemporaryMove(drag.DragCurve, Sketcher::none, false);
 
             } else {
                 Mode = STATUS_NONE;
@@ -1203,18 +1195,18 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
             return true;
         case STATUS_SELECT_Constraint:
             Mode = STATUS_SKETCH_DragConstraint;
-            edit->DragConstraintSet = edit->PreselectConstraintSet;
+            drag.DragConstraintSet = edit->PreselectConstraintSet;
             coinManager->resetPreselectPoint();
             edit->PreselectCurve = -1;
             edit->PreselectCross = -1;
             edit->PreselectConstraintSet.clear();
             return true;
         case STATUS_SKETCH_DragPoint:
-            if (edit->DragPoint != -1) {
+            if (drag.DragPoint != -1) {
                 //Base::Console().Log("Drag Point:%d\n",edit->DragPoint);
                 int GeoId;
                 Sketcher::PointPos PosId;
-                getSketchObject()->getGeoVertexIndex(edit->DragPoint, GeoId, PosId);
+                getSketchObject()->getGeoVertexIndex(drag.DragPoint, GeoId, PosId);
                 Base::Vector3d vec(x,y,0);
                 if (GeoId != Sketcher::Constraint::GeoUndef && PosId != Sketcher::none) {
                     if (getSketchObject()->moveTemporaryPoint(GeoId, PosId, vec, false) == 0) {
@@ -1225,8 +1217,8 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
             }
             return true;
         case STATUS_SKETCH_DragCurve:
-            if (edit->DragCurve != -1) {
-                auto geo = getSketchObject()->getGeometry(edit->DragCurve);
+            if (drag.DragCurve != -1) {
+                auto geo = getSketchObject()->getGeometry(drag.DragCurve);
                 auto gf = GeometryFacade::getFacade(geo);
 
                 Base::Vector3d vec(x-drag.xInit,y-drag.yInit,0);
@@ -1254,15 +1246,15 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                     vec = center + dir / scalefactor;
                 }
 
-                if (getSketchObject()->moveTemporaryPoint(edit->DragCurve, Sketcher::none, vec, drag.relative) == 0) {
+                if (getSketchObject()->moveTemporaryPoint(drag.DragCurve, Sketcher::none, vec, drag.relative) == 0) {
                     setPositionText(Base::Vector2d(x,y));
                     draw(true,false);
                 }
             }
             return true;
         case STATUS_SKETCH_DragConstraint:
-            if (edit->DragConstraintSet.empty() == false) {
-                auto idset = edit->DragConstraintSet;
+            if (drag.DragConstraintSet.empty() == false) {
+                auto idset = drag.DragConstraintSet;
                 for(int id : idset)
                     moveConstraint(id, Base::Vector2d(x,y));
             }

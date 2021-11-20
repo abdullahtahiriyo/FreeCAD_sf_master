@@ -55,8 +55,6 @@ using namespace SketcherGui;
 // Construction/Destruction
 
 EditData::EditData():
-    DragPoint(-1),
-    DragCurve(-1),
     PreselectPoint(-1),
     PreselectCurve(-1),
     PreselectCross(-1),

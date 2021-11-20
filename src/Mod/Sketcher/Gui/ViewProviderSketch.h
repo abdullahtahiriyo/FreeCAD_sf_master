@@ -149,17 +149,28 @@ private:
     class Drag {
     public:
         Drag() {
-            reset();
+            resetVector();
         }
 
-        void reset() {
+        void resetVector() {
             xInit = 0;
             yInit = 0;
             relative = false;
         }
 
-        double xInit, yInit;
-        bool relative;
+        void resetIds() {
+            DragPoint = -1;
+            DragCurve = -1;
+            DragConstraintSet.clear();
+        }
+
+        double xInit, yInit;                // starting point of the dragging operation
+        bool relative;                      // whether the dragging move vector is relative or absolute
+
+
+        int DragPoint = -1;                 // dragged point id
+        int DragCurve = -1;                 // dragged curve id
+        std::set<int> DragConstraintSet;    // dragged constraints ids
     };
 
     struct DoubleClick {

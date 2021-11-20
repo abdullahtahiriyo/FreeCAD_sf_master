@@ -50,12 +50,7 @@ struct EditData {
 
 
 
-    // dragged point
-    int DragPoint;
-    // dragged curve
-    int DragCurve;
-    // dragged constraints
-    std::set<int> DragConstraintSet;
+
 
     int PreselectPoint;
     int PreselectCurve;
