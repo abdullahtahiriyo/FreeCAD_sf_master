@@ -219,6 +219,10 @@ public:
     //@}
 
 
+    // TODO: SketchMode should be refactored. DrawSketchHandler, its inheritance and free functions should access this mode via the DrawSketchHandler
+    // Attorney. I will not refactor this at this moment, as the refactor will be even more extensive and difficult to review. But this should be done
+    // in a second stage.
+
     /** @name modus handling */
     //@{
     /// mode table
