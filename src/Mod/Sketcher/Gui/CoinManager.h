@@ -327,6 +327,27 @@ private:
     /*! See constrColor() */
     int constrColorPriority(int constraintId);
 
+    // TODO: Review and refactor where these structs and types relating constraints
+    // should actually go.
+
+    // helper data structures for the constraint rendering
+    std::vector<Sketcher::ConstraintType> vConstrType;
+
+    // For each of the combined constraint icons drawn, also create a vector
+    // of bounding boxes and associated constraint IDs, to go from the icon's
+    // pixel coordinates to the relevant constraint IDs.
+    //
+    // The outside map goes from a string representation of a set of constraint
+    // icons (like the one used by the constraint IDs we insert into the Coin
+    // rendering tree) to a vector of those bounding boxes paired with relevant
+    // constraint IDs.
+
+    using ConstrIconBB = std::pair<QRect, std::set<int> >;
+    using ConstrIconBBVec = std::vector<ConstrIconBB>;
+
+    std::map<QString, ConstrIconBBVec> combinedConstrBoxes;
+
+
     /// Internal type used for drawing constraint icons
     struct constrIconQueueItem {
         /// Type of constraint the icon represents.  Eg: "small/Constraint_PointOnObject_sm"
@@ -354,12 +375,7 @@ private:
         bool visible;
     };
 
-    /// Internal type used for drawing constraint icons
-    typedef std::vector<constrIconQueueItem> IconQueue;
-    /// For constraint icon bounding boxes
-    typedef std::pair<QRect, std::set<int> > ConstrIconBB;
-    /// For constraint icon bounding boxes
-    typedef std::vector<ConstrIconBB> ConstrIconBBVec;
+    using IconQueue = std::vector<constrIconQueueItem>;
 
     void combineConstraintIcons(IconQueue iconQueue);
 

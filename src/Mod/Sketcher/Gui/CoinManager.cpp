@@ -494,7 +494,7 @@ void CoinManager::updateVirtualSpace()
 
     bool isshownvirtualspace = ViewProviderSketchCoinAttorney::isShownVirtualSpace(viewProvider);
 
-    if(constrlist.size() == edit->vConstrType.size()) {
+    if(constrlist.size() == vConstrType.size()) {
 
         editModeScenegraphNodes.constrGroup->enable.setNum(constrlist.size());
 
@@ -525,11 +525,11 @@ void CoinManager::processConstraints(const GeoList & geolist)
     // reset point if the constraint type has changed
 Restart:
     // check if a new constraint arrived
-    if (constrlist.size() != edit->vConstrType.size())
+    if (constrlist.size() != vConstrType.size())
         rebuildConstraintNodes(geolist);
 
     assert(int(constrlist.size()) == editModeScenegraphNodes.constrGroup->getNumChildren());
-    assert(int(edit->vConstrType.size()) == editModeScenegraphNodes.constrGroup->getNumChildren());
+    assert(int(vConstrType.size()) == editModeScenegraphNodes.constrGroup->getNumChildren());
 
     // update the virtual space
     updateVirtualSpace();
@@ -551,9 +551,9 @@ Restart:
     for (std::vector<Sketcher::Constraint *>::const_iterator it=constrlist.begin();
          it != constrlist.end(); ++it, i++) {
         // check if the type has changed
-        if ((*it)->Type != edit->vConstrType[i]) {
+        if ((*it)->Type != vConstrType[i]) {
             // clearing the type vector will force a rebuild of the visual nodes
-            edit->vConstrType.clear();
+            vConstrType.clear();
             //TODO: The 'goto' here is unsafe as it can happen that we cause an endless loop (see bug #0001956).
             goto Restart;
         }
@@ -2261,7 +2261,7 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist)
     // clean up
     Gui::coinRemoveAllChildren(editModeScenegraphNodes.constrGroup);
 
-    edit->vConstrType.clear();
+    vConstrType.clear();
 
     // Get sketch normal
     Base::Vector3d RN(0,0,1);
@@ -2324,7 +2324,7 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vec
                 // #define CONSTRAINT_SEPARATOR_INDEX_MATERIAL_OR_DATUMLABEL 0
                 sep->addChild(text);
                 editModeScenegraphNodes.constrGroup->addChild(anno);
-                edit->vConstrType.push_back((*it)->Type);
+                vConstrType.push_back((*it)->Type);
                 // nodes not needed
                 sep->unref();
                 mat->unref();
@@ -2351,11 +2351,11 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vec
                 sep->addChild(new SoInfo());
 
                 // remember the type of this constraint node
-                edit->vConstrType.push_back((*it)->Type);
+                vConstrType.push_back((*it)->Type);
             }
             break;
             case Coincident: // no visual for coincident so far
-                edit->vConstrType.push_back(Coincident);
+                vConstrType.push_back(Coincident);
                 break;
             case Parallel:
             case Perpendicular:
@@ -2377,7 +2377,7 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vec
                 sep->addChild(new SoInfo());
 
                 // remember the type of this constraint node
-                edit->vConstrType.push_back((*it)->Type);
+                vConstrType.push_back((*it)->Type);
             }
             break;
             case PointOnObject:
@@ -2410,7 +2410,7 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vec
                     }
                 }
 
-                edit->vConstrType.push_back((*it)->Type);
+                vConstrType.push_back((*it)->Type);
             }
             break;
             case Symmetric:
@@ -2430,16 +2430,16 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vec
                 // #define CONSTRAINT_SEPARATOR_INDEX_FIRST_CONSTRAINTID 3
                 sep->addChild(new SoInfo());
 
-                edit->vConstrType.push_back((*it)->Type);
+                vConstrType.push_back((*it)->Type);
             }
             break;
             case InternalAlignment:
             {
-                edit->vConstrType.push_back((*it)->Type);
+                vConstrType.push_back((*it)->Type);
             }
             break;
             default:
-                edit->vConstrType.push_back((*it)->Type);
+                vConstrType.push_back((*it)->Type);
         }
 
         editModeScenegraphNodes.constrGroup->addChild(sep);
@@ -2863,7 +2863,7 @@ std::set<int> CoinManager::detectPreselectionConstr(const SoPickedPoint *Point,
 
                 if (constrIds) {
                     QString constrIdsStr = QString::fromLatin1(constrIds->string.getValue().getString());
-                    if (edit->combinedConstrBoxes.count(constrIdsStr) && dynamic_cast<SoImage *>(tail)) {
+                    if (combinedConstrBoxes.count(constrIdsStr) && dynamic_cast<SoImage *>(tail)) {
                         // If it's a combined constraint icon
 
                         // Screen dimensions of the icon
@@ -2916,8 +2916,8 @@ std::set<int> CoinManager::detectPreselectionConstr(const SoPickedPoint *Point,
                             iconY = cursorPos[1] - iconCoords[1] + iconSize[1]/2;
                         iconY = iconSize[1] - iconY;
 
-                        for (ConstrIconBBVec::iterator b = edit->combinedConstrBoxes[constrIdsStr].begin();
-                            b != edit->combinedConstrBoxes[constrIdsStr].end(); ++b) {
+                        for (ConstrIconBBVec::iterator b = combinedConstrBoxes[constrIdsStr].begin();
+                            b != combinedConstrBoxes[constrIdsStr].end(); ++b) {
 
 #ifdef FC_DEBUG
                             // Useful code to debug coordinates and bounding boxes that does not need to be compiled in for
@@ -3119,7 +3119,7 @@ void CoinManager::combineConstraintIcons(IconQueue iconQueue)
     float maxDistSquared = pow(ViewProviderSketchCoinAttorney::getScaleFactor(viewProvider), 2);
 
     // There's room for optimisation here; we could reuse the combined icons...
-    edit->combinedConstrBoxes.clear();
+    combinedConstrBoxes.clear();
 
     while(!iconQueue.empty()) {
         // A group starts with an item popped off the back of our initial queue
@@ -3313,7 +3313,7 @@ void CoinManager::drawMergedConstraintIcons(IconQueue iconQueue)
         }
     }
 
-    edit->combinedConstrBoxes[idString] = boundingBoxes;
+    combinedConstrBoxes[idString] = boundingBoxes;
     thisInfo->string.setValue(idString.toLatin1().data());
     sendConstraintIconToCoin(compositeIcon, thisDest);
 }

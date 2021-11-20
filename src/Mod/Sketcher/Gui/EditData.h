@@ -67,22 +67,7 @@ struct EditData {
     std::vector<int> PointIdToGeoId; // conversion of SoCoordinate3 index to GeoId
     std::map<std::pair<int, Sketcher::PointPos>, int> GeoIdPointPosToPointId; // conversion of [GeoId,Pos] to PointId
 
-    // helper data structures for the constraint rendering
-    std::vector<Sketcher::ConstraintType> vConstrType;
 
-    // For each of the combined constraint icons drawn, also create a vector
-    // of bounding boxes and associated constraint IDs, to go from the icon's
-    // pixel coordinates to the relevant constraint IDs.
-    //
-    // The outside map goes from a string representation of a set of constraint
-    // icons (like the one used by the constraint IDs we insert into the Coin
-    // rendering tree) to a vector of those bounding boxes paired with relevant
-    // constraint IDs.
-
-    using ConstrIconBB = std::pair<QRect, std::set<int> >;
-    using ConstrIconBBVec = std::vector<ConstrIconBB>;
-
-    std::map<QString, ConstrIconBBVec> combinedConstrBoxes;
 
     // nodes for the visuals
 
