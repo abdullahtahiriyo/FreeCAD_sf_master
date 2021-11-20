@@ -2663,7 +2663,6 @@ void ViewProviderSketch::updateData(const App::Property *prop)
          !getSketchObject()->isPerformingInternalTransaction() &&
          (prop == &(getSketchObject()->Geometry) || prop == &(getSketchObject()->Constraints))) {
 
-        edit->FullyConstrained = false;
         // At this point, we do not need to solve the Sketch
         // If we are adding geometry an update can be triggered before the sketch is actually solved.
         // Because a solve is mandatory to any addition (at least to update the DoF of the solver),
@@ -2971,9 +2970,6 @@ void ViewProviderSketch::UpdateSolverInformation()
     }
     else {
         signalSetUp(QString::fromUtf8("fully_constrained"), tr("Fully constrained"), QString(), QString());
-        // color the sketch as fully constrained if it has geometry (other than the axes)
-        if(getSolvedSketch().getGeometrySize()>2)
-            edit->FullyConstrained = true;
     }
 }
 
@@ -3529,6 +3525,11 @@ bool ViewProviderSketch::isSketchInvalid() const
                             getSketchObject()->getLastHasConflicts()              ||
                             getSketchObject()->getLastHasMalformedConstraints();
     return sketchinvalid;
+}
+
+bool ViewProviderSketch::isSketchFullyConstrained() const
+{
+    return getSketchObject()->FullyConstrained.getValue();
 }
 
 bool ViewProviderSketch::haveConstraintsInvalidGeometry() const

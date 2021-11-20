@@ -99,6 +99,7 @@ private:
     static inline int getApplicationLogicalDPIX(const ViewProviderSketch & vp);
 
     static inline bool isSketchInvalid(const ViewProviderSketch & vp);
+    static inline bool isSketchFullyConstrained(const ViewProviderSketch & vp);
     static inline bool haveConstraintsInvalidGeometry(const ViewProviderSketch & vp);
 
     static inline void addNodeToRoot(ViewProviderSketch & vp, SoSeparator * node);

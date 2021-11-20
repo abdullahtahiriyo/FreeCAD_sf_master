@@ -175,6 +175,11 @@ inline bool ViewProviderSketchCoinAttorney::isSketchInvalid(const ViewProviderSk
     return vp.isSketchInvalid();
 }
 
+inline bool ViewProviderSketchCoinAttorney::isSketchFullyConstrained(const ViewProviderSketch & vp)
+{
+    return vp.isSketchFullyConstrained();
+}
+
 inline bool ViewProviderSketchCoinAttorney::haveConstraintsInvalidGeometry(const ViewProviderSketch & vp)
 {
     return vp.haveConstraintsInvalidGeometry();
@@ -1899,7 +1904,7 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
         for (int  i=0; i < PtNum; i++)
             pcolor[i] = drawingParameters.InvalidSketchColor;
     }
-    else if (edit->FullyConstrained) {
+    else if (ViewProviderSketchCoinAttorney::isSketchFullyConstrained(viewProvider)) {
         for (int  i=0; i < PtNum; i++)
             pcolor[i] = drawingParameters.FullyConstrainedColor;
     }
@@ -2065,7 +2070,7 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
                 verts[j] = SbVec3f(x,y,zConstrLine);
             }
         }
-        else if (edit->FullyConstrained) {
+        else if (ViewProviderSketchCoinAttorney::isSketchFullyConstrained(viewProvider)) {
             color[i] = drawingParameters.FullyConstrainedColor;
             for (int k=j; j<k+indexes; j++) {
                 verts[j].getValue(x,y,z);

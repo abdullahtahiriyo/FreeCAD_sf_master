@@ -63,8 +63,6 @@ struct EditData {
     std::set<int> PreselectConstraintSet;
     bool blockedPreselection;
 
-    bool FullyConstrained;
-
     // container to track our own selected parts
     std::set<int> SelPointSet;
     std::set<int> SelCurvSet; // also holds cross axes at -1 and -2

@@ -437,6 +437,8 @@ private:
 
     bool isSketchInvalid() const;
 
+    bool isSketchFullyConstrained() const;
+
     bool haveConstraintsInvalidGeometry() const;
 
     void addNodeToRoot(SoSeparator * node);

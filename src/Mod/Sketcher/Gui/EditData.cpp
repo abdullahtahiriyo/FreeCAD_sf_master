@@ -60,6 +60,5 @@ EditData::EditData():
     PreselectPoint(-1),
     PreselectCurve(-1),
     PreselectCross(-1),
-    blockedPreselection(false),
-    FullyConstrained(false)
+    blockedPreselection(false)
     {}
