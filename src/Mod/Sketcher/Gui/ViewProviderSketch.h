@@ -264,19 +264,8 @@ public:
 
     /// Observer message from the Selection
     virtual void onSelectionChanged(const Gui::SelectionChanges& msg) override;
-
-    /// box selection method
-    void doBoxSelection(const SbVec2s &startPos, const SbVec2s &endPos,
-                        const Gui::View3DInventorViewer *viewer);
     //@}
 
-    /** @name preselection functions */
-    //@{
-    /// helper to detect preselection
-    int getPreselectPoint(void) const;
-    int getPreselectCurve(void) const;
-    int getPreselectCross(void) const;
-    //@}
 
     /** @name Access to Sketch and Solver objects */
     //@{
@@ -300,12 +289,6 @@ public:
     //@{
     /*! Look at the center of the bounding of all selected items */
     void centerSelection();
-
-    /// snap points x,y (mouse coordinates) onto grid if enabled
-    void snapToGrid(double &x, double &y);
-
-    /// moves a selected constraint
-    void moveConstraint(int constNum, const Base::Vector2d &toPos);
 
     float getScaleFactor() const;
     //@}
@@ -420,8 +403,26 @@ private:
     //@{
     /// helper to detect preselection
     bool detectAndShowPreselection (SoPickedPoint * Point, const SbVec2s &cursorPos);
+    int getPreselectPoint(void) const;
+    int getPreselectCurve(void) const;
+    int getPreselectCross(void) const;
     //@}
 
+    /** @name Selection functions */
+    //@{
+    /// box selection method
+    void doBoxSelection(const SbVec2s &startPos, const SbVec2s &endPos,
+                        const Gui::View3DInventorViewer *viewer);
+    //@}
+
+    /** @name miscelanea utilities */
+    //@{
+    /// snap points x,y (mouse coordinates) onto grid if enabled
+    void snapToGrid(double &x, double &y);
+
+    /// moves a selected constraint
+    void moveConstraint(int constNum, const Base::Vector2d &toPos);
+    //@}
 
     /** @name Attorney functions*/
     //@{

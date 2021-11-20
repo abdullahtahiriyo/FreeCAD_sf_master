@@ -91,6 +91,21 @@ inline void ViewProviderSketchDrawSketchHandlerAttorney::setAxisPickStyle(ViewPr
     vp.setAxisPickStyle(on);
 }
 
+inline int ViewProviderSketchDrawSketchHandlerAttorney::getPreselectPoint(const ViewProviderSketch &vp)
+{
+   return vp.getPreselectPoint();
+}
+
+inline int ViewProviderSketchDrawSketchHandlerAttorney::getPreselectCurve(const ViewProviderSketch &vp)
+{
+    return vp.getPreselectCurve();
+}
+
+inline int ViewProviderSketchDrawSketchHandlerAttorney::getPreselectCross(const ViewProviderSketch &vp)
+{
+    return vp.getPreselectCross();
+}
+
 /**************************** DrawSketchHandler *******************************************/
 
 
@@ -349,9 +364,9 @@ int DrawSketchHandler::seekAutoConstraint(std::vector<AutoConstraint> &suggested
     Base::Vector3d hitShapeDir = Base::Vector3d(0,0,0); // direction of hit shape (if it is a line, the direction of the line)
 
     // Get Preselection
-    int preSelPnt = sketchgui->getPreselectPoint();
-    int preSelCrv = sketchgui->getPreselectCurve();
-    int preSelCrs = sketchgui->getPreselectCross();
+    int preSelPnt = getPreselectPoint();
+    int preSelCrv = getPreselectCurve();
+    int preSelCrs = getPreselectCross();
     int GeoId = Constraint::GeoUndef;
     Sketcher::PointPos PosId = Sketcher::none;
     if (preSelPnt != -1)
@@ -751,4 +766,19 @@ void DrawSketchHandler::drawEditMarkers(const std::vector<Base::Vector2d> &EditM
 void DrawSketchHandler::setAxisPickStyle(bool on)
 {
     ViewProviderSketchDrawSketchHandlerAttorney::setAxisPickStyle(*sketchgui, on);
+}
+
+int DrawSketchHandler::getPreselectPoint(void) const
+{
+    return ViewProviderSketchDrawSketchHandlerAttorney::getPreselectPoint(*sketchgui);
+}
+
+int DrawSketchHandler::getPreselectCurve(void) const
+{
+    return ViewProviderSketchDrawSketchHandlerAttorney::getPreselectCurve(*sketchgui);
+}
+
+int DrawSketchHandler::getPreselectCross(void) const
+{
+    return ViewProviderSketchDrawSketchHandlerAttorney::getPreselectCross(*sketchgui);
 }

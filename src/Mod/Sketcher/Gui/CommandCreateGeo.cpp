@@ -1541,14 +1541,14 @@ public:
             }
 
             Mode = STATUS_Do;
-            if (sketchgui->getPreselectPoint() != -1 && firstPosId != Sketcher::none) {
+            if (getPreselectPoint() != -1 && firstPosId != Sketcher::none) {
                 int GeoId;
                 Sketcher::PointPos PosId;
-                sketchgui->getSketchObject()->getGeoVertexIndex(sketchgui->getPreselectPoint(),GeoId,PosId);
+                sketchgui->getSketchObject()->getGeoVertexIndex(getPreselectPoint(),GeoId,PosId);
                 if (sketchgui->getSketchObject()->arePointsCoincident(GeoId,PosId,firstCurve,firstPosId))
                     Mode = STATUS_Close;
             }
-            else if (sketchgui->getPreselectCross() == 0 && firstPosId != Sketcher::none) {
+            else if (getPreselectCross() == 0 && firstPosId != Sketcher::none) {
                 // close line started at root point
                 if (sketchgui->getSketchObject()->arePointsCoincident(-1,Sketcher::start,firstCurve,firstPosId))
                     Mode = STATUS_Close;
@@ -5693,7 +5693,7 @@ public:
     virtual bool releaseButton(Base::Vector2d onSketchPos)
     {
         bool construction=false;
-        int VtId = sketchgui->getPreselectPoint();
+        int VtId = getPreselectPoint();
         if (Mode == STATUS_SEEK_First && VtId != -1) {
             int GeoId;
             Sketcher::PointPos PosId=Sketcher::none;
@@ -5754,7 +5754,7 @@ public:
             return true;
         }
 
-        int GeoId = sketchgui->getPreselectCurve();
+        int GeoId = getPreselectCurve();
         if (GeoId > -1) {
             const Part::Geometry *geom = sketchgui->getSketchObject()->getGeometry(GeoId);
             if (geom->getTypeId().isDerivedFrom(Part::GeomBoundedCurve::getClassTypeId())) {
@@ -6079,7 +6079,7 @@ public:
     {
         Q_UNUSED(onSketchPos);
 
-        int GeoId = sketchgui->getPreselectCurve();
+        int GeoId = getPreselectCurve();
 
         if (GeoId > -1) {
             auto sk = static_cast<Sketcher::SketchObject *>(sketchgui->getObject());
@@ -6122,7 +6122,7 @@ public:
 
     virtual bool releaseButton(Base::Vector2d onSketchPos)
     {
-        int GeoId = sketchgui->getPreselectCurve();
+        int GeoId = getPreselectCurve();
         if (GeoId > -1) {
             const Part::Geometry *geom = sketchgui->getSketchObject()->getGeometry(GeoId);
             if (geom->getTypeId().isDerivedFrom(Part::GeomTrimmedCurve::getClassTypeId())   ||
@@ -6359,7 +6359,7 @@ public:
                 }
                 drawEdit(EditCurve);
             }
-            int curveId = sketchgui->getPreselectCurve();
+            int curveId = getPreselectCurve();
             if (BaseGeoId != curveId && seekAutoConstraint(SugConstr, onSketchPos, Base::Vector2d(0.f,0.f))) {
                 renderSuggestConstraintsCursor(SugConstr);
                 return;
@@ -6377,7 +6377,7 @@ public:
     {
         Q_UNUSED(onSketchPos);
         if (Mode == STATUS_SEEK_First) {
-            BaseGeoId = sketchgui->getPreselectCurve();
+            BaseGeoId = getPreselectCurve();
             if (BaseGeoId > -1) {
                 const Part::Geometry *geom = sketchgui->getSketchObject()->getGeometry(BaseGeoId);
                 if (geom->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
@@ -6559,7 +6559,7 @@ public:
 
     virtual bool releaseButton(Base::Vector2d onSketchPos)
     {
-        int GeoId = sketchgui->getPreselectCurve();
+        int GeoId = getPreselectCurve();
         if (GeoId >= 0) {
             const Part::Geometry *geom = sketchgui->getSketchObject()->getGeometry(GeoId);
             if (geom->getTypeId() == Part::GeomLineSegment::getClassTypeId()

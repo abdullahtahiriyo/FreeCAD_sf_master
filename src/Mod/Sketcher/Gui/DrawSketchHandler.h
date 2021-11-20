@@ -53,6 +53,10 @@ private:
     static inline void drawEditMarkers(ViewProviderSketch &vp, const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
     static inline void setAxisPickStyle(ViewProviderSketch &vp, bool on);
 
+    static inline int getPreselectPoint(const ViewProviderSketch &vp);
+    static inline int getPreselectCurve(const ViewProviderSketch &vp);
+    static inline int getPreselectCross(const ViewProviderSketch &vp);
+
     friend class DrawSketchHandler;
 };
 
@@ -146,6 +150,9 @@ protected:
     void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
     void setAxisPickStyle(bool on);
 
+    int getPreselectPoint(void) const;
+    int getPreselectCurve(void) const;
+    int getPreselectCross(void) const;
 
 
     /**
