@@ -273,7 +273,6 @@ public:
     /** @name preselection functions */
     //@{
     /// helper to detect preselection
-    bool detectAndShowPreselection (SoPickedPoint * Point, const SbVec2s &cursorPos);
     int getPreselectPoint(void) const;
     int getPreselectCurve(void) const;
     int getPreselectCross(void) const;
@@ -415,6 +414,12 @@ private:
     void getProjectingLine(const SbVec2s&,
                            const Gui::View3DInventorViewer *viewer,
                            SbLine&) const;
+    //@}
+
+    /** @name preselection functions */
+    //@{
+    /// helper to detect preselection
+    bool detectAndShowPreselection (SoPickedPoint * Point, const SbVec2s &cursorPos);
     //@}
 
 
