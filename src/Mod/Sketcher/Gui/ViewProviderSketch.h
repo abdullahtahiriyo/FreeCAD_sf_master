@@ -290,12 +290,6 @@ public:
     /*! Look at the center of the bounding of all selected items */
     void centerSelection();
 
-    /// snap points x,y (mouse coordinates) onto grid if enabled
-    void snapToGrid(double &x, double &y);
-
-    /// moves a selected constraint
-    void moveConstraint(int constNum, const Base::Vector2d &toPos);
-
     float getScaleFactor() const;
     //@}
 
@@ -419,6 +413,15 @@ private:
     /// box selection method
     void doBoxSelection(const SbVec2s &startPos, const SbVec2s &endPos,
                         const Gui::View3DInventorViewer *viewer);
+    //@}
+
+    /** @name miscelanea utilities */
+    //@{
+    /// snap points x,y (mouse coordinates) onto grid if enabled
+    void snapToGrid(double &x, double &y);
+
+    /// moves a selected constraint
+    void moveConstraint(int constNum, const Base::Vector2d &toPos);
     //@}
 
     /** @name Attorney functions*/
