@@ -21,8 +21,8 @@
  ***************************************************************************/
 
 
-#ifndef SKETCHERGUI_CoinManagerParameters_H
-#define SKETCHERGUI_CoinManagerParameters_H
+#ifndef SKETCHERGUI_EditModeCoinManagerParameters_H
+#define SKETCHERGUI_EditModeCoinManagerParameters_H
 
 #ifndef _PreComp_
 # include <Inventor/nodes/SoMaterial.h>
@@ -205,10 +205,15 @@ struct EditModeScenegraphNodes {
     SoDrawStyle * InformationDrawStyle;
 };
 
+struct CoinMapping {
+    std::vector<int> CurvIdToGeoId; // conversion of SoLineSet index to GeoId
+    std::vector<int> PointIdToGeoId; // conversion of SoCoordinate3 index to GeoId
+    std::map<std::pair<int, Sketcher::PointPos>, int> GeoIdPointPosToPointId; // conversion of [GeoId,Pos] to PointId
+};
 
 
 } // namespace SketcherGui
 
 
-#endif // SKETCHERGUI_CoinManagerParameters_H
+#endif // SKETCHERGUI_EditModeCoinManagerParameters_H
 
