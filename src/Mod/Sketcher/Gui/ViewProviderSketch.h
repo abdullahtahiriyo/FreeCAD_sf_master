@@ -188,7 +188,7 @@ private:
       * The PreselectPoint indexing matches DragPoint indexing.
       *
       */
-    struct Preselection {
+    class Preselection {
     public:
         Preselection() {
             reset();
@@ -207,6 +207,23 @@ private:
         int PreselectCross;
         std::set<int> PreselectConstraintSet;
         bool blockedPreselection;
+    };
+
+    class Selection {
+    public:
+        Selection() {
+            reset();
+        }
+
+        void reset() {
+            SelPointSet.clear();
+            SelCurvSet.clear();
+            SelConstraintSet.clear();
+        }
+
+        std::set<int> SelPointSet;
+        std::set<int> SelCurvSet; // also holds cross axes at -1 and -2
+        std::set<int> SelConstraintSet;
     };
 
     struct DoubleClick {
@@ -452,6 +469,10 @@ private:
     /// box selection method
     void doBoxSelection(const SbVec2s &startPos, const SbVec2s &endPos,
                         const Gui::View3DInventorViewer *viewer);
+
+    void addSelectPoint(int SelectPoint);
+    void removeSelectPoint(int SelectPoint);
+    void clearSelectPoints(void);
     //@}
 
     /** @name miscelanea utilities */
@@ -507,6 +528,14 @@ private:
 
     bool isConstraintPreselected(int constraintId) const;
 
+    bool isPointSelected(int pointId) const;
+
+    void executeOnSelectionPointSet(std::function<void(const int)> && operation) const;
+
+    bool isCurveSelected(int curveId) const;
+
+    bool isConstraintSelected(int constraintId) const;
+
     //********* ViewProviderSketchShortcutListenerAttorney ***********//
     void deleteSelected();
 
@@ -537,6 +566,7 @@ private:
     Drag drag;
 
     Preselection preselection;
+    Selection selection;
 
     std::unique_ptr<Gui::Rubberband> rubberband;
 

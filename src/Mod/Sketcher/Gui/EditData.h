@@ -54,10 +54,7 @@ struct EditData {
 
 
 
-    // container to track our own selected parts
-    std::set<int> SelPointSet;
-    std::set<int> SelCurvSet; // also holds cross axes at -1 and -2
-    std::set<int> SelConstraintSet;
+
 
     std::vector<int> CurvIdToGeoId; // conversion of SoLineSet index to GeoId
     std::vector<int> PointIdToGeoId; // conversion of SoCoordinate3 index to GeoId

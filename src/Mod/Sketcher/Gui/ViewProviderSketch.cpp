@@ -1514,11 +1514,11 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
         std::string temp;
         if (msg.Type == Gui::SelectionChanges::ClrSelection) {
             // if something selected in this object?
-            if (edit->SelPointSet.size() > 0 || edit->SelCurvSet.size() > 0 || edit->SelConstraintSet.size() > 0) {
+            if (selection.SelPointSet.size() > 0 || selection.SelCurvSet.size() > 0 || selection.SelConstraintSet.size() > 0) {
                 // clear our selection and update the color of the viewed edges and points
-                coinManager->clearSelectPoints();
-                edit->SelCurvSet.clear();
-                edit->SelConstraintSet.clear();
+                clearSelectPoints();
+                selection.SelCurvSet.clear();
+                selection.SelConstraintSet.clear();
                 coinManager->drawConstraintIcons();
                 this->updateColor();
             }
@@ -1531,35 +1531,35 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                     std::string shapetype(msg.pSubName);
                     if (shapetype.size() > 4 && shapetype.substr(0,4) == "Edge") {
                         int GeoId = std::atoi(&shapetype[4]) - 1;
-                        edit->SelCurvSet.insert(GeoId);
+                        selection.SelCurvSet.insert(GeoId);
                         this->updateColor();
                     }
                     else if (shapetype.size() > 12 && shapetype.substr(0,12) == "ExternalEdge") {
                         int GeoId = std::atoi(&shapetype[12]) - 1;
                         GeoId = -GeoId - 3;
-                        edit->SelCurvSet.insert(GeoId);
+                        selection.SelCurvSet.insert(GeoId);
                         this->updateColor();
                     }
                     else if (shapetype.size() > 6 && shapetype.substr(0,6) == "Vertex") {
                         int VtId = std::atoi(&shapetype[6]) - 1;
-                        coinManager->addSelectPoint(VtId);
+                        addSelectPoint(VtId);
                         this->updateColor();
                     }
                     else if (shapetype == "RootPoint") {
-                        coinManager->addSelectPoint(Sketcher::GeoEnum::RtPnt);
+                        addSelectPoint(Sketcher::GeoEnum::RtPnt);
                         this->updateColor();
                     }
                     else if (shapetype == "H_Axis") {
-                        edit->SelCurvSet.insert(Sketcher::GeoEnum::HAxis);
+                        selection.SelCurvSet.insert(Sketcher::GeoEnum::HAxis);
                         this->updateColor();
                     }
                     else if (shapetype == "V_Axis") {
-                        edit->SelCurvSet.insert(Sketcher::GeoEnum::VAxis);
+                        selection.SelCurvSet.insert(Sketcher::GeoEnum::VAxis);
                         this->updateColor();
                     }
                     else if (shapetype.size() > 10 && shapetype.substr(0,10) == "Constraint") {
                         int ConstrId = Sketcher::PropertyConstraintList::getIndexFromConstraintName(shapetype);
-                        edit->SelConstraintSet.insert(ConstrId);
+                        selection.SelConstraintSet.insert(ConstrId);
                         coinManager->drawConstraintIcons();
                         this->updateColor();
                     }
@@ -1568,7 +1568,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
         }
         else if (msg.Type == Gui::SelectionChanges::RmvSelection) {
             // Are there any objects selected
-            if (edit->SelPointSet.size() > 0 || edit->SelCurvSet.size() > 0 || edit->SelConstraintSet.size() > 0) {
+            if (selection.SelPointSet.size() > 0 || selection.SelCurvSet.size() > 0 || selection.SelConstraintSet.size() > 0) {
                 // is it this object??
                 if (strcmp(msg.pDocName,getSketchObject()->getDocument()->getName())==0
                     && strcmp(msg.pObjectName,getSketchObject()->getNameInDocument())== 0) {
@@ -1576,35 +1576,35 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                         std::string shapetype(msg.pSubName);
                         if (shapetype.size() > 4 && shapetype.substr(0,4) == "Edge") {
                             int GeoId = std::atoi(&shapetype[4]) - 1;
-                            edit->SelCurvSet.erase(GeoId);
+                            selection.SelCurvSet.erase(GeoId);
                             this->updateColor();
                         }
                         else if (shapetype.size() > 12 && shapetype.substr(0,12) == "ExternalEdge") {
                             int GeoId = std::atoi(&shapetype[12]) - 1;
                             GeoId = -GeoId - 3;
-                            edit->SelCurvSet.erase(GeoId);
+                            selection.SelCurvSet.erase(GeoId);
                             this->updateColor();
                         }
                         else if (shapetype.size() > 6 && shapetype.substr(0,6) == "Vertex") {
                             int VtId = std::atoi(&shapetype[6]) - 1;
-                            coinManager->removeSelectPoint(VtId);
+                            removeSelectPoint(VtId);
                             this->updateColor();
                         }
                         else if (shapetype == "RootPoint") {
-                            coinManager->removeSelectPoint(Sketcher::GeoEnum::RtPnt);
+                            removeSelectPoint(Sketcher::GeoEnum::RtPnt);
                             this->updateColor();
                         }
                         else if (shapetype == "H_Axis") {
-                            edit->SelCurvSet.erase(Sketcher::GeoEnum::HAxis);
+                            selection.SelCurvSet.erase(Sketcher::GeoEnum::HAxis);
                             this->updateColor();
                         }
                         else if (shapetype == "V_Axis") {
-                            edit->SelCurvSet.erase(Sketcher::GeoEnum::VAxis);
+                            selection.SelCurvSet.erase(Sketcher::GeoEnum::VAxis);
                             this->updateColor();
                         }
                         else if (shapetype.size() > 10 && shapetype.substr(0,10) == "Constraint") {
                             int ConstrId = Sketcher::PropertyConstraintList::getIndexFromConstraintName(shapetype);
-                            edit->SelConstraintSet.erase(ConstrId);
+                            selection.SelConstraintSet.erase(ConstrId);
                             coinManager->drawConstraintIcons();
                             this->updateColor();
                         }
@@ -2718,6 +2718,7 @@ bool ViewProviderSketch::setEdit(int ModNum)
     assert(!edit);
     edit = new EditData();
     preselection.reset();
+    selection.reset();
     coinManager = std::make_unique<CoinManager>(*this, edit);
 
     auto editDoc = Gui::Application::Instance->editDocument();
@@ -2953,6 +2954,7 @@ void ViewProviderSketch::unsetEdit(int ModNum)
 
         coinManager = nullptr;
         preselection.reset();
+        selection.reset();
         delete edit;
         edit = nullptr;
         this->detachSelection();
@@ -3369,6 +3371,24 @@ void ViewProviderSketch::resetPreselectPoint(void)
     preselection.PreselectConstraintSet.clear();
 }
 
+void ViewProviderSketch::addSelectPoint(int SelectPoint)
+{
+    coinManager->addSelectPoint(SelectPoint);
+    selection.SelPointSet.insert(SelectPoint);
+}
+
+void ViewProviderSketch::removeSelectPoint(int SelectPoint)
+{
+    coinManager->removeSelectPoint(SelectPoint);
+    selection.SelPointSet.erase(SelectPoint);
+}
+
+void ViewProviderSketch::clearSelectPoints(void)
+{
+    coinManager->clearSelectPoints();
+    selection.SelPointSet.clear();
+}
+
 /*************************** private functions to decouple Attorneys and Clients  ********************************************/
 
 // Establishes a private collaboration interface with CoinManager to perform CoinManager tasks, while abstracting CoinManager
@@ -3540,4 +3560,25 @@ void ViewProviderSketch::removeNodeFromRoot(SoSeparator * node)
 bool ViewProviderSketch::isConstraintPreselected(int constraintId) const
 {
     return preselection.PreselectConstraintSet.count(constraintId);
+}
+
+bool ViewProviderSketch::isPointSelected(int pointId) const
+{
+    return selection.SelPointSet.find(pointId) != selection.SelPointSet.end();
+}
+
+bool ViewProviderSketch::isCurveSelected(int curveId) const
+{
+    return selection.SelCurvSet.find(curveId) != selection.SelCurvSet.end();
+}
+
+bool ViewProviderSketch::isConstraintSelected(int constraintId) const
+{
+    return selection.SelConstraintSet.find(constraintId) != selection.SelConstraintSet.end();
+}
+
+void ViewProviderSketch::executeOnSelectionPointSet(std::function<void(const int)> && operation) const
+{
+    for(const auto v : selection.SelPointSet)
+        operation(v);
 }

@@ -111,6 +111,11 @@ private:
     static inline int getPreselectCross(const ViewProviderSketch &vp);
 
     static inline bool isConstraintPreselected(const ViewProviderSketch &vp, int constraintId);
+    static inline bool isPointSelected(const ViewProviderSketch &vp, int pointId);
+    static inline bool isCurveSelected(const ViewProviderSketch &vp, int curveId);
+    static inline bool isConstraintSelected(const ViewProviderSketch &vp, int constraintId);
+
+    static inline void executeOnSelectionPointSet(const ViewProviderSketch &vp, std::function<void(const int)> && operation);
 
     friend class CoinManager;
 };

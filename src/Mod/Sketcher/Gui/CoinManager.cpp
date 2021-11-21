@@ -215,6 +215,26 @@ inline bool ViewProviderSketchCoinAttorney::isConstraintPreselected(const ViewPr
     return vp.isConstraintPreselected(constraintId);
 }
 
+inline bool ViewProviderSketchCoinAttorney::isPointSelected(const ViewProviderSketch &vp, int pointId)
+{
+    return vp.isPointSelected(pointId);
+}
+
+inline bool ViewProviderSketchCoinAttorney::isCurveSelected(const ViewProviderSketch &vp, int curveId)
+{
+    return vp.isCurveSelected(curveId);
+}
+
+inline bool ViewProviderSketchCoinAttorney::isConstraintSelected(const ViewProviderSketch &vp, int constraintId)
+{
+    return vp.isConstraintSelected(constraintId);
+}
+
+inline void ViewProviderSketchCoinAttorney::executeOnSelectionPointSet(const ViewProviderSketch &vp, std::function<void(const int)> && operation)
+{
+    vp.executeOnSelectionPointSet(std::move(operation));
+}
+
 //**************************** ParameterObserver nested class ******************************
 CoinManager::ParameterObserver::ParameterObserver(CoinManager &client): Client(client)
 {
@@ -1715,8 +1735,7 @@ void CoinManager::drawPreselectPoint(int PreselectPoint)
     int newPtId = PreselectPoint + 1;
     SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
     float x,y,z;
-    if (oldPtId != -1 &&
-        edit->SelPointSet.find(oldPtId) == edit->SelPointSet.end()) {
+    if (oldPtId != -1 && !ViewProviderSketchCoinAttorney::isPointSelected(viewProvider, oldPtId)) {
         // send to background
         pverts[oldPtId].getValue(x,y,z);
         pverts[oldPtId].setValue(x,y,drawingParameters.zLowPoints);
@@ -1736,8 +1755,7 @@ void CoinManager::cleanPointPreselection(void)
         oldPtId = preselectpoint + 1;
     else if (ViewProviderSketchCoinAttorney::getPreselectCross(viewProvider) == 0)
         oldPtId = 0;
-    if (oldPtId != -1 &&
-        edit->SelPointSet.find(oldPtId) == edit->SelPointSet.end()) {
+    if (oldPtId != -1 && !ViewProviderSketchCoinAttorney::isPointSelected(viewProvider, oldPtId)) {
         // send to background
         SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
         float x,y,z;
@@ -1763,7 +1781,6 @@ void CoinManager::addSelectPoint(int SelectPoint)
         float x,y,z;
         pverts[PtId].getValue(x,y,z);
         pverts[PtId].setValue(x,y,drawingParameters.zHighlight);
-        edit->SelPointSet.insert(PtId);
         editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
     }
 }
@@ -1777,7 +1794,6 @@ void CoinManager::removeSelectPoint(int SelectPoint)
         float x,y,z;
         pverts[PtId].getValue(x,y,z);
         pverts[PtId].setValue(x,y,drawingParameters.zLowPoints);
-        edit->SelPointSet.erase(PtId);
         editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
     }
 }
@@ -1787,14 +1803,13 @@ void CoinManager::clearSelectPoints(void)
     if (edit) {
         SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
         // send to background
-        float x,y,z;
-        for (std::set<int>::const_iterator it=edit->SelPointSet.begin();
-             it != edit->SelPointSet.end(); ++it) {
-            pverts[*it].getValue(x,y,z);
-            pverts[*it].setValue(x,y,drawingParameters.zLowPoints);
-        }
+        ViewProviderSketchCoinAttorney::executeOnSelectionPointSet(viewProvider,
+            [pverts, drawingParameters = this->drawingParameters](const int i) {
+                float x,y,z;
+                pverts[i].getValue(x,y,z);
+                pverts[i].setValue(x,y,drawingParameters.zLowPoints);
+            });
         editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
-        edit->SelPointSet.clear();
     }
 }
 
@@ -2007,12 +2022,13 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
             pcolor[preselectpoint + 1] = drawingParameters.PreselectColor;
     }
 
-    for (std::set<int>::iterator it = edit->SelPointSet.begin(); it != edit->SelPointSet.end(); ++it) {
-        if (*it < PtNum) {
-            pcolor[*it] = (*it==(preselectpoint + 1) && (preselectpoint != -1))
-                ? drawingParameters.PreselectSelectedColor : drawingParameters.SelectColor;
-        }
-    }
+    ViewProviderSketchCoinAttorney::executeOnSelectionPointSet(viewProvider,
+        [pcolor, PtNum, preselectpoint, drawingParameters = this->drawingParameters](const int i) {
+            if (i < PtNum) {
+                pcolor[i] = (i==(preselectpoint + 1) && (preselectpoint != -1))
+                    ? drawingParameters.PreselectSelectedColor : drawingParameters.SelectColor;
+            }
+        });
 
     // update colors and rendering height of the curves
 
@@ -2039,7 +2055,7 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
         //edit->CurveSet->numVertices => [i] indicates number of vertex for line i.
         int indexes = (editModeScenegraphNodes.CurveSet->numVertices[i]);
 
-        bool selected = (edit->SelCurvSet.find(GeoId) != edit->SelCurvSet.end());
+        bool selected = ViewProviderSketchCoinAttorney::isCurveSelected(viewProvider, GeoId);
         bool preselected = (preselectcurve == GeoId);
 
         bool constrainedElement = isFullyConstraintElement(GeoId);
@@ -2122,14 +2138,14 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
     }
 
     // colors of the cross
-    if (edit->SelCurvSet.find(-1) != edit->SelCurvSet.end())
+    if (ViewProviderSketchCoinAttorney::isCurveSelected(viewProvider, Sketcher::GeoEnum::HAxis))
         crosscolor[0] = drawingParameters.SelectColor;
     else if (preselectcross == 1)
         crosscolor[0] = drawingParameters.PreselectColor;
     else
         crosscolor[0] = drawingParameters.CrossColorH;
 
-    if (edit->SelCurvSet.find(Sketcher::GeoEnum::VAxis) != edit->SelCurvSet.end())
+    if (ViewProviderSketchCoinAttorney::isCurveSelected(viewProvider, Sketcher::GeoEnum::VAxis))
         crosscolor[1] = drawingParameters.SelectColor;
     else if (preselectcross == 2)
         crosscolor[1] = drawingParameters.PreselectColor;
@@ -2191,7 +2207,7 @@ void CoinManager::updateConstraintColor(const std::vector<Sketcher::Constraint *
             }
         };
 
-        if (edit->SelConstraintSet.find(i) != edit->SelConstraintSet.end()) {
+        if (ViewProviderSketchCoinAttorney::isConstraintSelected(viewProvider, i)) {
             if (hasDatumLabel) {
                 SoDatumLabel *l = static_cast<SoDatumLabel *>(s->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex)));
                 l->textColor = drawingParameters.SelectColor;
@@ -3515,7 +3531,7 @@ QColor CoinManager::constrColor(int constraintId)
 
     if (ViewProviderSketchCoinAttorney::isConstraintPreselected(viewProvider,constraintId))
         return drawingParameters.constrIconPreselColor;
-    else if (edit->SelConstraintSet.find(constraintId) != edit->SelConstraintSet.end())
+    else if (ViewProviderSketchCoinAttorney::isConstraintSelected(viewProvider, constraintId))
         return drawingParameters.constrIconSelColor;
     else if(!constraints[constraintId]->isActive)
         return drawingParameters.constrIconDisabledColor;
@@ -3530,7 +3546,7 @@ int CoinManager::constrColorPriority(int constraintId)
 {
     if (ViewProviderSketchCoinAttorney::isConstraintPreselected(viewProvider,constraintId))
         return 3;
-    else if (edit->SelConstraintSet.find(constraintId) != edit->SelConstraintSet.end())
+    else if (ViewProviderSketchCoinAttorney::isConstraintSelected(viewProvider, constraintId))
         return 2;
     else
         return 1;
@@ -3588,7 +3604,7 @@ SoGroup* CoinManager::getSelectedConstraints()
     group->ref();
 
     for (int i=0; i < editModeScenegraphNodes.constrGroup->getNumChildren(); i++) {
-        if (edit->SelConstraintSet.find(i) != edit->SelConstraintSet.end()) {
+        if (ViewProviderSketchCoinAttorney::isConstraintSelected(viewProvider, i)) {
             SoSeparator *sep = getConstraintIdSeparator(i);
             if (sep)
                 group->addChild(sep);
