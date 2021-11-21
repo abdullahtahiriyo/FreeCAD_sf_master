@@ -52,11 +52,7 @@ struct EditData {
 
 
 
-    int PreselectPoint;
-    int PreselectCurve;
-    int PreselectCross;
-    std::set<int> PreselectConstraintSet;
-    bool blockedPreselection;
+
 
     // container to track our own selected parts
     std::set<int> SelPointSet;

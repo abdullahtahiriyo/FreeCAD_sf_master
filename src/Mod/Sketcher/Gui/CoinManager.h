@@ -106,6 +106,12 @@ private:
 
     static inline void removeNodeFromRoot(ViewProviderSketch & vp, SoSeparator * node);
 
+    static inline int getPreselectPoint(const ViewProviderSketch &vp);
+    static inline int getPreselectCurve(const ViewProviderSketch &vp);
+    static inline int getPreselectCross(const ViewProviderSketch &vp);
+
+    static inline bool isConstraintPreselected(const ViewProviderSketch &vp, int constraintId);
+
     friend class CoinManager;
 };
 
@@ -212,8 +218,9 @@ public:
 
     /** @name handle preselection and selection of points */
     //@{
-    void setPreselectPoint(int PreselectPoint);
-    void resetPreselectPoint(void);
+    void drawPreselectPoint(int PreselectPoint);
+    void drawPreselectRootPoint();
+    void cleanPointPreselection(void);
     void addSelectPoint(int SelectPoint);
     void removeSelectPoint(int SelectPoint);
     void clearSelectPoints(void);

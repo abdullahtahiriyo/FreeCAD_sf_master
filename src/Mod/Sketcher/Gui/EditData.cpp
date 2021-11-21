@@ -54,9 +54,5 @@ using namespace SketcherGui;
 //**************************************************************************
 // Construction/Destruction
 
-EditData::EditData():
-    PreselectPoint(-1),
-    PreselectCurve(-1),
-    PreselectCross(-1),
-    blockedPreselection(false)
+EditData::EditData()
     {}

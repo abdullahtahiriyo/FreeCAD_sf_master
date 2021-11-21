@@ -146,10 +146,18 @@ private:
         std::map<std::string, std::tuple<std::function<void(const std::string & string, App::Property *)>, App::Property * >> parameterMap;
     };
 
+    /** Class to store vector and item Id for dragging.
+      *
+      * Ids are zero-indexed points and curves.
+      *
+      * The DragPoint indexing matches PreselectPoint indexing.
+      *
+      */
     class Drag {
     public:
         Drag() {
             resetVector();
+            resetIds();
         }
 
         void resetVector() {
@@ -168,9 +176,37 @@ private:
         bool relative;                      // whether the dragging move vector is relative or absolute
 
 
-        int DragPoint = -1;                 // dragged point id
-        int DragCurve = -1;                 // dragged curve id
+        int DragPoint;                      // dragged point id
+        int DragCurve;                      // dragged curve id
         std::set<int> DragConstraintSet;    // dragged constraints ids
+    };
+
+    /** Class to store preselected element ids.
+      *
+      * Ids are zero-indexed points and curves.
+      *
+      * The PreselectPoint indexing matches DragPoint indexing.
+      *
+      */
+    struct Preselection {
+    public:
+        Preselection() {
+            reset();
+        }
+
+        void reset(){
+            PreselectPoint = -1;
+            PreselectCurve = -1;
+            PreselectCross = -1;
+            PreselectConstraintSet.clear();
+            blockedPreselection = false;
+        }
+
+        int PreselectPoint;                     // VertexN, with N = PreselectPoint + 1,
+        int PreselectCurve;
+        int PreselectCross;
+        std::set<int> PreselectConstraintSet;
+        bool blockedPreselection;
     };
 
     struct DoubleClick {
@@ -406,6 +442,9 @@ private:
     int getPreselectPoint(void) const;
     int getPreselectCurve(void) const;
     int getPreselectCross(void) const;
+    void setPreselectPoint(int PreselectPoint);
+    void setPreselectRootPoint();
+    void resetPreselectPoint(void);
     //@}
 
     /** @name Selection functions */
@@ -466,6 +505,8 @@ private:
 
     void removeNodeFromRoot(SoSeparator * node);
 
+    bool isConstraintPreselected(int constraintId) const;
+
     //********* ViewProviderSketchShortcutListenerAttorney ***********//
     void deleteSelected();
 
@@ -494,6 +535,8 @@ private:
 
     // reference coordinates for relative operations
     Drag drag;
+
+    Preselection preselection;
 
     std::unique_ptr<Gui::Rubberband> rubberband;
 

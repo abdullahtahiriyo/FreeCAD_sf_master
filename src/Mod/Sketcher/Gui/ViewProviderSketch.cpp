@@ -610,19 +610,19 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
             switch (Mode) {
                 case STATUS_NONE:{
                     bool done=false;
-                    if (edit->PreselectPoint != -1) {
+                    if (preselection.PreselectPoint != -1) {
                         //Base::Console().Log("start dragging, point:%d\n",this->DragPoint);
                         Mode = STATUS_SELECT_Point;
                         done = true;
-                    } else if (edit->PreselectCurve != -1) {
+                    } else if (preselection.PreselectCurve != -1) {
                         //Base::Console().Log("start dragging, point:%d\n",this->DragPoint);
                         Mode = STATUS_SELECT_Edge;
                         done = true;
-                    } else if (edit->PreselectCross != -1) {
+                    } else if (preselection.PreselectCross != -1) {
                         //Base::Console().Log("start dragging, point:%d\n",this->DragPoint);
                         Mode = STATUS_SELECT_Cross;
                         done = true;
-                    } else if (edit->PreselectConstraintSet.empty() != true) {
+                    } else if (preselection.PreselectConstraintSet.empty() != true) {
                         //Base::Console().Log("start dragging, point:%d\n",this->DragPoint);
                         Mode = STATUS_SELECT_Constraint;
                         done = true;
@@ -666,7 +666,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                         //Base::Console().Log("Select Point:%d\n",this->DragPoint);
                         // Do selection
                         std::stringstream ss;
-                        ss << "Vertex" << edit->PreselectPoint + 1;
+                        ss << "Vertex" << preselection.PreselectPoint + 1;
 
 #define SEL_PARAMS editDocName.c_str(),editObjName.c_str(),\
                    (editSubName+ss.str()).c_str()
@@ -686,10 +686,10 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     if (pp) {
                         //Base::Console().Log("Select Point:%d\n",this->DragPoint);
                         std::stringstream ss;
-                        if (edit->PreselectCurve >= 0)
-                            ss << "Edge" << edit->PreselectCurve + 1;
+                        if (preselection.PreselectCurve >= 0)
+                            ss << "Edge" << preselection.PreselectCurve + 1;
                         else // external geometry
-                            ss << "ExternalEdge" << -edit->PreselectCurve - 2;
+                            ss << "ExternalEdge" << -preselection.PreselectCurve - 2;
 
                         // If edge already selected move from selection
                         if (Gui::Selection().isSelected(SEL_PARAMS) ) {
@@ -709,7 +709,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     if (pp) {
                         //Base::Console().Log("Select Point:%d\n",this->DragPoint);
                         std::stringstream ss;
-                        switch(edit->PreselectCross){
+                        switch(preselection.PreselectCross){
                             case 0: ss << "RootPoint" ; break;
                             case 1: ss << "H_Axis"    ; break;
                             case 2: ss << "V_Axis"    ; break;
@@ -731,7 +731,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     return true;
                 case STATUS_SELECT_Constraint:
                     if (pp) {
-                        auto sels = edit->PreselectConstraintSet;
+                        auto sels = preselection.PreselectConstraintSet;
                         for(int id : sels) {
                             std::stringstream ss;
                             ss << Sketcher::PropertyConstraintList::getConstraintName(id);
@@ -770,7 +770,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                                 Base::Console().Error("Drag point: %s\n", e.what());
                             }
                         }
-                        coinManager->setPreselectPoint(drag.DragPoint);
+                        setPreselectPoint(drag.DragPoint);
                         drag.DragPoint = -1;
                         //updateColor();
                     }
@@ -830,7 +830,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                                 Base::Console().Error("Drag curve: %s\n", e.what());
                             }
                         }
-                        edit->PreselectCurve = drag.DragCurve;
+                        preselection.PreselectCurve = drag.DragCurve;
                         drag.DragCurve = -1;
                         //updateColor();
                     }
@@ -845,7 +845,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                             moveConstraint(id, Base::Vector2d(x, y));
                             //updateColor();
                         }
-                        edit->PreselectConstraintSet = drag.DragConstraintSet;
+                        preselection.PreselectConstraintSet = drag.DragConstraintSet;
                         drag.DragConstraintSet.clear();
                         getDocument()->commitCommand();
                     }
@@ -884,11 +884,11 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                 case STATUS_NONE:
                     {
                         // A right click shouldn't change the Edit Mode
-                        if (edit->PreselectPoint != -1) {
+                        if (preselection.PreselectPoint != -1) {
                             return true;
-                        } else if (edit->PreselectCurve != -1) {
+                        } else if (preselection.PreselectCurve != -1) {
                             return true;
-                        } else if (edit->PreselectConstraintSet.empty() != true) {
+                        } else if (preselection.PreselectConstraintSet.empty() != true) {
                             return true;
                         } else {
                             Gui::MenuItem geom;
@@ -953,7 +953,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                                     if (it->size() > 4 && it->substr(0,4) == "Edge") {
                                         // Get the index of the object selected
                                         int GeoId = std::atoi(it->substr(4,4000).c_str()) - 1;
-                                        if (edit->PreselectCurve == GeoId)
+                                        if (preselection.PreselectCurve == GeoId)
                                             rightClickOnSelectedLine = true;
                                     } else {
                                         // The selection is not exclusively edges
@@ -993,20 +993,20 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
 
 void ViewProviderSketch::editDoubleClicked(void)
 {
-    if (edit->PreselectPoint != -1) {
-        Base::Console().Log("double click point:%d\n",edit->PreselectPoint);
+    if (preselection.PreselectPoint != -1) {
+        Base::Console().Log("double click point:%d\n",preselection.PreselectPoint);
     }
-    else if (edit->PreselectCurve != -1) {
-        Base::Console().Log("double click edge:%d\n",edit->PreselectCurve);
+    else if (preselection.PreselectCurve != -1) {
+        Base::Console().Log("double click edge:%d\n",preselection.PreselectCurve);
     }
-    else if (edit->PreselectCross != -1) {
-        Base::Console().Log("double click cross:%d\n",edit->PreselectCross);
+    else if (preselection.PreselectCross != -1) {
+        Base::Console().Log("double click cross:%d\n",preselection.PreselectCross);
     }
-    else if (edit->PreselectConstraintSet.empty() != true) {
+    else if (preselection.PreselectConstraintSet.empty() != true) {
         // Find the constraint
         const std::vector<Sketcher::Constraint *> &constrlist = getSketchObject()->Constraints.getValues();
 
-        auto sels = edit->PreselectConstraintSet;
+        auto sels = preselection.PreselectConstraintSet;
         for(int id : sels) {
 
             Constraint *Constr = constrlist[id];
@@ -1080,9 +1080,9 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
             return false;
         case STATUS_SELECT_Point:
             if (!getSolvedSketch().hasConflicts() &&
-                edit->PreselectPoint != -1 && drag.DragPoint != edit->PreselectPoint) {
+                preselection.PreselectPoint != -1 && drag.DragPoint != preselection.PreselectPoint) {
                 Mode = STATUS_SKETCH_DragPoint;
-                drag.DragPoint = edit->PreselectPoint;
+                drag.DragPoint = preselection.PreselectPoint;
                 int GeoId;
                 Sketcher::PointPos PosId;
                 getSketchObject()->getGeoVertexIndex(drag.DragPoint, GeoId, PosId);
@@ -1093,16 +1093,13 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
             } else {
                 Mode = STATUS_NONE;
             }
-            coinManager->resetPreselectPoint();
-            edit->PreselectCurve = -1;
-            edit->PreselectCross = -1;
-            edit->PreselectConstraintSet.clear();
+            resetPreselectPoint();
             return true;
         case STATUS_SELECT_Edge:
             if (!getSolvedSketch().hasConflicts() &&
-                edit->PreselectCurve != -1 && drag.DragCurve != edit->PreselectCurve) {
+                preselection.PreselectCurve != -1 && drag.DragCurve != preselection.PreselectCurve) {
                 Mode = STATUS_SKETCH_DragCurve;
-                drag.DragCurve = edit->PreselectCurve;
+                drag.DragCurve = preselection.PreselectCurve;
                 const Part::Geometry *geo = getSketchObject()->getGeometry(drag.DragCurve);
 
                 // BSpline Control points are edge draggable only if their radius is movable
@@ -1188,18 +1185,12 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
             } else {
                 Mode = STATUS_NONE;
             }
-            coinManager->resetPreselectPoint();
-            edit->PreselectCurve = -1;
-            edit->PreselectCross = -1;
-            edit->PreselectConstraintSet.clear();
+            resetPreselectPoint();
             return true;
         case STATUS_SELECT_Constraint:
             Mode = STATUS_SKETCH_DragConstraint;
-            drag.DragConstraintSet = edit->PreselectConstraintSet;
-            coinManager->resetPreselectPoint();
-            edit->PreselectCurve = -1;
-            edit->PreselectCross = -1;
-            edit->PreselectConstraintSet.clear();
+            drag.DragConstraintSet = preselection.PreselectConstraintSet;
+            resetPreselectPoint();
             return true;
         case STATUS_SKETCH_DragPoint:
             if (drag.DragPoint != -1) {
@@ -1644,10 +1635,8 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                     std::string shapetype(msg.pSubName);
                     if (shapetype.size() > 4 && shapetype.substr(0,4) == "Edge") {
                         int GeoId = std::atoi(&shapetype[4]) - 1;
-                        coinManager->resetPreselectPoint();
-                        edit->PreselectCurve = GeoId;
-                        edit->PreselectCross = -1;
-                        edit->PreselectConstraintSet.clear();
+                        resetPreselectPoint();
+                        preselection.PreselectCurve = GeoId;
 
                         if (sketchHandler)
                             sketchHandler->applyCursor();
@@ -1655,10 +1644,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                     }
                     else if (shapetype.size() > 6 && shapetype.substr(0,6) == "Vertex") {
                         int PtIndex = std::atoi(&shapetype[6]) - 1;
-                        coinManager->setPreselectPoint(PtIndex);
-                        edit->PreselectCurve = -1;
-                        edit->PreselectCross = -1;
-                        edit->PreselectConstraintSet.clear();
+                        setPreselectPoint(PtIndex);
 
                         if (sketchHandler)
                             sketchHandler->applyCursor();
@@ -1668,10 +1654,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
             }
         }
         else if (msg.Type == Gui::SelectionChanges::RmvPreselect) {
-            coinManager->resetPreselectPoint();
-            edit->PreselectCurve = -1;
-            edit->PreselectCross = -1;
-            edit->PreselectConstraintSet.clear();
+            resetPreselectPoint();
             if (sketchHandler)
                 sketchHandler->applyCursor();
             this->updateColor();
@@ -1687,7 +1670,7 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
 
         CoinManager::PreselectionResult result = coinManager->detectPreselection(Point, cursorPos);
 
-        if (result.ptIndex != -1 && result.ptIndex != edit->PreselectPoint) { // if a new point is hit
+        if (result.ptIndex != -1 && result.ptIndex != preselection.PreselectPoint) { // if a new point is hit
             std::stringstream ss;
             ss << "Vertex" << result.ptIndex + 1;
             bool accepted =
@@ -1695,17 +1678,15 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
                                          ,Point->getPoint()[0]
                                          ,Point->getPoint()[1]
                                          ,Point->getPoint()[2]) != 0;
-            edit->blockedPreselection = !accepted;
+            preselection.blockedPreselection = !accepted;
             if (accepted) {
-                coinManager->setPreselectPoint(result.ptIndex);
-                edit->PreselectCurve = -1;
-                edit->PreselectCross = -1;
-                edit->PreselectConstraintSet.clear();
+                setPreselectPoint(result.ptIndex);
+
                 if (sketchHandler)
                     sketchHandler->applyCursor();
                 return true;
             }
-        } else if (result.geoIndex != -1 && result.geoIndex != edit->PreselectCurve) {  // if a new curve is hit
+        } else if (result.geoIndex != -1 && result.geoIndex != preselection.PreselectCurve) {  // if a new curve is hit
             std::stringstream ss;
             if (result.geoIndex >= 0)
                 ss << "Edge" << result.geoIndex + 1;
@@ -1716,17 +1697,16 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
                                          ,Point->getPoint()[0]
                                          ,Point->getPoint()[1]
                                          ,Point->getPoint()[2]) != 0;
-            edit->blockedPreselection = !accepted;
+            preselection.blockedPreselection = !accepted;
             if (accepted) {
-                coinManager->resetPreselectPoint();
-                edit->PreselectCurve = result.geoIndex;
-                edit->PreselectCross = -1;
-                edit->PreselectConstraintSet.clear();
+                resetPreselectPoint();
+                preselection.PreselectCurve = result.geoIndex;
+
                 if (sketchHandler)
                     sketchHandler->applyCursor();
                 return true;
             }
-        } else if (result.axes != CoinManager::PreselectionResult::Axes::None  && static_cast<int>(result.axes) != edit->PreselectCross) {  // if a cross line is hit
+        } else if (result.axes != CoinManager::PreselectionResult::Axes::None  && static_cast<int>(result.axes) != preselection.PreselectCross) {  // if a cross line is hit
             std::stringstream ss;
             switch(result.axes){
                 case CoinManager::PreselectionResult::Axes::RootPoint:      ss << "RootPoint" ; break;
@@ -1734,25 +1714,23 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
                 case CoinManager::PreselectionResult::Axes::VerticalAxis:   ss << "V_Axis"    ; break;
                 case CoinManager::PreselectionResult::Axes::None:           break; // silent warning - be explicit
             }
-            bool accepted =
-            Gui::Selection().setPreselect(SEL_PARAMS
-                                         ,Point->getPoint()[0]
-                                         ,Point->getPoint()[1]
-                                         ,Point->getPoint()[2]) != 0;
-            edit->blockedPreselection = !accepted;
+            bool accepted = Gui::Selection().setPreselect(  SEL_PARAMS
+                                                            ,Point->getPoint()[0]
+                                                            ,Point->getPoint()[1]
+                                                            ,Point->getPoint()[2]) != 0;
+            preselection.blockedPreselection = !accepted;
             if (accepted) {
                 if (result.axes == CoinManager::PreselectionResult::Axes::RootPoint)
-                    coinManager->setPreselectPoint(-1);
+                    setPreselectRootPoint();
                 else
-                    coinManager->resetPreselectPoint();
-                edit->PreselectCurve = -1;
-                edit->PreselectCross = static_cast<int>(result.axes);
-                edit->PreselectConstraintSet.clear();
+                    resetPreselectPoint();
+                preselection.PreselectCross = static_cast<int>(result.axes);
+
                 if (sketchHandler)
                     sketchHandler->applyCursor();
                 return true;
             }
-        } else if (result.constrIndices.empty() == false && result.constrIndices != edit->PreselectConstraintSet) { // if a constraint is hit
+        } else if (result.constrIndices.empty() == false && result.constrIndices != preselection.PreselectConstraintSet) { // if a constraint is hit
             bool accepted = true;
             for(std::set<int>::iterator it = result.constrIndices.begin(); it != result.constrIndices.end(); ++it) {
                 std::stringstream ss;
@@ -1764,28 +1742,24 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
                                              ,Point->getPoint()[1]
                                              ,Point->getPoint()[2]) != 0;
 
-                edit->blockedPreselection = !accepted;
+                preselection.blockedPreselection = !accepted;
                 //TODO: Should we clear preselections that went through, if one fails?
             }
             if (accepted) {
-                coinManager->resetPreselectPoint();
-                edit->PreselectCurve = -1;
-                edit->PreselectCross = -1;
-                edit->PreselectConstraintSet = result.constrIndices;
+                resetPreselectPoint();
+                preselection.PreselectConstraintSet = result.constrIndices;
+
                 if (sketchHandler)
                     sketchHandler->applyCursor();
                 return true;//Preselection changed
             }
         } else if ((result.ptIndex == -1 && result.geoIndex == -1 &&
                     result.axes == CoinManager::PreselectionResult::Axes::None && result.constrIndices.empty()) &&
-                   (edit->PreselectPoint != -1 || edit->PreselectCurve != -1 || edit->PreselectCross != -1
-                    || edit->PreselectConstraintSet.empty() != true || edit->blockedPreselection)) {
+                   (preselection.PreselectPoint != -1 || preselection.PreselectCurve != -1 || preselection.PreselectCross != -1
+                    || preselection.PreselectConstraintSet.empty() != true || preselection.blockedPreselection)) {
             // we have just left a preselection
-            coinManager->resetPreselectPoint();
-            edit->PreselectCurve = -1;
-            edit->PreselectCross = -1;
-            edit->PreselectConstraintSet.clear();
-            edit->blockedPreselection = false;
+            resetPreselectPoint();
+            preselection.blockedPreselection = false;
             if (sketchHandler)
                 sketchHandler->applyCursor();
             return true;
@@ -1794,13 +1768,10 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
                                           ,Point->getPoint()[1]
                                           ,Point->getPoint()[2]);
 // if(Point)
-    } else if (edit->PreselectCurve != -1 || edit->PreselectPoint != -1 ||
-               edit->PreselectConstraintSet.empty() != true || edit->PreselectCross != -1 || edit->blockedPreselection) {
-        coinManager->resetPreselectPoint();
-        edit->PreselectCurve = -1;
-        edit->PreselectCross = -1;
-        edit->PreselectConstraintSet.clear();
-        edit->blockedPreselection = false;
+    } else if (preselection.PreselectCurve != -1 || preselection.PreselectPoint != -1 ||
+               preselection.PreselectConstraintSet.empty() != true || preselection.PreselectCross != -1 || preselection.blockedPreselection) {
+        resetPreselectPoint();
+        preselection.blockedPreselection = false;
         if (sketchHandler)
             sketchHandler->applyCursor();
         return true;
@@ -2746,6 +2717,7 @@ bool ViewProviderSketch::setEdit(int ModNum)
     // create the container for the additional edit data
     assert(!edit);
     edit = new EditData();
+    preselection.reset();
     coinManager = std::make_unique<CoinManager>(*this, edit);
 
     auto editDoc = Gui::Application::Instance->editDocument();
@@ -2980,6 +2952,7 @@ void ViewProviderSketch::unsetEdit(int ModNum)
             deactivateHandler();
 
         coinManager = nullptr;
+        preselection.reset();
         delete edit;
         edit = nullptr;
         this->detachSelection();
@@ -3116,21 +3089,21 @@ void ViewProviderSketch::unsetEditViewer(Gui::View3DInventorViewer* viewer)
 int ViewProviderSketch::getPreselectPoint(void) const
 {
     if (edit)
-        return edit->PreselectPoint;
+        return preselection.PreselectPoint;
     return -1;
 }
 
 int ViewProviderSketch::getPreselectCurve(void) const
 {
     if (edit)
-        return edit->PreselectCurve;
+        return preselection.PreselectCurve;
     return -1;
 }
 
 int ViewProviderSketch::getPreselectCross(void) const
 {
     if (edit)
-        return edit->PreselectCross;
+        return preselection.PreselectCross;
     return -1;
 }
 
@@ -3175,10 +3148,7 @@ bool ViewProviderSketch::onDelete(const std::vector<std::string> &subList)
         std::vector<std::string> SubNames = subList;
 
         Gui::Selection().clearSelection();
-        coinManager->resetPreselectPoint();
-        edit->PreselectCurve = -1;
-        edit->PreselectCross = -1;
-        edit->PreselectConstraintSet.clear();
+        resetPreselectPoint();
 
         std::set<int> delInternalGeometries, delExternalGeometries, delCoincidents, delConstraints;
         // go through the selected subelements
@@ -3371,6 +3341,34 @@ void ViewProviderSketch::resetPositionText(void)
     coinManager->resetPositionText();
 }
 
+void ViewProviderSketch::setPreselectPoint(int PreselectPoint)
+{
+    coinManager->drawPreselectPoint(PreselectPoint);
+    preselection.PreselectPoint = PreselectPoint;
+    preselection.PreselectCurve = -1;
+    preselection.PreselectCross = -1;
+    preselection.PreselectConstraintSet.clear();
+}
+
+void ViewProviderSketch::setPreselectRootPoint()
+{
+    coinManager->drawPreselectRootPoint();
+    preselection.PreselectPoint = -1;
+    preselection.PreselectCurve = -1;
+    preselection.PreselectCross = -1;
+    preselection.PreselectConstraintSet.clear();
+}
+
+
+void ViewProviderSketch::resetPreselectPoint(void)
+{
+    coinManager->cleanPointPreselection();
+    preselection.PreselectPoint = -1;
+    preselection.PreselectCurve = -1;
+    preselection.PreselectCross = -1;
+    preselection.PreselectConstraintSet.clear();
+}
+
 /*************************** private functions to decouple Attorneys and Clients  ********************************************/
 
 // Establishes a private collaboration interface with CoinManager to perform CoinManager tasks, while abstracting CoinManager
@@ -3537,4 +3535,9 @@ void ViewProviderSketch::addNodeToRoot(SoSeparator * node)
 void ViewProviderSketch::removeNodeFromRoot(SoSeparator * node)
 {
     pcRoot->removeChild(node);
+}
+
+bool ViewProviderSketch::isConstraintPreselected(int constraintId) const
+{
+    return preselection.PreselectConstraintSet.count(constraintId);
 }

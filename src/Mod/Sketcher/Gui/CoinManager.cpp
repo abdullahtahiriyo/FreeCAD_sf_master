@@ -195,6 +195,26 @@ inline void ViewProviderSketchCoinAttorney::removeNodeFromRoot(ViewProviderSketc
     vp.removeNodeFromRoot(node);
 }
 
+inline int ViewProviderSketchCoinAttorney::getPreselectPoint(const ViewProviderSketch &vp)
+{
+   return vp.getPreselectPoint();
+}
+
+inline int ViewProviderSketchCoinAttorney::getPreselectCurve(const ViewProviderSketch &vp)
+{
+    return vp.getPreselectCurve();
+}
+
+inline int ViewProviderSketchCoinAttorney::getPreselectCross(const ViewProviderSketch &vp)
+{
+    return vp.getPreselectCross();
+}
+
+inline bool ViewProviderSketchCoinAttorney::isConstraintPreselected(const ViewProviderSketch &vp, int constraintId)
+{
+    return vp.isConstraintPreselected(constraintId);
+}
+
 //**************************** ParameterObserver nested class ******************************
 CoinManager::ParameterObserver::ParameterObserver(CoinManager &client): Client(client)
 {
@@ -1684,50 +1704,54 @@ void CoinManager::drawEdit(const std::vector<Base::Vector2d> &EditCurve)
     editModeScenegraphNodes.EditCurvesMaterials->diffuseColor.finishEditing();
 }
 
-void CoinManager::setPreselectPoint(int PreselectPoint)
+void CoinManager::drawPreselectPoint(int PreselectPoint)
 {
-    if (edit) {
-        int oldPtId = -1;
-        if (edit->PreselectPoint != -1)
-            oldPtId = edit->PreselectPoint + 1;
-        else if (edit->PreselectCross == 0)
-            oldPtId = 0;
-        int newPtId = PreselectPoint + 1;
+    int oldPtId = -1;
+    auto preselectpoint = ViewProviderSketchCoinAttorney::getPreselectPoint(viewProvider);
+    if (preselectpoint != -1)
+        oldPtId = preselectpoint + 1;
+    else if (ViewProviderSketchCoinAttorney::getPreselectCross(viewProvider) == 0)
+        oldPtId = 0;
+    int newPtId = PreselectPoint + 1;
+    SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
+    float x,y,z;
+    if (oldPtId != -1 &&
+        edit->SelPointSet.find(oldPtId) == edit->SelPointSet.end()) {
+        // send to background
+        pverts[oldPtId].getValue(x,y,z);
+        pverts[oldPtId].setValue(x,y,drawingParameters.zLowPoints);
+    }
+    // bring to foreground
+    pverts[newPtId].getValue(x,y,z);
+    pverts[newPtId].setValue(x,y,drawingParameters.zHighlight);
+
+    editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
+}
+
+void CoinManager::cleanPointPreselection(void)
+{
+    int oldPtId = -1;
+     auto preselectpoint = ViewProviderSketchCoinAttorney::getPreselectPoint(viewProvider);
+    if (preselectpoint != -1)
+        oldPtId = preselectpoint + 1;
+    else if (ViewProviderSketchCoinAttorney::getPreselectCross(viewProvider) == 0)
+        oldPtId = 0;
+    if (oldPtId != -1 &&
+        edit->SelPointSet.find(oldPtId) == edit->SelPointSet.end()) {
+        // send to background
         SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
         float x,y,z;
-        if (oldPtId != -1 &&
-            edit->SelPointSet.find(oldPtId) == edit->SelPointSet.end()) {
-            // send to background
-            pverts[oldPtId].getValue(x,y,z);
-            pverts[oldPtId].setValue(x,y,drawingParameters.zLowPoints);
-        }
-        // bring to foreground
-        pverts[newPtId].getValue(x,y,z);
-        pverts[newPtId].setValue(x,y,drawingParameters.zHighlight);
-        edit->PreselectPoint = PreselectPoint;
+        pverts[oldPtId].getValue(x,y,z);
+        pverts[oldPtId].setValue(x,y,drawingParameters.zLowPoints);
         editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
     }
 }
 
-void CoinManager::resetPreselectPoint(void)
+void CoinManager::drawPreselectRootPoint()
 {
-    if (edit) {
-        int oldPtId = -1;
-        if (edit->PreselectPoint != -1)
-            oldPtId = edit->PreselectPoint + 1;
-        else if (edit->PreselectCross == 0)
-            oldPtId = 0;
-        if (oldPtId != -1 &&
-            edit->SelPointSet.find(oldPtId) == edit->SelPointSet.end()) {
-            // send to background
-            SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
-            float x,y,z;
-            pverts[oldPtId].getValue(x,y,z);
-            pverts[oldPtId].setValue(x,y,drawingParameters.zLowPoints);
-            editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
-        }
-        edit->PreselectPoint = -1;
-    }
+    drawPreselectPoint(-1);
+
+    //TODO: This is both a hack and a placeholder. It is a hack because -1 in ViewProviderSketch means 'not used'. It works because it assumes a root point at index 0. This hack was present in ViewProviderSketch. I have move it here to show intent in ViewProviderSketch, knowing that changes to the indexing will be undertaken here when geometry layers are added. So the code is functionally the same as before.
 }
 
 void CoinManager::addSelectPoint(int SelectPoint)
@@ -1971,17 +1995,21 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
         }
     }
 
-    if (edit->PreselectCross == 0) {
+    auto preselectpoint = ViewProviderSketchCoinAttorney::getPreselectPoint(viewProvider);
+    auto preselectcross = ViewProviderSketchCoinAttorney::getPreselectCross(viewProvider);
+    auto preselectcurve = ViewProviderSketchCoinAttorney::getPreselectCurve(viewProvider);
+
+    if (preselectcross == 0) {
         pcolor[0] = drawingParameters.PreselectColor;
     }
-    else if (edit->PreselectPoint != -1) {
-        if (edit->PreselectPoint + 1 < PtNum)
-            pcolor[edit->PreselectPoint + 1] = drawingParameters.PreselectColor;
+    else if (preselectpoint != -1) {
+        if (preselectpoint + 1 < PtNum)
+            pcolor[preselectpoint + 1] = drawingParameters.PreselectColor;
     }
 
     for (std::set<int>::iterator it = edit->SelPointSet.begin(); it != edit->SelPointSet.end(); ++it) {
         if (*it < PtNum) {
-            pcolor[*it] = (*it==(edit->PreselectPoint + 1) && (edit->PreselectPoint != -1))
+            pcolor[*it] = (*it==(preselectpoint + 1) && (preselectpoint != -1))
                 ? drawingParameters.PreselectSelectedColor : drawingParameters.SelectColor;
         }
     }
@@ -2012,7 +2040,7 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
         int indexes = (editModeScenegraphNodes.CurveSet->numVertices[i]);
 
         bool selected = (edit->SelCurvSet.find(GeoId) != edit->SelCurvSet.end());
-        bool preselected = (edit->PreselectCurve == GeoId);
+        bool preselected = (preselectcurve == GeoId);
 
         bool constrainedElement = isFullyConstraintElement(GeoId);
 
@@ -2096,14 +2124,14 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
     // colors of the cross
     if (edit->SelCurvSet.find(-1) != edit->SelCurvSet.end())
         crosscolor[0] = drawingParameters.SelectColor;
-    else if (edit->PreselectCross == 1)
+    else if (preselectcross == 1)
         crosscolor[0] = drawingParameters.PreselectColor;
     else
         crosscolor[0] = drawingParameters.CrossColorH;
 
     if (edit->SelCurvSet.find(Sketcher::GeoEnum::VAxis) != edit->SelCurvSet.end())
         crosscolor[1] = drawingParameters.SelectColor;
-    else if (edit->PreselectCross == 2)
+    else if (preselectcross == 2)
         crosscolor[1] = drawingParameters.PreselectColor;
     else
         crosscolor[1] = drawingParameters.CrossColorV;
@@ -2213,7 +2241,7 @@ void CoinManager::updateConstraintColor(const std::vector<Sketcher::Constraint *
                     break;
                 }
             }
-        } else if (edit->PreselectConstraintSet.count(i)) {
+        } else if (ViewProviderSketchCoinAttorney::isConstraintPreselected(viewProvider,i)) {
             if (hasDatumLabel) {
                 SoDatumLabel *l = static_cast<SoDatumLabel *>(s->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex)));
                 l->textColor = drawingParameters.PreselectColor;
@@ -3485,7 +3513,7 @@ QColor CoinManager::constrColor(int constraintId)
 {
     const auto constraints = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
 
-    if (edit->PreselectConstraintSet.count(constraintId))
+    if (ViewProviderSketchCoinAttorney::isConstraintPreselected(viewProvider,constraintId))
         return drawingParameters.constrIconPreselColor;
     else if (edit->SelConstraintSet.find(constraintId) != edit->SelConstraintSet.end())
         return drawingParameters.constrIconSelColor;
@@ -3500,7 +3528,7 @@ QColor CoinManager::constrColor(int constraintId)
 
 int CoinManager::constrColorPriority(int constraintId)
 {
-    if (edit->PreselectConstraintSet.count(constraintId))
+    if (ViewProviderSketchCoinAttorney::isConstraintPreselected(viewProvider,constraintId))
         return 3;
     else if (edit->SelConstraintSet.find(constraintId) != edit->SelConstraintSet.end())
         return 2;
