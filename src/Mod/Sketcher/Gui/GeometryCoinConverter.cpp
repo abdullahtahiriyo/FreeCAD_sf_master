@@ -42,7 +42,7 @@
 
 #include <Base/UnitsApi.h>
 
-#include "CoinManagerParameters.h"
+#include "EditModeCoinManagerParameters.h"
 
 #include "Mod/Sketcher/App/Constraint.h"
 
@@ -80,13 +80,13 @@ void GeometryCoinConverter::convert(const GeometryLayer & geolayer)
     // Design decisions:
     //
     // GeometryCoinConverter takes the responsibility of mapping a GeoID to the index of the geometry in the layer order. However
-    // this is a local responsibility (information is kept in local storage). It is the responsibility of CoinManager to retrieve this information
+    // this is a local responsibility (information is kept in local storage). It is the responsibility of EditModeCoinManager to retrieve this information
     // and build an appropriate general mapping if necessary (SRP).
     //
     // GeometryCoinConverter takes the responsibility of updating the coin nodes passed as parameter with new geometry values. (SRP)
     //
     // GeometryCoinConverter takes ther responsibility of running geometric analysis on the geometry it is provided. However, this
-    // is a local reponsibility too. It is the resonsability of CoinManager to retrieve this information and build general analysis
+    // is a local reponsibility too. It is the resonsability of EditModeCoinManager to retrieve this information and build general analysis
     // as neceesary(SRP).
 
     auto setTracking = [this] (int geoId, GeometryCoinConverter::PointsMode pointmode, int numberCurves) {

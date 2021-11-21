@@ -81,8 +81,7 @@ namespace Sketcher {
 
 namespace SketcherGui {
 
-struct EditData;
-class CoinManager;
+class EditModeCoinManager;
 class DrawSketchHandler;
 
 using GeoList = Sketcher::GeoList;
@@ -132,7 +131,7 @@ private:
         void updateBoolProperty(const std::string & string, App::Property * property, bool defaultvalue);
         void updateGridSize(const std::string & string, App::Property * property);
 
-        // Only for colors outside of edit mode, edit mode colors are handled by CoinManager.
+        // Only for colors outside of edit mode, edit mode colors are handled by EditModeCoinManager.
         void updateColorProperty(const std::string & string, App::Property * property, float r, float g, float b);
 
         void updateEscapeKeyBehaviour(const std::string & string, App::Property * property);
@@ -146,10 +145,18 @@ private:
         std::map<std::string, std::tuple<std::function<void(const std::string & string, App::Property *)>, App::Property * >> parameterMap;
     };
 
+    /** Class to store vector and item Id for dragging.
+      *
+      * Ids are zero-indexed points and curves.
+      *
+      * The DragPoint indexing matches PreselectPoint indexing.
+      *
+      */
     class Drag {
     public:
         Drag() {
             resetVector();
+            resetIds();
         }
 
         void resetVector() {
@@ -168,9 +175,54 @@ private:
         bool relative;                      // whether the dragging move vector is relative or absolute
 
 
-        int DragPoint = -1;                 // dragged point id
-        int DragCurve = -1;                 // dragged curve id
+        int DragPoint;                      // dragged point id
+        int DragCurve;                      // dragged curve id
         std::set<int> DragConstraintSet;    // dragged constraints ids
+    };
+
+    /** Class to store preselected element ids.
+      *
+      * Ids are zero-indexed points and curves.
+      *
+      * The PreselectPoint indexing matches DragPoint indexing.
+      *
+      */
+    class Preselection {
+    public:
+        Preselection() {
+            reset();
+        }
+
+        void reset(){
+            PreselectPoint = -1;
+            PreselectCurve = -1;
+            PreselectCross = -1;
+            PreselectConstraintSet.clear();
+            blockedPreselection = false;
+        }
+
+        int PreselectPoint;                     // VertexN, with N = PreselectPoint + 1, same as DragPoint indexing (NOTE -1 is NOT the root point)
+        int PreselectCurve;                     // EdgeN, with N = PreselectCurve + 1 for positive values ; ExternalEdgeN, with N = -PreselectCurve - 2
+        int PreselectCross;                     // 0 => rootPoint, 1 => HAxis, 2 => VAxis
+        std::set<int> PreselectConstraintSet;   // ConstraintN, N = index + 1
+        bool blockedPreselection;
+    };
+
+    class Selection {
+    public:
+        Selection() {
+            reset();
+        }
+
+        void reset() {
+            SelPointSet.clear();
+            SelCurvSet.clear();
+            SelConstraintSet.clear();
+        }
+
+        std::set<int> SelPointSet;              // Indices as PreselectPoint (and -1 for rootpoint)
+        std::set<int> SelCurvSet;               // also holds cross axes at -1 and -2
+        std::set<int> SelConstraintSet;         // ConstraintN, N = index + 1.
     };
 
     struct DoubleClick {
@@ -406,6 +458,11 @@ private:
     int getPreselectPoint(void) const;
     int getPreselectCurve(void) const;
     int getPreselectCross(void) const;
+    void setPreselectPoint(int PreselectPoint);
+    void setPreselectRootPoint();
+    void resetPreselectPoint(void);
+
+    bool setPreselect(const std::string &subNameSuffix, float x = 0, float y = 0, float z = 0);
     //@}
 
     /** @name Selection functions */
@@ -413,6 +470,15 @@ private:
     /// box selection method
     void doBoxSelection(const SbVec2s &startPos, const SbVec2s &endPos,
                         const Gui::View3DInventorViewer *viewer);
+
+    void addSelectPoint(int SelectPoint);
+    void removeSelectPoint(int SelectPoint);
+    void clearSelectPoints(void);
+
+    bool isSelected(const std::string & ss) const;
+    void rmvSelection(const std::string &subNameSuffix);
+    bool addSelection(const std::string &subNameSuffix, float x = 0, float y = 0, float z = 0);
+    bool addSelection2(const std::string &subNameSuffix, float x = 0, float y = 0, float z = 0);
     //@}
 
     /** @name miscelanea utilities */
@@ -422,6 +488,8 @@ private:
 
     /// moves a selected constraint
     void moveConstraint(int constNum, const Base::Vector2d &toPos);
+
+    bool isInEditMode() const;
     //@}
 
     /** @name Attorney functions*/
@@ -466,6 +534,16 @@ private:
 
     void removeNodeFromRoot(SoSeparator * node);
 
+    bool isConstraintPreselected(int constraintId) const;
+
+    bool isPointSelected(int pointId) const;
+
+    void executeOnSelectionPointSet(std::function<void(const int)> && operation) const;
+
+    bool isCurveSelected(int curveId) const;
+
+    bool isConstraintSelected(int constraintId) const;
+
     //********* ViewProviderSketchShortcutListenerAttorney ***********//
     void deleteSelected();
 
@@ -486,14 +564,14 @@ private:
     boost::signals2::connection connectUndoDocument;
     boost::signals2::connection connectRedoDocument;
 
-    /// pointer to the edit data structure if the ViewProvider is in edit.
-    EditData *edit;
-
     // modes while sketching
     SketchMode Mode;
 
     // reference coordinates for relative operations
     Drag drag;
+
+    Preselection preselection;
+    Selection selection;
 
     std::unique_ptr<Gui::Rubberband> rubberband;
 
@@ -503,7 +581,7 @@ private:
 
     ShortcutListener* listener;
 
-    std::unique_ptr<CoinManager> coinManager;
+    std::unique_ptr<EditModeCoinManager> editCoinManager;
 
     std::unique_ptr<ViewProviderSketch::ParameterObserver> pObserver;
 
