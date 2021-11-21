@@ -42,7 +42,7 @@
 
 #include <Base/UnitsApi.h>
 
-#include "CoinManagerParameters.h"
+#include "EditModeCoinManagerParameters.h"
 
 #include "InformationOverlayCoinConverter.h"
 

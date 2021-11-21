@@ -27,7 +27,7 @@
 
 #endif  // #ifndef _PreComp_
 
-#include "CoinManagerParameters.h"
+#include "EditModeCoinManagerParameters.h"
 
 using namespace SketcherGui;
 
