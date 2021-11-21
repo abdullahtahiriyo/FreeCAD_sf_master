@@ -21,8 +21,8 @@
  ***************************************************************************/
 
 
-#ifndef SKETCHERGUI_CoinManager_H
-#define SKETCHERGUI_CoinManager_H
+#ifndef SKETCHERGUI_EditModeCoinManager_H
+#define SKETCHERGUI_EditModeCoinManager_H
 
 #include <vector>
 #include <functional>
@@ -30,7 +30,7 @@
 #include <Base/Parameter.h>
 #include <App/Application.h>
 
-#include "CoinManagerParameters.h"
+#include "EditModeCoinManagerParameters.h"
 
 #include <Mod/Sketcher/App/GeoList.h>
 
@@ -59,7 +59,6 @@ namespace Sketcher {
 
 namespace SketcherGui {
 
-struct EditData;
 class ViewProviderSketch;
 
 using GeoList = Sketcher::GeoList;
@@ -68,11 +67,11 @@ using GeoListFacade = Sketcher::GeoListFacade;
 /** @brief      Attorney class for limiting access to viewprovider
  *  @details
  *  ViewProviderSketch delegates a substantial part of coin related visualisation to
- *  CoinManager during edit mode.
+ *  EditModeCoinManager during edit mode.
  *
- *  Sometimes CoinManager needs to access selected functionalities only available to ViewProviderSketch.
+ *  Sometimes EditModeCoinManager needs to access selected functionalities only available to ViewProviderSketch.
  *
- *  This attorney class regulates which specific functionalities CoinManager is able to access in
+ *  This attorney class regulates which specific functionalities EditModeCoinManager is able to access in
  *  ViewProviderSketch.
  *
  *  The objective is:
@@ -106,14 +105,25 @@ private:
 
     static inline void removeNodeFromRoot(ViewProviderSketch & vp, SoSeparator * node);
 
-    friend class CoinManager;
+    static inline int getPreselectPoint(const ViewProviderSketch &vp);
+    static inline int getPreselectCurve(const ViewProviderSketch &vp);
+    static inline int getPreselectCross(const ViewProviderSketch &vp);
+
+    static inline bool isConstraintPreselected(const ViewProviderSketch &vp, int constraintId);
+    static inline bool isPointSelected(const ViewProviderSketch &vp, int pointId);
+    static inline bool isCurveSelected(const ViewProviderSketch &vp, int curveId);
+    static inline bool isConstraintSelected(const ViewProviderSketch &vp, int constraintId);
+
+    static inline void executeOnSelectionPointSet(const ViewProviderSketch &vp, std::function<void(const int)> && operation);
+
+    friend class EditModeCoinManager;
 };
 
 /** @brief      Class for managing the Coin nodes of ViewProviderSketch.
  *  @details    To be documented.
  *
  */
-class SketcherGuiExport CoinManager
+class SketcherGuiExport EditModeCoinManager
 {
     /** @brief      Class for monitoring changes in parameters affecting drawing and coin node generation
     *  @details    To be documented.
@@ -131,7 +141,7 @@ class SketcherGuiExport CoinManager
         };
 
     public:
-        ParameterObserver(CoinManager & client);
+        ParameterObserver(EditModeCoinManager & client);
         ~ParameterObserver();
 
         void subscribeToParameters();
@@ -143,16 +153,18 @@ class SketcherGuiExport CoinManager
 
     private:
         void initParameters();
-        void updateCurvedEdgeCountSegmentsParameter();
-        void updateLineRenderingOrderParameters();
-        void updateConstraintPresentationParameters();
-        void updateElementSizeParameters();
+        void updateCurvedEdgeCountSegmentsParameter(const std::string & parametername);
+        void updateLineRenderingOrderParameters(const std::string & parametername);
+        void updateConstraintPresentationParameters(const std::string & parametername);
+        void updateElementSizeParameters(const std::string & parametername);
+        void updateColor(SbColor &sbcolor, const std::string &parametername);
 
         template<OverlayVisibilityParameter visibilityparameter>
-        void updateOverlayVisibilityParameter();
+        void updateOverlayVisibilityParameter(const std::string & parametername);
 
     private:
-        CoinManager &Client;
+        std::map<std::string, std::function<void(const std::string &)>> str2updatefunction;
+        EditModeCoinManager &Client;
     };
 
     /** @brief     Struct to hold the results of analysis
@@ -201,33 +213,47 @@ private:
         SecondConstraintIdIndex = 6
     };
 public:
-    explicit CoinManager(ViewProviderSketch &vp, EditData * editdata);
-    ~CoinManager();
+    explicit EditModeCoinManager(ViewProviderSketch &vp);
+    ~EditModeCoinManager();
 
      /** @name Temporary edit curves and markers */
     //@{
     void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel);
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
+    void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
+    void setPositionText(const Base::Vector2d &Pos);
+    void resetPositionText(void);
+    void setAxisPickStyle(bool on);
     //@}
 
     /** @name handle preselection and selection of points */
     //@{
-    void setPreselectPoint(int PreselectPoint);
-    void resetPreselectPoint(void);
-    void addSelectPoint(int SelectPoint);
-    void removeSelectPoint(int SelectPoint);
-    void clearSelectPoints(void);
+    PreselectionResult detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos);
+    void drawPreselectPoint(int PreselectPoint);
+    void drawPreselectRootPoint();
+    void clearPointPreselection(void);
+    void drawPointAsSelected(int selectpointId);
+    void clearPointSelection(int selectpointId);
+    void clearPointSelection(void);
+    /// The client is responsible for unref-ing the SoGroup to release the memory.
+    SoGroup* getSelectedConstraints();
     //@}
 
     /** @name update coin nodes*/
     void processGeometryConstraintsInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer);
 
     void updateVirtualSpace();
+
+    /// Draw all constraint icons
+    /*! Except maybe the radius and lock ones? */
+    void drawConstraintIcons();
+
+    // This specific overload is to use a specific geometry list, which may be a temporal one
+    void drawConstraintIcons(const GeoList & geolist);
     //@}
 
-    /** @name coin nodes creation*/
-    void createEditModeInventorNodes();
-    void rebuildConstraintNodes(void);
+    /** @name coin node access*/
+    SoSeparator* getRootEditNode();
     //@}
 
     /** @name update coin colors*/
@@ -239,37 +265,8 @@ public:
 
     /** @name change coin visualisation and behaviour*/
     //@{
-    void setAxisPickStyle(bool on);
     void updateGridExtent();
     //@}
-
-    /** @name Configuration of the visualisation */
-    //@{
-    void updateCoinManagerColors();
-    //@}
-
-    /** @name Analysis Results */
-    //@{
-    float getboundingBoxMagnitudeOrder() { return analysisResults.boundingBoxMagnitudeOrder;}
-    //@}
-
-    PreselectionResult detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos);
-
-    /// Draw all constraint icons
-    /*! Except maybe the radius and lock ones? */
-    void drawConstraintIcons();
-
-    // This specific overload is to use a specific geometry list, which may be a temporal one
-    void drawConstraintIcons(const GeoList & geolist);
-
-    void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
-    void setPositionText(const Base::Vector2d &Pos);
-    void resetPositionText(void);
-
-    /// The client is responsible for unref-ing the SoGroup to release the memory.
-    SoGroup* getSelectedConstraints();
-
-    SoSeparator* getRootEditNode();
 
 private:
     // This function populates the coin nodes with the information of the current geometry
@@ -415,11 +412,15 @@ private:
 
     SoSeparator * getConstraintIdSeparator(int i);
 
+    /** @name coin nodes creation*/
+    void createEditModeInventorNodes();
+    void rebuildConstraintNodes(void);
+    //@}
+
 private:
     ViewProviderSketch & viewProvider;
-    std::unique_ptr<CoinManager::ParameterObserver> pObserver;
+    std::unique_ptr<EditModeCoinManager::ParameterObserver> pObserver;
 
-    EditData * edit;
     DrawingParameters drawingParameters;
     AnalysisResults analysisResults;
     OverlayParameters overlayParameters;
@@ -427,11 +428,13 @@ private:
 
     EditModeScenegraphNodes editModeScenegraphNodes;
 
+    CoinMapping coinMapping;
+
 };
 
 
 } // namespace SketcherGui
 
 
-#endif // SKETCHERGUI_CoinManager_H
+#endif // SKETCHERGUI_EditModeCoinManager_H
 
