@@ -202,10 +202,10 @@ private:
             blockedPreselection = false;
         }
 
-        int PreselectPoint;                     // VertexN, with N = PreselectPoint + 1,
-        int PreselectCurve;
-        int PreselectCross;
-        std::set<int> PreselectConstraintSet;
+        int PreselectPoint;                     // VertexN, with N = PreselectPoint + 1, same as DragPoint indexing
+        int PreselectCurve;                     // EdgeN, with N = PreselectCurve + 1 for positive values ; ExternalEdgeN, with N = -PreselectCurve - 2
+        int PreselectCross;                     // 0 => rootPoint, 1 => HAxis, 2 => VAxis
+        std::set<int> PreselectConstraintSet;   // ConstraintN, N = index + 1
         bool blockedPreselection;
     };
 
@@ -221,8 +221,8 @@ private:
             SelConstraintSet.clear();
         }
 
-        std::set<int> SelPointSet;
-        std::set<int> SelCurvSet; // also holds cross axes at -1 and -2
+        std::set<int> SelPointSet;              // Indices as PreselectPoint
+        std::set<int> SelCurvSet;               // also holds cross axes at -1 and -2
         std::set<int> SelConstraintSet;
     };
 
@@ -462,6 +462,8 @@ private:
     void setPreselectPoint(int PreselectPoint);
     void setPreselectRootPoint();
     void resetPreselectPoint(void);
+
+    bool setPreselect(const std::string &subNameSuffix, float x = 0, float y = 0, float z = 0);
     //@}
 
     /** @name Selection functions */
@@ -473,6 +475,11 @@ private:
     void addSelectPoint(int SelectPoint);
     void removeSelectPoint(int SelectPoint);
     void clearSelectPoints(void);
+
+    bool isSelected(const std::string & ss) const;
+    void rmvSelection(const std::string &subNameSuffix);
+    bool addSelection(const std::string &subNameSuffix, float x = 0, float y = 0, float z = 0);
+    bool addSelection2(const std::string &subNameSuffix, float x = 0, float y = 0, float z = 0);
     //@}
 
     /** @name miscelanea utilities */
