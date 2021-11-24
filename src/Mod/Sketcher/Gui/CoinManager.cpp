@@ -483,9 +483,9 @@ void CoinManager::processGeometry(const GeoList & geolist)
     editModeScenegraphNodes.RootCrossSet->numVertices.set1Value(0,2);
     editModeScenegraphNodes.RootCrossSet->numVertices.set1Value(1,2);
 
-    edit->CurvIdToGeoId = gcconv.getCurveMap();
-    edit->PointIdToGeoId = gcconv.getPointMap();
-    edit->GeoIdPointPosToPointId = gcconv.getReversePointMap();
+    coinMapping.CurvIdToGeoId = gcconv.getCurveMap();
+    coinMapping.PointIdToGeoId = gcconv.getPointMap();
+    coinMapping.GeoIdPointPosToPointId = gcconv.getReversePointMap();
 
 
     // TODO: THIS NEEDS REFACTORING
@@ -1949,7 +1949,7 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
     }
     else {
         for (int  i=0; i < PtNum; i++) {
-            int GeoId = edit->PointIdToGeoId[i];
+            int GeoId = coinMapping.PointIdToGeoId[i];
 
             bool constrainedElement = isFullyConstraintElement(GeoId);
 
@@ -2001,7 +2001,7 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
 
     for (int  i=0; i < PtNum; i++) { // 0 is the origin
         pverts[i].getValue(x,y,z);
-        auto geom = geolistfacade.getGeometryFromGeoId(edit->PointIdToGeoId[i]);
+        auto geom = geolistfacade.getGeometryFromGeoId(coinMapping.PointIdToGeoId[i]);
         if(geom && z < drawingParameters.zHighlight) {
             if(geom->getConstruction())
                 pverts[i].setValue(x,y,zConstrPoint);
@@ -2050,7 +2050,7 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
     int j=0; // vertexindex
 
     for (int  i=0; i < CurvNum; i++) {
-        int GeoId = edit->CurvIdToGeoId[i];
+        int GeoId = coinMapping.CurvIdToGeoId[i];
         // CurvId has several vertices associated to 1 material
         //edit->CurveSet->numVertices => [i] indicates number of vertex for line i.
         int indexes = (editModeScenegraphNodes.CurveSet->numVertices[i]);
@@ -2196,9 +2196,9 @@ void CoinManager::updateConstraintColor(const std::vector<Sketcher::Constraint *
 
         auto selectpoint = [this, pcolor, PtNum](int geoid, Sketcher::PointPos pos){
             if(geoid >= 0) {
-                auto indexit = edit->GeoIdPointPosToPointId.find(std::make_pair(geoid, pos));
+                auto indexit = coinMapping.GeoIdPointPosToPointId.find(std::make_pair(geoid, pos));
 
-                if (indexit != edit->GeoIdPointPosToPointId.end()) {
+                if (indexit != coinMapping.GeoIdPointPosToPointId.end()) {
                     int index = indexit->second + 1;
                     if(index >= 0 && index < PtNum) {
                         pcolor[index] = drawingParameters.SelectColor;
@@ -2217,9 +2217,9 @@ void CoinManager::updateConstraintColor(const std::vector<Sketcher::Constraint *
 
                 auto selectpoint = [this, pcolor, PtNum](int geoid, Sketcher::PointPos pos){
                     if(geoid >= 0) {
-                        auto indexit = edit->GeoIdPointPosToPointId.find(std::make_pair(geoid, pos));
+                        auto indexit = coinMapping.GeoIdPointPosToPointId.find(std::make_pair(geoid, pos));
 
-                        if (indexit != edit->GeoIdPointPosToPointId.end()) {
+                        if (indexit != coinMapping.GeoIdPointPosToPointId.end()) {
                             int index = indexit->second + 1;
                             if(index >= 0 && index < PtNum) {
                                 pcolor[index] = drawingParameters.SelectColor;
@@ -2238,7 +2238,7 @@ void CoinManager::updateConstraintColor(const std::vector<Sketcher::Constraint *
                         // color line
                         int CurvNum = editModeScenegraphNodes.CurvesMaterials->diffuseColor.getNum();
                         for (int  i=0; i < CurvNum; i++) {
-                            int cGeoId = edit->CurvIdToGeoId[i];
+                            int cGeoId = coinMapping.CurvIdToGeoId[i];
 
                             if(cGeoId == constraint->First) {
                                 pcolor[i] = drawingParameters.SelectColor;
@@ -2850,7 +2850,7 @@ CoinManager::PreselectionResult CoinManager::detectPreselection(SoPickedPoint * 
             if (curve_detail && curve_detail->getTypeId() == SoLineDetail::getClassTypeId()) {
                 // get the index
                 int curveIndex = static_cast<const SoLineDetail *>(curve_detail)->getLineIndex();
-                result.geoIndex = edit->CurvIdToGeoId[curveIndex];
+                result.geoIndex = coinMapping.CurvIdToGeoId[curveIndex];
             }
         // checking for a hit in the axes
         } else if (tail == editModeScenegraphNodes.RootCrossSet) {

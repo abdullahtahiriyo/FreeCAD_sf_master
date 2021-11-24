@@ -205,6 +205,11 @@ struct EditModeScenegraphNodes {
     SoDrawStyle * InformationDrawStyle;
 };
 
+struct CoinMapping {
+    std::vector<int> CurvIdToGeoId; // conversion of SoLineSet index to GeoId
+    std::vector<int> PointIdToGeoId; // conversion of SoCoordinate3 index to GeoId
+    std::map<std::pair<int, Sketcher::PointPos>, int> GeoIdPointPosToPointId; // conversion of [GeoId,Pos] to PointId
+};
 
 
 } // namespace SketcherGui

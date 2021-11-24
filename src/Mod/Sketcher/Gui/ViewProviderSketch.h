@@ -202,7 +202,7 @@ private:
             blockedPreselection = false;
         }
 
-        int PreselectPoint;                     // VertexN, with N = PreselectPoint + 1, same as DragPoint indexing
+        int PreselectPoint;                     // VertexN, with N = PreselectPoint + 1, same as DragPoint indexing (NOTE -1 is NOT the root point)
         int PreselectCurve;                     // EdgeN, with N = PreselectCurve + 1 for positive values ; ExternalEdgeN, with N = -PreselectCurve - 2
         int PreselectCross;                     // 0 => rootPoint, 1 => HAxis, 2 => VAxis
         std::set<int> PreselectConstraintSet;   // ConstraintN, N = index + 1
@@ -221,7 +221,7 @@ private:
             SelConstraintSet.clear();
         }
 
-        std::set<int> SelPointSet;              // Indices as PreselectPoint
+        std::set<int> SelPointSet;              // Indices as PreselectPoint (and -1 for rootpoint)
         std::set<int> SelCurvSet;               // also holds cross axes at -1 and -2
         std::set<int> SelConstraintSet;         // ConstraintN, N = index + 1.
     };

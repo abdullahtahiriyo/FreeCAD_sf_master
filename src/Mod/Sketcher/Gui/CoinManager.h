@@ -439,6 +439,8 @@ private:
 
     EditModeScenegraphNodes editModeScenegraphNodes;
 
+    CoinMapping coinMapping;
+
 };
 
 
