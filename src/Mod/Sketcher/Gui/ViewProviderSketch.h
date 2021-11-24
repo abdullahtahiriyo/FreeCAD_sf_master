@@ -81,7 +81,6 @@ namespace Sketcher {
 
 namespace SketcherGui {
 
-struct EditData;
 class CoinManager;
 class DrawSketchHandler;
 

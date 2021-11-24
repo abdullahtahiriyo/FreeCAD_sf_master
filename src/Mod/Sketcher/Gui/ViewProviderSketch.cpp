@@ -99,7 +99,6 @@
 #include "Utils.h"
 #include "ViewProviderSketchGeometryExtension.h"
 
-#include "EditData.h"
 #include "CoinManager.h"
 
 FC_LOG_LEVEL_INIT("Sketch",true,true)

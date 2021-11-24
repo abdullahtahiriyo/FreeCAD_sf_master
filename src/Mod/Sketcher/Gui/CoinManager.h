@@ -59,7 +59,6 @@ namespace Sketcher {
 
 namespace SketcherGui {
 
-struct EditData;
 class ViewProviderSketch;
 
 using GeoList = Sketcher::GeoList;

@@ -56,8 +56,6 @@
 
 #include <Gui/Inventor/SmSwitchboard.h>
 
-#include "EditData.h"
-
 #include <Mod/Part/App/Geometry.h>
 #include <Mod/Sketcher/App/GeometryFacade.h>
 #include <Mod/Sketcher/App/SolverGeometryExtension.h>
