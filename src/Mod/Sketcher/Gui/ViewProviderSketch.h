@@ -223,7 +223,7 @@ private:
 
         std::set<int> SelPointSet;              // Indices as PreselectPoint
         std::set<int> SelCurvSet;               // also holds cross axes at -1 and -2
-        std::set<int> SelConstraintSet;
+        std::set<int> SelConstraintSet;         // ConstraintN, N = index + 1.
     };
 
     struct DoubleClick {
