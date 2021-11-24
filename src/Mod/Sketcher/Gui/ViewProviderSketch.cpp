@@ -287,7 +287,6 @@ PROPERTY_SOURCE_WITH_EXTENSIONS(SketcherGui::ViewProviderSketch, PartGui::ViewPr
 
 ViewProviderSketch::ViewProviderSketch()
   : SelectionObserver(false),
-    edit(0),
     Mode(STATUS_NONE),
     listener(0),
     coinManager(nullptr),
@@ -377,7 +376,7 @@ void ViewProviderSketch::activateHandler(DrawSketchHandler *newHandler)
 
 void ViewProviderSketch::deactivateHandler()
 {
-    assert(edit);
+    assert(isInEditMode());
     if(sketchHandler){
         std::vector<Base::Vector2d> editCurve;
         editCurve.clear();
@@ -408,7 +407,7 @@ void ViewProviderSketch::purgeHandler(void)
 
 void ViewProviderSketch::setAxisPickStyle(bool on)
 {
-    assert(edit);
+    assert(isInEditMode());
     coinManager->setAxisPickStyle(on);
 }
 
@@ -421,18 +420,18 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
     case SoKeyboardEvent::ESCAPE:
         {
             // make the handler quit but not the edit mode
-            if (edit && sketchHandler) {
+            if (isInEditMode() && sketchHandler) {
                 if (!pressed)
                     sketchHandler->quit();
                 return true;
             }
-            if (edit && (drag.DragConstraintSet.empty() == false)) {
+            if (isInEditMode() && (drag.DragConstraintSet.empty() == false)) {
                 if (!pressed) {
                     drag.DragConstraintSet.clear();
                 }
                 return true;
             }
-            if (edit && drag.DragCurve >= 0) {
+            if (isInEditMode() && drag.DragCurve >= 0) {
                 if (!pressed) {
                     getSketchObject()->movePoint(drag.DragCurve, Sketcher::none, Base::Vector3d(0,0,0), true);
                     drag.DragCurve = -1;
@@ -441,7 +440,7 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
                 }
                 return true;
             }
-            if (edit && drag.DragPoint >= 0) {
+            if (isInEditMode() && drag.DragPoint >= 0) {
                 if (!pressed) {
                     int GeoId;
                     Sketcher::PointPos PosId;
@@ -453,7 +452,7 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
                 }
                 return true;
             }
-            if (edit) {
+            if (isInEditMode()) {
                 // #0001479: 'Escape' key dismissing dialog cancels Sketch editing
                 // If we receive a button release event but not a press event before
                 // then ignore this one.
@@ -469,7 +468,7 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
         }
     default:
         {
-            if (edit && sketchHandler)
+            if (isInEditMode() && sketchHandler)
                 sketchHandler->registerPressedKey(pressed,key);
         }
     }
@@ -572,7 +571,7 @@ void ViewProviderSketch::getCoordsOnSketchPlane(const SbVec3f &point, const SbVe
 bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVec2s &cursorPos,
                                             const Gui::View3DInventorViewer *viewer)
 {
-    assert(edit);
+    assert(isInEditMode());
 
     // Calculate 3d point to the mouse position
     SbLine line;
@@ -1012,7 +1011,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
     // maximum radius for mouse moves when selecting a geometry before switching to drag mode
     const int dragIgnoredDistance = 3;
 
-    if (!edit)
+    if (!isInEditMode())
         return false;
 
     // ignore small moves after selection
@@ -1269,7 +1268,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
 void ViewProviderSketch::moveConstraint(int constNum, const Base::Vector2d &toPos)
 {
     // are we in edit?
-    if (!edit)
+    if (!isInEditMode())
         return;
 
     const std::vector<Sketcher::Constraint *> &constrlist = getSketchObject()->Constraints.getValues();
@@ -1484,7 +1483,7 @@ bool ViewProviderSketch::isSelectable(void) const
 void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
 {
     // are we in edit?
-    if (edit) {
+    if (isInEditMode()) {
         // ignore external object
         if(msg.Object.getObjectName().size() && msg.Object.getDocument()!=getObject()->getDocument())
             return;
@@ -1650,7 +1649,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
 
 bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos)
 {
-    assert(edit);
+    assert(isInEditMode());
 
     if (Point) {
 
@@ -1753,7 +1752,7 @@ void ViewProviderSketch::centerSelection()
 {
     Gui::MDIView *mdi = this->getActiveView();
     Gui::View3DInventor *view = qobject_cast<Gui::View3DInventor*>(mdi);
-    if (!view || !edit)
+    if (!view || !isInEditMode())
         return;
 
     SoGroup* group = coinManager->getSelectedConstraints();
@@ -2353,7 +2352,7 @@ void ViewProviderSketch::doBoxSelection(const SbVec2s &startPos, const SbVec2s &
 
 void ViewProviderSketch::updateColor(void)
 {
-    assert(edit);
+    assert(isInEditMode());
 
     coinManager->updateColor();
 }
@@ -2366,7 +2365,7 @@ bool ViewProviderSketch::doubleClicked(void)
 
 float ViewProviderSketch::getScaleFactor() const
 {
-    assert(edit);
+    assert(isInEditMode());
     Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(coinManager->getRootEditNode());
     if (mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())) {
         Gui::View3DInventorViewer *viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
@@ -2505,7 +2504,7 @@ void ViewProviderSketch::scaleBSplinePoleCirclesAndUpdateSolverAndSketchObjectGe
 
 void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverlay /*=true*/)
 {
-    assert(edit);
+    assert(isInEditMode());
 
     // ============== Retrieve geometry to be represented =================================
 
@@ -2591,7 +2590,7 @@ void ViewProviderSketch::updateData(const App::Property *prop)
 
     // In the case of an undo/redo transaction, updateData is triggered by SketchObject::onUndoRedoFinished() in the solve()
     // In the case of an internal transaction, touching the geometry results in a call to updateData.
-    if ( edit && !getSketchObject()->getDocument()->isPerformingTransaction() &&
+    if ( isInEditMode() && !getSketchObject()->getDocument()->isPerformingTransaction() &&
          !getSketchObject()->isPerformingInternalTransaction() &&
          (prop == &(getSketchObject()->Geometry) || prop == &(getSketchObject()->Constraints))) {
 
@@ -2684,11 +2683,10 @@ bool ViewProviderSketch::setEdit(int ModNum)
     this->attachSelection();
 
     // create the container for the additional edit data
-    assert(!edit);
-    edit = new EditData();
+    assert(!isInEditMode());
     preselection.reset();
     selection.reset();
-    coinManager = std::make_unique<CoinManager>(*this, edit);
+    coinManager = std::make_unique<CoinManager>(*this);
 
     auto editDoc = Gui::Application::Instance->editDocument();
     App::DocumentObject *editObj = getSketchObject();
@@ -2917,15 +2915,13 @@ void ViewProviderSketch::unsetEdit(int ModNum)
         delete listener;
     }
 
-    if (edit) {
+    if (isInEditMode()) {
         if (sketchHandler)
             deactivateHandler();
 
         coinManager = nullptr;
         preselection.reset();
         selection.reset();
-        delete edit;
-        edit = nullptr;
         this->detachSelection();
 
         App::AutoTransaction trans("Sketch recompute");
@@ -3059,21 +3055,21 @@ void ViewProviderSketch::unsetEditViewer(Gui::View3DInventorViewer* viewer)
 
 int ViewProviderSketch::getPreselectPoint(void) const
 {
-    if (edit)
+    if (isInEditMode())
         return preselection.PreselectPoint;
     return -1;
 }
 
 int ViewProviderSketch::getPreselectCurve(void) const
 {
-    if (edit)
+    if (isInEditMode())
         return preselection.PreselectCurve;
     return -1;
 }
 
 int ViewProviderSketch::getPreselectCross(void) const
 {
-    if (edit)
+    if (isInEditMode())
         return preselection.PreselectCross;
     return -1;
 }
@@ -3115,7 +3111,7 @@ void ViewProviderSketch::deleteSelected()
 
 bool ViewProviderSketch::onDelete(const std::vector<std::string> &subList)
 {
-    if (edit) {
+    if (isInEditMode()) {
         std::vector<std::string> SubNames = subList;
 
         Gui::Selection().clearSelection();
@@ -3411,7 +3407,7 @@ bool ViewProviderSketch::constraintHasExpression(int constrid) const
 
 std::unique_ptr<SoRayPickAction> ViewProviderSketch::getRayPickAction() const
 {
-    assert(edit);
+    assert(isInEditMode());
     Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(coinManager->getRootEditNode());
     if (!(mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())))
         return nullptr;
@@ -3434,7 +3430,7 @@ SbVec2f ViewProviderSketch::getScreenCoordinates(SbVec2f sketchcoordinates) cons
 
     Gui::MDIView *mdi = this->getActiveView();
     Gui::View3DInventor *view = qobject_cast<Gui::View3DInventor*>(mdi);
-    if (!view || !edit)
+    if (!view || !isInEditMode())
         return SbVec2f(0,0);
 
     Gui::View3DInventorViewer* viewer = view->getViewer();
@@ -3575,4 +3571,9 @@ void ViewProviderSketch::executeOnSelectionPointSet(std::function<void(const int
 {
     for(const auto v : selection.SelPointSet)
         operation(v);
+}
+
+bool ViewProviderSketch::isInEditMode() const
+{
+    return coinManager != nullptr;
 }

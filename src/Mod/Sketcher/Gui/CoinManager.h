@@ -212,7 +212,7 @@ private:
         SecondConstraintIdIndex = 6
     };
 public:
-    explicit CoinManager(ViewProviderSketch &vp, EditData * editdata);
+    explicit CoinManager(ViewProviderSketch &vp);
     ~CoinManager();
 
      /** @name Temporary edit curves and markers */
@@ -431,7 +431,6 @@ private:
     ViewProviderSketch & viewProvider;
     std::unique_ptr<CoinManager::ParameterObserver> pObserver;
 
-    EditData * edit;
     DrawingParameters drawingParameters;
     AnalysisResults analysisResults;
     OverlayParameters overlayParameters;

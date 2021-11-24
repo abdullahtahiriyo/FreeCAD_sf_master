@@ -441,7 +441,7 @@ void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCalle
 
 //**************************** CoinManager class ******************************
 
-CoinManager::CoinManager(ViewProviderSketch &vp, EditData * editdata):viewProvider(vp),edit(editdata) {
+CoinManager::CoinManager(ViewProviderSketch &vp):viewProvider(vp) {
 
     // Create Edit Mode Scenograph
     createEditModeInventorNodes();
@@ -1663,8 +1663,6 @@ void CoinManager::processGeometryConstraintsInformationOverlay(const GeoList & g
 
 void CoinManager::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel)
 {
-    assert(edit);
-
     // determine marker size
     int augmentedmarkersize = drawingParameters.markerSize;
 
@@ -1703,8 +1701,6 @@ void CoinManager::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers
 
 void CoinManager::drawEdit(const std::vector<Base::Vector2d> &EditCurve)
 {
-    assert(edit);
-
     editModeScenegraphNodes.EditCurveSet->numVertices.setNum(1);
     editModeScenegraphNodes.EditCurvesCoordinate->point.setNum(EditCurve.size());
     editModeScenegraphNodes.EditCurvesMaterials->diffuseColor.setNum(EditCurve.size());
@@ -1774,43 +1770,37 @@ void CoinManager::drawPreselectRootPoint()
 
 void CoinManager::addSelectPoint(int SelectPoint)
 {
-    if (edit) {
-        int PtId = SelectPoint + 1;
-        SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
-        // bring to foreground
-        float x,y,z;
-        pverts[PtId].getValue(x,y,z);
-        pverts[PtId].setValue(x,y,drawingParameters.zHighlight);
-        editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
-    }
+    int PtId = SelectPoint + 1;
+    SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
+    // bring to foreground
+    float x,y,z;
+    pverts[PtId].getValue(x,y,z);
+    pverts[PtId].setValue(x,y,drawingParameters.zHighlight);
+    editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
 }
 
 void CoinManager::removeSelectPoint(int SelectPoint)
 {
-    if (edit) {
-        int PtId = SelectPoint + 1;
-        SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
-        // send to background
-        float x,y,z;
-        pverts[PtId].getValue(x,y,z);
-        pverts[PtId].setValue(x,y,drawingParameters.zLowPoints);
-        editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
-    }
+    int PtId = SelectPoint + 1;
+    SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
+    // send to background
+    float x,y,z;
+    pverts[PtId].getValue(x,y,z);
+    pverts[PtId].setValue(x,y,drawingParameters.zLowPoints);
+    editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
 }
 
 void CoinManager::clearSelectPoints(void)
 {
-    if (edit) {
-        SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
-        // send to background
-        ViewProviderSketchCoinAttorney::executeOnSelectionPointSet(viewProvider,
-            [pverts, drawingParameters = this->drawingParameters](const int i) {
-                float x,y,z;
-                pverts[i].getValue(x,y,z);
-                pverts[i].setValue(x,y,drawingParameters.zLowPoints);
-            });
-        editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
-    }
+    SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
+    // send to background
+    ViewProviderSketchCoinAttorney::executeOnSelectionPointSet(viewProvider,
+        [pverts, drawingParameters = this->drawingParameters](const int i) {
+            float x,y,z;
+            pverts[i].getValue(x,y,z);
+            pverts[i].setValue(x,y,drawingParameters.zLowPoints);
+        });
+    editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
 }
 
 
@@ -2495,8 +2485,6 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vec
 
 void CoinManager::createEditModeInventorNodes()
 {
-    assert(edit);
-
     // 1 - Create the edit root node
     editModeScenegraphNodes.EditRoot = new SoSeparator;
     editModeScenegraphNodes.EditRoot->ref();
@@ -2697,7 +2685,6 @@ void CoinManager::createEditModeInventorNodes()
 
 void CoinManager::setAxisPickStyle(bool on)
 {
-    assert(edit);
     if (on)
         editModeScenegraphNodes.pickStyleAxes->style = SoPickStyle::SHAPE;
     else

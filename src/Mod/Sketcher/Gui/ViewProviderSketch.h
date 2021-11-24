@@ -489,6 +489,8 @@ private:
 
     /// moves a selected constraint
     void moveConstraint(int constNum, const Base::Vector2d &toPos);
+
+    bool isInEditMode() const;
     //@}
 
     /** @name Attorney functions*/
@@ -562,9 +564,6 @@ private:
 private:
     boost::signals2::connection connectUndoDocument;
     boost::signals2::connection connectRedoDocument;
-
-    /// pointer to the edit data structure if the ViewProvider is in edit.
-    EditData *edit;
 
     // modes while sketching
     SketchMode Mode;
