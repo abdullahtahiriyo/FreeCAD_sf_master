@@ -2734,9 +2734,6 @@ bool ViewProviderSketch::setEdit(int ModNum)
 
     ViewProvider2DObjectGrid::setEdit(ModNum); // notify to handle grid according to edit mode property
 
-    // update colors
-    coinManager->updateCoinManagerColors();
-
     // start the edit dialog
     if (sketchDlg)
         Gui::Control().showDialog(sketchDlg);

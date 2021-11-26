@@ -153,15 +153,17 @@ class SketcherGuiExport CoinManager
 
     private:
         void initParameters();
-        void updateCurvedEdgeCountSegmentsParameter();
-        void updateLineRenderingOrderParameters();
-        void updateConstraintPresentationParameters();
-        void updateElementSizeParameters();
+        void updateCurvedEdgeCountSegmentsParameter(const std::string & parametername);
+        void updateLineRenderingOrderParameters(const std::string & parametername);
+        void updateConstraintPresentationParameters(const std::string & parametername);
+        void updateElementSizeParameters(const std::string & parametername);
+        void updateColor(SbColor &sbcolor, const std::string &parametername);
 
         template<OverlayVisibilityParameter visibilityparameter>
-        void updateOverlayVisibilityParameter();
+        void updateOverlayVisibilityParameter(const std::string & parametername);
 
     private:
+        std::map<std::string, std::function<void(const std::string &)>> str2updatefunction;
         CoinManager &Client;
     };
 
@@ -266,11 +268,6 @@ public:
     /** @name change coin visualisation and behaviour*/
     //@{
     void updateGridExtent();
-    //@}
-
-    /** @name Configuration of the visualisation */
-    //@{
-    void updateCoinManagerColors();
     //@}
 
 private:

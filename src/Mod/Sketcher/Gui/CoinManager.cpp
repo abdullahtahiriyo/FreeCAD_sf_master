@@ -247,25 +247,93 @@ CoinManager::ParameterObserver::~ParameterObserver()
 
 void CoinManager::ParameterObserver::initParameters()
 {
-    updateCurvedEdgeCountSegmentsParameter();
+        // static map to avoid substantial if/else branching
+    //
+    // key->first               => String of parameter,
+    // key->second              => Update function to be called for the parameter,
+    str2updatefunction = {
+        {"SegmentsPerGeometry",
+            [this](const std::string & param){updateCurvedEdgeCountSegmentsParameter(param);}},
+        {"BSplineDegreeVisible",
+            [this](const std::string & param){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineDegree>(param);}},
+        {"BSplineControlPolygonVisible",
+            [this](const std::string & param){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineControlPolygonVisible>(param);}},
+        {"BSplineCombVisible",
+            [this](const std::string & param){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineCombVisible>(param);}},
+        {"BSplineKnotMultiplicityVisible",
+            [this](const std::string & param){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineKnotMultiplicityVisible>(param);}},
+        {"BSplinePoleWeightVisible",
+            [this](const std::string & param){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplinePoleWeightVisible>(param);}},
+        {"TopRenderGeometryId",
+            [this](const std::string & param){updateLineRenderingOrderParameters(param);}},
+        {"MidRenderGeometryId",
+            [this](const std::string & param){updateLineRenderingOrderParameters(param);}},
+        {"HideUnits",
+            [this](const std::string & param){updateConstraintPresentationParameters(param);}},
+        {"ShowDimensionalName",
+            [this](const std::string & param){updateConstraintPresentationParameters(param);}},
+        {"DimensionalStringFormat",
+            [this](const std::string & param){updateConstraintPresentationParameters(param);}},
+        {"ViewScalingFactor",
+            [this](const std::string & param){updateElementSizeParameters(param);}},
+        {"MarkerSize",
+            [this](const std::string & param){updateElementSizeParameters(param);}},
+        {"EditSketcherFontSize",
+            [this](const std::string & param){updateElementSizeParameters(param);}},
+        {"CreateLineColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.CreateCurveColor, param);}},
+        {"EditedVertexColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.VertexColor, param);}},
+        {"EditedEdgeColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.CurveColor, param);}},
+        {"ConstructionColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.CurveDraftColor, param);}},
+        {"InternalAlignedGeoColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.InternalAlignedGeoColor, param);}},
+        {"FullyConstraintElementColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.FullyConstraintElementColor, param);}},
+        {"FullyConstraintConstructionElementColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.FullyConstraintConstructionElementColor, param);}},
+        {"FullyConstraintInternalAlignmentColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.FullyConstraintInternalAlignmentColor, param);}},
+        {"FullyConstraintConstructionPointColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.FullyConstraintConstructionPointColor, param);}},
+        {"FullyConstraintElementColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.FullyConstraintElementColor, param);}},
+        {"InvalidSketchColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.InvalidSketchColor, param);}},
+        {"FullyConstrainedColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.FullyConstrainedColor, param);}},
+        {"ConstrainedDimColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.ConstrDimColor, param);}},
+        {"ConstrainedIcoColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.ConstrIcoColor, param);}},
+        {"NonDrivingConstrDimColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.NonDrivingConstrDimColor, param);}},
+        {"ExprBasedConstrDimColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.ExprBasedConstrDimColor, param);}},
+        {"DeactivatedConstrDimColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.DeactivatedConstrDimColor, param);}},
+        {"ExternalColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.CurveExternalColor, param);}},
+        {"HighlightColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.PreselectColor, param);}},
+        {"SelectionColor",
+            [this, drawingParameters = Client.drawingParameters](const std::string & param){updateColor(drawingParameters.SelectColor, param);}},
+    };
 
-    updateLineRenderingOrderParameters();
+    for( auto & val : str2updatefunction){
+        auto string     = val.first;
+        auto function   = val.second;
 
-    updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineDegree>();
-    updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineControlPolygonVisible>();
-    updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineCombVisible>();
-    updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineKnotMultiplicityVisible>();
-    updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplinePoleWeightVisible>();
-
-    updateConstraintPresentationParameters();
-
-    updateElementSizeParameters();
+        function(string);
+    }
 }
 
-void CoinManager::ParameterObserver::updateCurvedEdgeCountSegmentsParameter()
+void CoinManager::ParameterObserver::updateCurvedEdgeCountSegmentsParameter(const std::string & parametername)
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-    int stdcountsegments = hGrp->GetInt("SegmentsPerGeometry", 50);
+    int stdcountsegments = hGrp->GetInt(parametername.c_str(), 50);
     // value cannot be smaller than 6
     if (stdcountsegments < 6)
         stdcountsegments = 6;
@@ -273,16 +341,20 @@ void CoinManager::ParameterObserver::updateCurvedEdgeCountSegmentsParameter()
     Client.drawingParameters.curvedEdgeCountSegments = stdcountsegments;
 }
 
-void CoinManager::ParameterObserver::updateLineRenderingOrderParameters()
+void CoinManager::ParameterObserver::updateLineRenderingOrderParameters(const std::string & parametername)
 {
+    (void) parametername;
+
     ParameterGrp::handle hGrpp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
 
     Client.drawingParameters.topRenderingGeometry = DrawingParameters::GeometryRendering (hGrpp->GetInt("TopRenderGeometryId",1));
     Client.drawingParameters.midRenderingGeometry = DrawingParameters::GeometryRendering (hGrpp->GetInt("MidRenderGeometryId",2));
 }
 
-void CoinManager::ParameterObserver::updateConstraintPresentationParameters()
+void CoinManager::ParameterObserver::updateConstraintPresentationParameters(const std::string & parametername)
 {
+    (void) parametername;
+
     ParameterGrp::handle hGrpskg = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
 
     Client.constraintParameters.bHideUnits = hGrpskg->GetBool("HideUnits", false);
@@ -291,27 +363,29 @@ void CoinManager::ParameterObserver::updateConstraintPresentationParameters()
 }
 
 template<CoinManager::ParameterObserver::OverlayVisibilityParameter visibilityparameter>
-void CoinManager::ParameterObserver::updateOverlayVisibilityParameter()
+void CoinManager::ParameterObserver::updateOverlayVisibilityParameter(const std::string & parametername)
 {
     ParameterGrp::handle hGrpsk = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
 
     if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplineDegree)
-        Client.overlayParameters.bSplineDegreeVisible = hGrpsk->GetBool("BSplineDegreeVisible", true);
+        Client.overlayParameters.bSplineDegreeVisible = hGrpsk->GetBool(parametername.c_str(), true);
     else if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplineControlPolygonVisible)
-        Client.overlayParameters.bSplineControlPolygonVisible = hGrpsk->GetBool("BSplineControlPolygonVisible", true);
+        Client.overlayParameters.bSplineControlPolygonVisible = hGrpsk->GetBool(parametername.c_str(), true);
     else if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplineCombVisible)
-        Client.overlayParameters.bSplineCombVisible = hGrpsk->GetBool("BSplineCombVisible", true);
+        Client.overlayParameters.bSplineCombVisible = hGrpsk->GetBool(parametername.c_str(), true);
     else if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplineKnotMultiplicityVisible)
-        Client.overlayParameters.bSplineKnotMultiplicityVisible = hGrpsk->GetBool("BSplineKnotMultiplicityVisible", true);
+        Client.overlayParameters.bSplineKnotMultiplicityVisible = hGrpsk->GetBool(parametername.c_str(), true);
     else if constexpr (visibilityparameter == OverlayVisibilityParameter::BSplinePoleWeightVisible)
-        Client.overlayParameters.bSplinePoleWeightVisible = hGrpsk->GetBool("BSplinePoleWeightVisible", true);
+        Client.overlayParameters.bSplinePoleWeightVisible = hGrpsk->GetBool(parametername.c_str(), true);
 
     Client.overlayParameters.visibleInformationChanged = true;
 }
 
-void CoinManager::ParameterObserver::updateElementSizeParameters()
+void CoinManager::ParameterObserver::updateElementSizeParameters(const std::string & parametername)
 {
-     //Add scaling to Constraint icons
+    (void) parametername;
+
+    //Add scaling to Constraint icons
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
 
     double viewScalingFactor = hGrp->GetFloat("ViewScalingFactor", 1.0);
@@ -359,6 +433,15 @@ void CoinManager::ParameterObserver::updateElementSizeParameters()
     Client.updateInventorNodeSizes();
 }
 
+void CoinManager::ParameterObserver::updateColor(SbColor &sbcolor, const std::string &parametername)
+{
+    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
+
+    float transparency = 0.f;
+    unsigned long color = (unsigned long)(sbcolor.getPackedValue());
+    color = hGrp->GetUnsigned(parametername.c_str(), color);
+    sbcolor.setPackedValue((uint32_t)color, transparency);
+}
 
 void CoinManager::ParameterObserver::subscribeToParameters()
 {
@@ -373,6 +456,7 @@ void CoinManager::ParameterObserver::subscribeToParameters()
 
     ParameterGrp::handle hGrpskg = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
     hGrpskg->Attach(this);
+
 }
 
 void CoinManager::ParameterObserver::unsubscribeToParameters()
@@ -394,44 +478,12 @@ void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCalle
 {
     (void) rCaller;
 
-    // static map to avoid substantial if/else branching
-    //
-    // key->first               => String of parameter,
-    // key->second              => Update function to be called for the parameter,
-    static std::map<std::string, std::function<void()>> str2updatefunction {
-        {"SegmentsPerGeometry",
-            [this](){updateCurvedEdgeCountSegmentsParameter();}},
-        {"BSplineDegreeVisible",
-            [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineDegree>();}},
-        {"BSplineControlPolygonVisible",
-            [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineControlPolygonVisible>();}},
-        {"BSplineCombVisible",
-            [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineCombVisible>();}},
-        {"BSplineKnotMultiplicityVisible",
-            [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplineKnotMultiplicityVisible>();}},
-        {"BSplinePoleWeightVisible",
-            [this](){updateOverlayVisibilityParameter<OverlayVisibilityParameter::BSplinePoleWeightVisible>();}},
-        {"TopRenderGeometryId",
-            [this](){updateLineRenderingOrderParameters();}},
-        {"MidRenderGeometryId",
-            [this](){updateLineRenderingOrderParameters();}},
-        {"HideUnits",
-            [this](){updateConstraintPresentationParameters();}},
-        {"ShowDimensionalName",
-            [this](){updateConstraintPresentationParameters();}},
-        {"DimensionalStringFormat",
-            [this](){updateConstraintPresentationParameters();}},
-        {"ViewScalingFactor",
-            [this](){updateElementSizeParameters();}},
-        {"MarkerSize",
-            [this](){updateElementSizeParameters();}},
-        {"EditSketcherFontSize",
-            [this](){updateElementSizeParameters();}},
-    };
-
     auto key = str2updatefunction.find(sReason);
     if( key != str2updatefunction.end() ) {
-        key->second();
+        auto string     = key->first;
+        auto function   = key->second;
+
+        function(string);
 
         Client.redrawViewProvider(); // redraw with non-temporal geometry
     }
@@ -1799,41 +1851,6 @@ void CoinManager::clearPointSelection(void)
             pverts[i].setValue(x,y,drawingParameters.zLowPoints);
         });
     editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
-}
-
-
-void CoinManager::updateCoinManagerColors()
-{
-    // TODO: Consider making colors updated using the observer
-    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-
-    auto updateColor = [&hGrp](SbColor & sbcolor, const char * parametername){
-        float transparency = 0.f;
-        unsigned long color = (unsigned long)(sbcolor.getPackedValue());
-        color = hGrp->GetUnsigned(parametername, color);
-        sbcolor.setPackedValue((uint32_t)color, transparency);
-    };
-
-    updateColor(drawingParameters.CreateCurveColor, "CreateLineColor");
-    updateColor(drawingParameters.VertexColor, "EditedVertexColor");
-    updateColor(drawingParameters.CurveColor, "EditedEdgeColor");
-    updateColor(drawingParameters.CurveDraftColor, "ConstructionColor");
-    updateColor(drawingParameters.InternalAlignedGeoColor, "InternalAlignedGeoColor");
-    updateColor(drawingParameters.FullyConstraintElementColor, "FullyConstraintElementColor");
-    updateColor(drawingParameters.FullyConstraintConstructionElementColor, "FullyConstraintConstructionElementColor");
-    updateColor(drawingParameters.FullyConstraintInternalAlignmentColor, "FullyConstraintInternalAlignmentColor");
-    updateColor(drawingParameters.FullyConstraintConstructionPointColor, "FullyConstraintConstructionPointColor");
-    updateColor(drawingParameters.FullyConstraintElementColor, "FullyConstraintElementColor");
-    updateColor(drawingParameters.InvalidSketchColor, "InvalidSketchColor");
-    updateColor(drawingParameters.FullyConstrainedColor, "FullyConstrainedColor");
-    updateColor(drawingParameters.ConstrDimColor, "ConstrainedDimColor");
-    updateColor(drawingParameters.ConstrIcoColor, "ConstrainedIcoColor");
-    updateColor(drawingParameters.NonDrivingConstrDimColor, "NonDrivingConstrDimColor");
-    updateColor(drawingParameters.ExprBasedConstrDimColor, "ExprBasedConstrDimColor");
-    updateColor(drawingParameters.DeactivatedConstrDimColor, "DeactivatedConstrDimColor");
-    updateColor(drawingParameters.CurveExternalColor, "ExternalColor");
-    updateColor(drawingParameters.PreselectColor, "HighlightColor");
-    updateColor(drawingParameters.SelectColor, "SelectionColor");
 }
 
 void CoinManager::updateColor()
