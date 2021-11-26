@@ -3328,7 +3328,7 @@ void ViewProviderSketch::setPreselectRootPoint()
 
 void ViewProviderSketch::resetPreselectPoint(void)
 {
-    coinManager->cleanPointPreselection();
+    coinManager->clearPointPreselection();
     preselection.PreselectPoint = -1;
     preselection.PreselectCurve = -1;
     preselection.PreselectCross = -1;
@@ -3337,19 +3337,19 @@ void ViewProviderSketch::resetPreselectPoint(void)
 
 void ViewProviderSketch::addSelectPoint(int SelectPoint)
 {
-    coinManager->addSelectPoint(SelectPoint);
+    coinManager->drawPointAsSelected(SelectPoint);
     selection.SelPointSet.insert(SelectPoint);
 }
 
 void ViewProviderSketch::removeSelectPoint(int SelectPoint)
 {
-    coinManager->removeSelectPoint(SelectPoint);
+    coinManager->clearPointSelection(SelectPoint);
     selection.SelPointSet.erase(SelectPoint);
 }
 
 void ViewProviderSketch::clearSelectPoints(void)
 {
-    coinManager->clearSelectPoints();
+    coinManager->clearPointSelection();
     selection.SelPointSet.clear();
 }
 

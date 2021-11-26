@@ -1741,7 +1741,7 @@ void CoinManager::drawPreselectPoint(int PreselectPoint)
     editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
 }
 
-void CoinManager::cleanPointPreselection(void)
+void CoinManager::clearPointPreselection(void)
 {
     int oldPtId = -1;
      auto preselectpoint = ViewProviderSketchCoinAttorney::getPreselectPoint(viewProvider);
@@ -1766,9 +1766,9 @@ void CoinManager::drawPreselectRootPoint()
     //TODO: This is both a hack and a placeholder. It is a hack because -1 in ViewProviderSketch means 'not used'. It works because it assumes a root point at index 0. This hack was present in ViewProviderSketch. I have move it here to show intent in ViewProviderSketch, knowing that changes to the indexing will be undertaken here when geometry layers are added. So the code is functionally the same as before.
 }
 
-void CoinManager::addSelectPoint(int SelectPoint)
+void CoinManager::drawPointAsSelected(int selectpointId)
 {
-    int PtId = SelectPoint + 1;
+    int PtId = selectpointId + 1;
     SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
     // bring to foreground
     float x,y,z;
@@ -1777,9 +1777,9 @@ void CoinManager::addSelectPoint(int SelectPoint)
     editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
 }
 
-void CoinManager::removeSelectPoint(int SelectPoint)
+void CoinManager::clearPointSelection(int selectpointId)
 {
-    int PtId = SelectPoint + 1;
+    int PtId = selectpointId + 1;
     SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
     // send to background
     float x,y,z;
@@ -1788,7 +1788,7 @@ void CoinManager::removeSelectPoint(int SelectPoint)
     editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
 }
 
-void CoinManager::clearSelectPoints(void)
+void CoinManager::clearPointSelection(void)
 {
     SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
     // send to background

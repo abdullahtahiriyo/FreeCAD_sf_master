@@ -224,10 +224,10 @@ public:
     //@{
     void drawPreselectPoint(int PreselectPoint);
     void drawPreselectRootPoint();
-    void cleanPointPreselection(void);
-    void addSelectPoint(int SelectPoint);
-    void removeSelectPoint(int SelectPoint);
-    void clearSelectPoints(void);
+    void clearPointPreselection(void);
+    void drawPointAsSelected(int selectpointId);
+    void clearPointSelection(int selectpointId);
+    void clearPointSelection(void);
     //@}
 
     /** @name update coin nodes*/
