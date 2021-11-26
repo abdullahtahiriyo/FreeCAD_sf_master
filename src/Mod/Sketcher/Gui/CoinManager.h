@@ -218,27 +218,42 @@ public:
     //@{
     void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel);
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
+    void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
+    void setPositionText(const Base::Vector2d &Pos);
+    void resetPositionText(void);
+    void setAxisPickStyle(bool on);
     //@}
 
     /** @name handle preselection and selection of points */
     //@{
+    PreselectionResult detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos);
     void drawPreselectPoint(int PreselectPoint);
     void drawPreselectRootPoint();
     void clearPointPreselection(void);
     void drawPointAsSelected(int selectpointId);
     void clearPointSelection(int selectpointId);
     void clearPointSelection(void);
+    /// The client is responsible for unref-ing the SoGroup to release the memory.
+    SoGroup* getSelectedConstraints();
     //@}
 
     /** @name update coin nodes*/
     void processGeometryConstraintsInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer);
 
     void updateVirtualSpace();
+
+    /// Draw all constraint icons
+    /*! Except maybe the radius and lock ones? */
+    void drawConstraintIcons();
+
+    // This specific overload is to use a specific geometry list, which may be a temporal one
+    void drawConstraintIcons(const GeoList & geolist);
     //@}
 
     /** @name coin nodes creation*/
     void createEditModeInventorNodes();
     void rebuildConstraintNodes(void);
+    SoSeparator* getRootEditNode();
     //@}
 
     /** @name update coin colors*/
@@ -250,7 +265,6 @@ public:
 
     /** @name change coin visualisation and behaviour*/
     //@{
-    void setAxisPickStyle(bool on);
     void updateGridExtent();
     //@}
 
@@ -258,29 +272,6 @@ public:
     //@{
     void updateCoinManagerColors();
     //@}
-
-    /** @name Analysis Results */
-    //@{
-    float getboundingBoxMagnitudeOrder() { return analysisResults.boundingBoxMagnitudeOrder;}
-    //@}
-
-    PreselectionResult detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos);
-
-    /// Draw all constraint icons
-    /*! Except maybe the radius and lock ones? */
-    void drawConstraintIcons();
-
-    // This specific overload is to use a specific geometry list, which may be a temporal one
-    void drawConstraintIcons(const GeoList & geolist);
-
-    void setPositionText(const Base::Vector2d &Pos, const SbString &txt);
-    void setPositionText(const Base::Vector2d &Pos);
-    void resetPositionText(void);
-
-    /// The client is responsible for unref-ing the SoGroup to release the memory.
-    SoGroup* getSelectedConstraints();
-
-    SoSeparator* getRootEditNode();
 
 private:
     // This function populates the coin nodes with the information of the current geometry
