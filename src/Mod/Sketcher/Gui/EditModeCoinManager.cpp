@@ -90,7 +90,7 @@
 
 #include "ViewProviderSketch.h"
 
-#include "CoinManager.h"
+#include "EditModeCoinManager.h"
 
 using namespace SketcherGui;
 using namespace Sketcher;
@@ -234,18 +234,18 @@ inline void ViewProviderSketchCoinAttorney::executeOnSelectionPointSet(const Vie
 }
 
 //**************************** ParameterObserver nested class ******************************
-CoinManager::ParameterObserver::ParameterObserver(CoinManager &client): Client(client)
+EditModeCoinManager::ParameterObserver::ParameterObserver(EditModeCoinManager &client): Client(client)
 {
     initParameters();
     subscribeToParameters();
 }
 
-CoinManager::ParameterObserver::~ParameterObserver()
+EditModeCoinManager::ParameterObserver::~ParameterObserver()
 {
     unsubscribeToParameters();
 }
 
-void CoinManager::ParameterObserver::initParameters()
+void EditModeCoinManager::ParameterObserver::initParameters()
 {
         // static map to avoid substantial if/else branching
     //
@@ -330,7 +330,7 @@ void CoinManager::ParameterObserver::initParameters()
     }
 }
 
-void CoinManager::ParameterObserver::updateCurvedEdgeCountSegmentsParameter(const std::string & parametername)
+void EditModeCoinManager::ParameterObserver::updateCurvedEdgeCountSegmentsParameter(const std::string & parametername)
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
     int stdcountsegments = hGrp->GetInt(parametername.c_str(), 50);
@@ -341,7 +341,7 @@ void CoinManager::ParameterObserver::updateCurvedEdgeCountSegmentsParameter(cons
     Client.drawingParameters.curvedEdgeCountSegments = stdcountsegments;
 }
 
-void CoinManager::ParameterObserver::updateLineRenderingOrderParameters(const std::string & parametername)
+void EditModeCoinManager::ParameterObserver::updateLineRenderingOrderParameters(const std::string & parametername)
 {
     (void) parametername;
 
@@ -351,7 +351,7 @@ void CoinManager::ParameterObserver::updateLineRenderingOrderParameters(const st
     Client.drawingParameters.midRenderingGeometry = DrawingParameters::GeometryRendering (hGrpp->GetInt("MidRenderGeometryId",2));
 }
 
-void CoinManager::ParameterObserver::updateConstraintPresentationParameters(const std::string & parametername)
+void EditModeCoinManager::ParameterObserver::updateConstraintPresentationParameters(const std::string & parametername)
 {
     (void) parametername;
 
@@ -362,8 +362,8 @@ void CoinManager::ParameterObserver::updateConstraintPresentationParameters(cons
     Client.constraintParameters.sDimensionalStringFormat = QString::fromStdString(hGrpskg->GetASCII("DimensionalStringFormat", "%N = %V"));
 }
 
-template<CoinManager::ParameterObserver::OverlayVisibilityParameter visibilityparameter>
-void CoinManager::ParameterObserver::updateOverlayVisibilityParameter(const std::string & parametername)
+template<EditModeCoinManager::ParameterObserver::OverlayVisibilityParameter visibilityparameter>
+void EditModeCoinManager::ParameterObserver::updateOverlayVisibilityParameter(const std::string & parametername)
 {
     ParameterGrp::handle hGrpsk = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
 
@@ -381,7 +381,7 @@ void CoinManager::ParameterObserver::updateOverlayVisibilityParameter(const std:
     Client.overlayParameters.visibleInformationChanged = true;
 }
 
-void CoinManager::ParameterObserver::updateElementSizeParameters(const std::string & parametername)
+void EditModeCoinManager::ParameterObserver::updateElementSizeParameters(const std::string & parametername)
 {
     (void) parametername;
 
@@ -433,7 +433,7 @@ void CoinManager::ParameterObserver::updateElementSizeParameters(const std::stri
     Client.updateInventorNodeSizes();
 }
 
-void CoinManager::ParameterObserver::updateColor(SbColor &sbcolor, const std::string &parametername)
+void EditModeCoinManager::ParameterObserver::updateColor(SbColor &sbcolor, const std::string &parametername)
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
 
@@ -443,7 +443,7 @@ void CoinManager::ParameterObserver::updateColor(SbColor &sbcolor, const std::st
     sbcolor.setPackedValue((uint32_t)color, transparency);
 }
 
-void CoinManager::ParameterObserver::subscribeToParameters()
+void EditModeCoinManager::ParameterObserver::subscribeToParameters()
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
     hGrp->Attach(this);
@@ -459,7 +459,7 @@ void CoinManager::ParameterObserver::subscribeToParameters()
 
 }
 
-void CoinManager::ParameterObserver::unsubscribeToParameters()
+void EditModeCoinManager::ParameterObserver::unsubscribeToParameters()
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
     hGrp->Detach(this);
@@ -474,7 +474,7 @@ void CoinManager::ParameterObserver::unsubscribeToParameters()
     hGrpskg->Detach(this);
 }
 
-void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCaller, const char * sReason)
+void EditModeCoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCaller, const char * sReason)
 {
     (void) rCaller;
 
@@ -489,19 +489,19 @@ void CoinManager::ParameterObserver::OnChange(Base::Subject<const char*> &rCalle
     }
 }
 
-//**************************** CoinManager class ******************************
+//**************************** EditModeCoinManager class ******************************
 
-CoinManager::CoinManager(ViewProviderSketch &vp):viewProvider(vp) {
+EditModeCoinManager::EditModeCoinManager(ViewProviderSketch &vp):viewProvider(vp) {
 
     // Create Edit Mode Scenograph
     createEditModeInventorNodes();
 
     // Create parameter observer and initialise watched parameters
-    pObserver = std::make_unique<CoinManager::ParameterObserver>(*this);
+    pObserver = std::make_unique<EditModeCoinManager::ParameterObserver>(*this);
 
 }
 
-CoinManager::~CoinManager()
+EditModeCoinManager::~EditModeCoinManager()
 {
     Gui::coinRemoveAllChildren(editModeScenegraphNodes.EditRoot);
     ViewProviderSketchCoinAttorney::removeNodeFromRoot(viewProvider, editModeScenegraphNodes.EditRoot);
@@ -509,7 +509,7 @@ CoinManager::~CoinManager()
 }
 
 
-void CoinManager::processGeometry(const GeoList & geolist)
+void EditModeCoinManager::processGeometry(const GeoList & geolist)
 {
     // Define a single layer processing to be converted to coin (currently it is the whole geometry)
     GeometryLayer geolayer { geolist };
@@ -544,7 +544,7 @@ void CoinManager::processGeometry(const GeoList & geolist)
     analysisResults.bsplineGeoIds = gcconv.getBSplineGeoIds();
 }
 
-void CoinManager::updateAxesLength()
+void EditModeCoinManager::updateAxesLength()
 {
     editModeScenegraphNodes.RootCrossCoordinate->point.set1Value(0,SbVec3f(-analysisResults.boundingBoxMagnitudeOrder, 0.0f, drawingParameters.zCross));
     editModeScenegraphNodes.RootCrossCoordinate->point.set1Value(1,SbVec3f(analysisResults.boundingBoxMagnitudeOrder, 0.0f, drawingParameters.zCross));
@@ -552,7 +552,7 @@ void CoinManager::updateAxesLength()
     editModeScenegraphNodes.RootCrossCoordinate->point.set1Value(3,SbVec3f(0.0f, analysisResults.boundingBoxMagnitudeOrder, drawingParameters.zCross));
 }
 
-void CoinManager::processGeometryInformationOverlay(const GeoList & geolist)
+void EditModeCoinManager::processGeometryInformationOverlay(const GeoList & geolist)
 {
     if(overlayParameters.rebuildInformationLayer) {
         // every time we start with empty information overlay
@@ -571,14 +571,14 @@ void CoinManager::processGeometryInformationOverlay(const GeoList & geolist)
     overlayParameters.visibleInformationChanged = false; // just updated
 }
 
-void CoinManager::updateOverlayParameters()
+void EditModeCoinManager::updateOverlayParameters()
 {
     if ( (analysisResults.combRepresentationScale > (2 * overlayParameters.currentBSplineCombRepresentationScale)) ||
         (analysisResults.combRepresentationScale < (overlayParameters.currentBSplineCombRepresentationScale / 2)))
         overlayParameters.currentBSplineCombRepresentationScale = analysisResults.combRepresentationScale ;
 }
 
-void CoinManager::updateVirtualSpace()
+void EditModeCoinManager::updateVirtualSpace()
 {
     const std::vector<Sketcher::Constraint *> &constrlist = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
 
@@ -598,7 +598,7 @@ void CoinManager::updateVirtualSpace()
     }
 }
 
-void CoinManager::processConstraints(const GeoList & geolist)
+void EditModeCoinManager::processConstraints(const GeoList & geolist)
 {
     const auto &constrlist = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
 
@@ -1642,7 +1642,7 @@ Restart:
     }
 }
 
-Base::Vector3d CoinManager::seekConstraintPosition(const Base::Vector3d &origPos,
+Base::Vector3d EditModeCoinManager::seekConstraintPosition(const Base::Vector3d &origPos,
                                                           const Base::Vector3d &norm,
                                                           const Base::Vector3d &dir, float step,
                                                           const SoNode *constraint)
@@ -1694,7 +1694,7 @@ Base::Vector3d CoinManager::seekConstraintPosition(const Base::Vector3d &origPos
 }
 
 
-void CoinManager::processGeometryConstraintsInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer)
+void EditModeCoinManager::processGeometryConstraintsInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer)
 {
     overlayParameters.rebuildInformationLayer = rebuildinformationlayer;
 
@@ -1711,7 +1711,7 @@ void CoinManager::processGeometryConstraintsInformationOverlay(const GeoList & g
     processConstraints(geolist);
 }
 
-void CoinManager::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel)
+void EditModeCoinManager::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel)
 {
     // determine marker size
     int augmentedmarkersize = drawingParameters.markerSize;
@@ -1749,7 +1749,7 @@ void CoinManager::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers
     editModeScenegraphNodes.EditMarkerSet->markerIndex.finishEditing();
 }
 
-void CoinManager::drawEdit(const std::vector<Base::Vector2d> &EditCurve)
+void EditModeCoinManager::drawEdit(const std::vector<Base::Vector2d> &EditCurve)
 {
     editModeScenegraphNodes.EditCurveSet->numVertices.setNum(1);
     editModeScenegraphNodes.EditCurvesCoordinate->point.setNum(EditCurve.size());
@@ -1770,7 +1770,7 @@ void CoinManager::drawEdit(const std::vector<Base::Vector2d> &EditCurve)
     editModeScenegraphNodes.EditCurvesMaterials->diffuseColor.finishEditing();
 }
 
-void CoinManager::drawPreselectPoint(int PreselectPoint)
+void EditModeCoinManager::drawPreselectPoint(int PreselectPoint)
 {
     int oldPtId = -1;
     auto preselectpoint = ViewProviderSketchCoinAttorney::getPreselectPoint(viewProvider);
@@ -1793,7 +1793,7 @@ void CoinManager::drawPreselectPoint(int PreselectPoint)
     editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
 }
 
-void CoinManager::clearPointPreselection(void)
+void EditModeCoinManager::clearPointPreselection(void)
 {
     int oldPtId = -1;
      auto preselectpoint = ViewProviderSketchCoinAttorney::getPreselectPoint(viewProvider);
@@ -1811,14 +1811,14 @@ void CoinManager::clearPointPreselection(void)
     }
 }
 
-void CoinManager::drawPreselectRootPoint()
+void EditModeCoinManager::drawPreselectRootPoint()
 {
     drawPreselectPoint(-1);
 
     //TODO: This is both a hack and a placeholder. It is a hack because -1 in ViewProviderSketch means 'not used'. It works because it assumes a root point at index 0. This hack was present in ViewProviderSketch. I have move it here to show intent in ViewProviderSketch, knowing that changes to the indexing will be undertaken here when geometry layers are added. So the code is functionally the same as before.
 }
 
-void CoinManager::drawPointAsSelected(int selectpointId)
+void EditModeCoinManager::drawPointAsSelected(int selectpointId)
 {
     int PtId = selectpointId + 1;
     SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
@@ -1829,7 +1829,7 @@ void CoinManager::drawPointAsSelected(int selectpointId)
     editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
 }
 
-void CoinManager::clearPointSelection(int selectpointId)
+void EditModeCoinManager::clearPointSelection(int selectpointId)
 {
     int PtId = selectpointId + 1;
     SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
@@ -1840,7 +1840,7 @@ void CoinManager::clearPointSelection(int selectpointId)
     editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
 }
 
-void CoinManager::clearPointSelection(void)
+void EditModeCoinManager::clearPointSelection(void)
 {
     SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
     // send to background
@@ -1853,7 +1853,7 @@ void CoinManager::clearPointSelection(void)
     editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
 }
 
-void CoinManager::updateColor()
+void EditModeCoinManager::updateColor()
 {
     auto geolistfacade = ViewProviderSketchCoinAttorney::getGeoListFacade(viewProvider);
 
@@ -1871,7 +1871,7 @@ void CoinManager::updateColor()
     updateConstraintColor(constraints);
 }
 
-void CoinManager::updateColor(const GeoList & geolist)
+void EditModeCoinManager::updateColor(const GeoList & geolist)
 {
     auto geolistfacade = Sketcher::getGeoListFacade(geolist);
 
@@ -1890,7 +1890,7 @@ void CoinManager::updateColor(const GeoList & geolist)
 }
 
 
-void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid)
+void EditModeCoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid)
 {
     // Lambdas for convenience retrieval of geometry information
     auto isConstructionGeom = [&geolistfacade](int GeoId) {
@@ -2165,7 +2165,7 @@ void CoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool 
     editModeScenegraphNodes.CurveSet->numVertices.finishEditing();
 }
 
-void CoinManager::updateConstraintColor(const std::vector<Sketcher::Constraint *> &constraints)
+void EditModeCoinManager::updateConstraintColor(const std::vector<Sketcher::Constraint *> &constraints)
 {
     // Because coincident constraints are selected using the point color, we need to edit the point materials.
     // TODO: Review this
@@ -2296,14 +2296,14 @@ void CoinManager::updateConstraintColor(const std::vector<Sketcher::Constraint *
 
 }
 
-void CoinManager::rebuildConstraintNodes(void)
+void EditModeCoinManager::rebuildConstraintNodes(void)
 {
     auto geolist = ViewProviderSketchCoinAttorney::getGeoList(viewProvider);
 
     rebuildConstraintNodes(geolist);
 }
 
-void CoinManager::rebuildConstraintNodes(const GeoList & geolist)
+void EditModeCoinManager::rebuildConstraintNodes(const GeoList & geolist)
 {
     const std::vector<Sketcher::Constraint *> &constrlist = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
 
@@ -2326,7 +2326,7 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist)
     rebuildConstraintNodes(geolist, constrlist, norm);
 }
 
-void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vector<Sketcher::Constraint *> constrlist, SbVec3f norm)
+void EditModeCoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vector<Sketcher::Constraint *> constrlist, SbVec3f norm)
 {
 
     for (std::vector<Sketcher::Constraint *>::const_iterator it=constrlist.begin(); it != constrlist.end(); ++it) {
@@ -2498,7 +2498,7 @@ void CoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vec
     }
 }
 
-void CoinManager::createEditModeInventorNodes()
+void EditModeCoinManager::createEditModeInventorNodes()
 {
     // 1 - Create the edit root node
     editModeScenegraphNodes.EditRoot = new SoSeparator;
@@ -2698,7 +2698,7 @@ void CoinManager::createEditModeInventorNodes()
     editModeScenegraphNodes.EditRoot->addChild(editModeScenegraphNodes.infoGroup);
 }
 
-void CoinManager::setAxisPickStyle(bool on)
+void EditModeCoinManager::setAxisPickStyle(bool on)
 {
     if (on)
         editModeScenegraphNodes.pickStyleAxes->style = SoPickStyle::SHAPE;
@@ -2706,19 +2706,19 @@ void CoinManager::setAxisPickStyle(bool on)
         editModeScenegraphNodes.pickStyleAxes->style = SoPickStyle::UNPICKABLE;
 }
 
-void CoinManager::redrawViewProvider()
+void EditModeCoinManager::redrawViewProvider()
 {
     viewProvider.draw(false,false);
 }
 
-void CoinManager::updateGridExtent()
+void EditModeCoinManager::updateGridExtent()
 {
     float dMagF = analysisResults.boundingBoxMagnitudeOrder;
 
     ViewProviderSketchCoinAttorney::updateGridExtent(viewProvider,-dMagF, dMagF, -dMagF, dMagF);
 }
 
-QString CoinManager::getPresentationString(const Constraint *constraint)
+QString EditModeCoinManager::getPresentationString(const Constraint *constraint)
 {
     QString                         nameStr; // name parameter string
     QString                         valueStr; // dimensional value string
@@ -2824,9 +2824,9 @@ QString CoinManager::getPresentationString(const Constraint *constraint)
     return valueStr;
 }
 
-CoinManager::PreselectionResult CoinManager::detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos)
+EditModeCoinManager::PreselectionResult EditModeCoinManager::detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos)
 {
-    CoinManager::PreselectionResult result;
+    EditModeCoinManager::PreselectionResult result;
 
     if(!Point)
         return result;
@@ -2875,7 +2875,7 @@ CoinManager::PreselectionResult CoinManager::detectPreselection(SoPickedPoint * 
     return result;
 }
 
-std::set<int> CoinManager::detectPreselectionConstr(const SoPickedPoint *Point,
+std::set<int> EditModeCoinManager::detectPreselectionConstr(const SoPickedPoint *Point,
                                                     const SbVec2s &cursorPos)
 {
     std::set<int> constrIndices;
@@ -2999,7 +2999,7 @@ std::set<int> CoinManager::detectPreselectionConstr(const SoPickedPoint *Point,
     return constrIndices;
 }
 
-SbVec3s CoinManager::getDisplayedSize(const SoImage *iconPtr) const
+SbVec3s EditModeCoinManager::getDisplayedSize(const SoImage *iconPtr) const
 {
 #if (COIN_MAJOR_VERSION >= 3)
     SbVec3s iconSize = iconPtr->image.getValue().getSize();
@@ -3018,14 +3018,14 @@ SbVec3s CoinManager::getDisplayedSize(const SoImage *iconPtr) const
 }
 
 // public function that triggers drawing of most constraint icons
-void CoinManager::drawConstraintIcons()
+void EditModeCoinManager::drawConstraintIcons()
 {
     auto geolist = ViewProviderSketchCoinAttorney::getGeoList(viewProvider);
 
     drawConstraintIcons(geolist);
 }
 
-void CoinManager::drawConstraintIcons(const GeoList & geolist)
+void EditModeCoinManager::drawConstraintIcons(const GeoList & geolist)
 {
     const std::vector<Sketcher::Constraint *> &constraints = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
 
@@ -3159,7 +3159,7 @@ void CoinManager::drawConstraintIcons(const GeoList & geolist)
     combineConstraintIcons(iconQueue);
 }
 
-void CoinManager::combineConstraintIcons(IconQueue iconQueue)
+void EditModeCoinManager::combineConstraintIcons(IconQueue iconQueue)
 {
     // getScaleFactor gives us a ratio of pixels per some kind of real units
     float maxDistSquared = pow(ViewProviderSketchCoinAttorney::getScaleFactor(viewProvider), 2);
@@ -3224,7 +3224,7 @@ void CoinManager::combineConstraintIcons(IconQueue iconQueue)
     }
 }
 
-void CoinManager::drawMergedConstraintIcons(IconQueue iconQueue)
+void EditModeCoinManager::drawMergedConstraintIcons(IconQueue iconQueue)
 {
     for(IconQueue::iterator i = iconQueue.begin(); i != iconQueue.end(); ++i) {
         clearCoinImage(i->destination);
@@ -3367,7 +3367,7 @@ void CoinManager::drawMergedConstraintIcons(IconQueue iconQueue)
 
 /// Note: labels, labelColors, and boundingBoxes are all
 /// assumed to be the same length.
-QImage CoinManager::renderConstrIcon(const QString &type,
+QImage EditModeCoinManager::renderConstrIcon(const QString &type,
                                             const QColor &iconColor,
                                             const QStringList &labels,
                                             const QList<QColor> &labelColors,
@@ -3458,7 +3458,7 @@ QImage CoinManager::renderConstrIcon(const QString &type,
     return image;
 }
 
-void CoinManager::drawTypicalConstraintIcon(const constrIconQueueItem &i)
+void EditModeCoinManager::drawTypicalConstraintIcon(const constrIconQueueItem &i)
 {
     QColor color = constrColor(i.constraintId);
 
@@ -3472,7 +3472,7 @@ void CoinManager::drawTypicalConstraintIcon(const constrIconQueueItem &i)
     sendConstraintIconToCoin(image, i.destination);
 }
 
-QString CoinManager::iconTypeFromConstraint(Constraint *constraint)
+QString EditModeCoinManager::iconTypeFromConstraint(Constraint *constraint)
 {
     /*! TODO: Consider pushing this functionality up into Constraint
      *
@@ -3506,7 +3506,7 @@ QString CoinManager::iconTypeFromConstraint(Constraint *constraint)
     }
 }
 
-void CoinManager::sendConstraintIconToCoin(const QImage &icon, SoImage *soImagePtr)
+void EditModeCoinManager::sendConstraintIconToCoin(const QImage &icon, SoImage *soImagePtr)
 {
     SoSFImage icondata = SoSFImage();
 
@@ -3522,12 +3522,12 @@ void CoinManager::sendConstraintIconToCoin(const QImage &icon, SoImage *soImageP
     soImagePtr->horAlignment = SoImage::CENTER;
 }
 
-void CoinManager::clearCoinImage(SoImage *soImagePtr)
+void EditModeCoinManager::clearCoinImage(SoImage *soImagePtr)
 {
     soImagePtr->setToDefaults();
 }
 
-QColor CoinManager::constrColor(int constraintId)
+QColor EditModeCoinManager::constrColor(int constraintId)
 {
     const auto constraints = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
 
@@ -3544,7 +3544,7 @@ QColor CoinManager::constrColor(int constraintId)
 
 }
 
-int CoinManager::constrColorPriority(int constraintId)
+int EditModeCoinManager::constrColorPriority(int constraintId)
 {
     if (ViewProviderSketchCoinAttorney::isConstraintPreselected(viewProvider,constraintId))
         return 3;
@@ -3554,33 +3554,33 @@ int CoinManager::constrColorPriority(int constraintId)
         return 1;
 }
 
-void CoinManager::setPositionText(const Base::Vector2d &Pos, const SbString &text)
+void EditModeCoinManager::setPositionText(const Base::Vector2d &Pos, const SbString &text)
 {
     editModeScenegraphNodes.textX->string = text;
     editModeScenegraphNodes.textPos->translation = SbVec3f(Pos.x, Pos.y, drawingParameters.zText);
 }
 
-void CoinManager::setPositionText(const Base::Vector2d &Pos)
+void EditModeCoinManager::setPositionText(const Base::Vector2d &Pos)
 {
     SbString text;
     text.sprintf(" (%.1f,%.1f)", Pos.x, Pos.y);
     setPositionText(Pos,text);
 }
 
-void CoinManager::resetPositionText(void)
+void EditModeCoinManager::resetPositionText(void)
 {
     editModeScenegraphNodes.textX->string = "";
 }
 
-int CoinManager::defaultApplicationFontSizePixels() const {
+int EditModeCoinManager::defaultApplicationFontSizePixels() const {
     return ViewProviderSketchCoinAttorney::defaultApplicationFontSizePixels(viewProvider);
 }
 
-int CoinManager::getApplicationLogicalDPIX() const {
+int EditModeCoinManager::getApplicationLogicalDPIX() const {
     return ViewProviderSketchCoinAttorney::getApplicationLogicalDPIX(viewProvider);
 }
 
-void CoinManager::updateInventorNodeSizes()
+void EditModeCoinManager::updateInventorNodeSizes()
 {
     editModeScenegraphNodes.PointsDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;
     editModeScenegraphNodes.PointSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_FILLED", drawingParameters.markerSize);
@@ -3595,12 +3595,12 @@ void CoinManager::updateInventorNodeSizes()
     rebuildConstraintNodes();
 }
 
-SoSeparator * CoinManager::getConstraintIdSeparator(int i)
+SoSeparator * EditModeCoinManager::getConstraintIdSeparator(int i)
 {
     return dynamic_cast<SoSeparator *>(editModeScenegraphNodes.constrGroup->getChild(i));
 }
 
-SoGroup* CoinManager::getSelectedConstraints()
+SoGroup* EditModeCoinManager::getSelectedConstraints()
 {
     SoGroup* group = new SoGroup();
     group->ref();
@@ -3616,7 +3616,7 @@ SoGroup* CoinManager::getSelectedConstraints()
     return group;
 }
 
-SoSeparator* CoinManager::getRootEditNode()
+SoSeparator* EditModeCoinManager::getRootEditNode()
 {
     return editModeScenegraphNodes.EditRoot;
 }

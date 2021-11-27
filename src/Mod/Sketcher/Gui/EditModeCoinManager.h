@@ -21,8 +21,8 @@
  ***************************************************************************/
 
 
-#ifndef SKETCHERGUI_CoinManager_H
-#define SKETCHERGUI_CoinManager_H
+#ifndef SKETCHERGUI_EditModeCoinManager_H
+#define SKETCHERGUI_EditModeCoinManager_H
 
 #include <vector>
 #include <functional>
@@ -30,7 +30,7 @@
 #include <Base/Parameter.h>
 #include <App/Application.h>
 
-#include "CoinManagerParameters.h"
+#include "EditModeCoinManagerParameters.h"
 
 #include <Mod/Sketcher/App/GeoList.h>
 
@@ -67,11 +67,11 @@ using GeoListFacade = Sketcher::GeoListFacade;
 /** @brief      Attorney class for limiting access to viewprovider
  *  @details
  *  ViewProviderSketch delegates a substantial part of coin related visualisation to
- *  CoinManager during edit mode.
+ *  EditModeCoinManager during edit mode.
  *
- *  Sometimes CoinManager needs to access selected functionalities only available to ViewProviderSketch.
+ *  Sometimes EditModeCoinManager needs to access selected functionalities only available to ViewProviderSketch.
  *
- *  This attorney class regulates which specific functionalities CoinManager is able to access in
+ *  This attorney class regulates which specific functionalities EditModeCoinManager is able to access in
  *  ViewProviderSketch.
  *
  *  The objective is:
@@ -116,14 +116,14 @@ private:
 
     static inline void executeOnSelectionPointSet(const ViewProviderSketch &vp, std::function<void(const int)> && operation);
 
-    friend class CoinManager;
+    friend class EditModeCoinManager;
 };
 
 /** @brief      Class for managing the Coin nodes of ViewProviderSketch.
  *  @details    To be documented.
  *
  */
-class SketcherGuiExport CoinManager
+class SketcherGuiExport EditModeCoinManager
 {
     /** @brief      Class for monitoring changes in parameters affecting drawing and coin node generation
     *  @details    To be documented.
@@ -141,7 +141,7 @@ class SketcherGuiExport CoinManager
         };
 
     public:
-        ParameterObserver(CoinManager & client);
+        ParameterObserver(EditModeCoinManager & client);
         ~ParameterObserver();
 
         void subscribeToParameters();
@@ -164,7 +164,7 @@ class SketcherGuiExport CoinManager
 
     private:
         std::map<std::string, std::function<void(const std::string &)>> str2updatefunction;
-        CoinManager &Client;
+        EditModeCoinManager &Client;
     };
 
     /** @brief     Struct to hold the results of analysis
@@ -213,8 +213,8 @@ private:
         SecondConstraintIdIndex = 6
     };
 public:
-    explicit CoinManager(ViewProviderSketch &vp);
-    ~CoinManager();
+    explicit EditModeCoinManager(ViewProviderSketch &vp);
+    ~EditModeCoinManager();
 
      /** @name Temporary edit curves and markers */
     //@{
@@ -419,7 +419,7 @@ private:
 
 private:
     ViewProviderSketch & viewProvider;
-    std::unique_ptr<CoinManager::ParameterObserver> pObserver;
+    std::unique_ptr<EditModeCoinManager::ParameterObserver> pObserver;
 
     DrawingParameters drawingParameters;
     AnalysisResults analysisResults;
@@ -436,5 +436,5 @@ private:
 } // namespace SketcherGui
 
 
-#endif // SKETCHERGUI_CoinManager_H
+#endif // SKETCHERGUI_EditModeCoinManager_H
 

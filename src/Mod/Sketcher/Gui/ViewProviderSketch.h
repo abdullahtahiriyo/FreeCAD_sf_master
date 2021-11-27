@@ -81,7 +81,7 @@ namespace Sketcher {
 
 namespace SketcherGui {
 
-class CoinManager;
+class EditModeCoinManager;
 class DrawSketchHandler;
 
 using GeoList = Sketcher::GeoList;
@@ -131,7 +131,7 @@ private:
         void updateBoolProperty(const std::string & string, App::Property * property, bool defaultvalue);
         void updateGridSize(const std::string & string, App::Property * property);
 
-        // Only for colors outside of edit mode, edit mode colors are handled by CoinManager.
+        // Only for colors outside of edit mode, edit mode colors are handled by EditModeCoinManager.
         void updateColorProperty(const std::string & string, App::Property * property, float r, float g, float b);
 
         void updateEscapeKeyBehaviour(const std::string & string, App::Property * property);
@@ -581,7 +581,7 @@ private:
 
     ShortcutListener* listener;
 
-    std::unique_ptr<CoinManager> coinManager;
+    std::unique_ptr<EditModeCoinManager> editCoinManager;
 
     std::unique_ptr<ViewProviderSketch::ParameterObserver> pObserver;
 

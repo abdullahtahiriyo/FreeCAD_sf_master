@@ -21,8 +21,8 @@
  ***************************************************************************/
 
 
-#ifndef SKETCHERGUI_CoinManagerParameters_H
-#define SKETCHERGUI_CoinManagerParameters_H
+#ifndef SKETCHERGUI_EditModeCoinManagerParameters_H
+#define SKETCHERGUI_EditModeCoinManagerParameters_H
 
 #ifndef _PreComp_
 # include <Inventor/nodes/SoMaterial.h>
@@ -215,5 +215,5 @@ struct CoinMapping {
 } // namespace SketcherGui
 
 
-#endif // SKETCHERGUI_CoinManagerParameters_H
+#endif // SKETCHERGUI_EditModeCoinManagerParameters_H
 

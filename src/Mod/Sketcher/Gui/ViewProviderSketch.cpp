@@ -99,7 +99,7 @@
 #include "Utils.h"
 #include "ViewProviderSketchGeometryExtension.h"
 
-#include "CoinManager.h"
+#include "EditModeCoinManager.h"
 
 FC_LOG_LEVEL_INIT("Sketch",true,true)
 
@@ -288,7 +288,7 @@ ViewProviderSketch::ViewProviderSketch()
   : SelectionObserver(false),
     Mode(STATUS_NONE),
     listener(0),
-    coinManager(nullptr),
+    editCoinManager(nullptr),
     pObserver(std::make_unique<ViewProviderSketch::ParameterObserver>(*this)),
     sketchHandler(nullptr)
 {
@@ -358,7 +358,7 @@ void ViewProviderSketch::forceUpdateData()
 
 void ViewProviderSketch::activateHandler(DrawSketchHandler *newHandler)
 {
-    assert(coinManager);
+    assert(editCoinManager);
     assert(sketchHandler == nullptr);
 
     sketchHandler = std::unique_ptr<DrawSketchHandler>(newHandler);
@@ -407,7 +407,7 @@ void ViewProviderSketch::purgeHandler(void)
 void ViewProviderSketch::setAxisPickStyle(bool on)
 {
     assert(isInEditMode());
-    coinManager->setAxisPickStyle(on);
+    editCoinManager->setAxisPickStyle(on);
 }
 
 // **********************************************************************************
@@ -1057,7 +1057,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
     switch (Mode) {
         case STATUS_NONE:
             if (preselectChanged) {
-                coinManager->drawConstraintIcons();
+                editCoinManager->drawConstraintIcons();
                 this->updateColor();
                 return true;
             }
@@ -1237,7 +1237,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
         case STATUS_SKETCH_UseHandler:
             sketchHandler->mouseMove(Base::Vector2d(x,y));
             if (preselectChanged) {
-                coinManager->drawConstraintIcons();
+                editCoinManager->drawConstraintIcons();
                 this->updateColor();
             }
             return true;
@@ -1503,7 +1503,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                 clearSelectPoints();
                 selection.SelCurvSet.clear();
                 selection.SelConstraintSet.clear();
-                coinManager->drawConstraintIcons();
+                editCoinManager->drawConstraintIcons();
                 this->updateColor();
             }
         }
@@ -1544,7 +1544,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                     else if (shapetype.size() > 10 && shapetype.substr(0,10) == "Constraint") {
                         int ConstrId = Sketcher::PropertyConstraintList::getIndexFromConstraintName(shapetype);
                         selection.SelConstraintSet.insert(ConstrId);
-                        coinManager->drawConstraintIcons();
+                        editCoinManager->drawConstraintIcons();
                         this->updateColor();
                     }
                 }
@@ -1589,7 +1589,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                         else if (shapetype.size() > 10 && shapetype.substr(0,10) == "Constraint") {
                             int ConstrId = Sketcher::PropertyConstraintList::getIndexFromConstraintName(shapetype);
                             selection.SelConstraintSet.erase(ConstrId);
-                            coinManager->drawConstraintIcons();
+                            editCoinManager->drawConstraintIcons();
                             this->updateColor();
                         }
                     }
@@ -1652,7 +1652,7 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
 
     if (Point) {
 
-        CoinManager::PreselectionResult result = coinManager->detectPreselection(Point, cursorPos);
+        EditModeCoinManager::PreselectionResult result = editCoinManager->detectPreselection(Point, cursorPos);
 
         if (result.ptIndex != -1 && result.ptIndex != preselection.PreselectPoint) { // if a new point is hit
             std::stringstream ss;
@@ -1682,18 +1682,18 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
                     sketchHandler->applyCursor();
                 return true;
             }
-        } else if (result.axes != CoinManager::PreselectionResult::Axes::None  && static_cast<int>(result.axes) != preselection.PreselectCross) {  // if a cross line is hit
+        } else if (result.axes != EditModeCoinManager::PreselectionResult::Axes::None  && static_cast<int>(result.axes) != preselection.PreselectCross) {  // if a cross line is hit
             std::stringstream ss;
             switch(result.axes){
-                case CoinManager::PreselectionResult::Axes::RootPoint:      ss << "RootPoint" ; break;
-                case CoinManager::PreselectionResult::Axes::HorizontalAxis: ss << "H_Axis"    ; break;
-                case CoinManager::PreselectionResult::Axes::VerticalAxis:   ss << "V_Axis"    ; break;
-                case CoinManager::PreselectionResult::Axes::None:           break; // silent warning - be explicit
+                case EditModeCoinManager::PreselectionResult::Axes::RootPoint:      ss << "RootPoint" ; break;
+                case EditModeCoinManager::PreselectionResult::Axes::HorizontalAxis: ss << "H_Axis"    ; break;
+                case EditModeCoinManager::PreselectionResult::Axes::VerticalAxis:   ss << "V_Axis"    ; break;
+                case EditModeCoinManager::PreselectionResult::Axes::None:           break; // silent warning - be explicit
             }
             bool accepted = setPreselect(ss.str(), Point->getPoint()[0], Point->getPoint()[1], Point->getPoint()[2]) != 0;
             preselection.blockedPreselection = !accepted;
             if (accepted) {
-                if (result.axes == CoinManager::PreselectionResult::Axes::RootPoint)
+                if (result.axes == EditModeCoinManager::PreselectionResult::Axes::RootPoint)
                     setPreselectRootPoint();
                 else
                     resetPreselectPoint();
@@ -1723,7 +1723,7 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
                 return true;//Preselection changed
             }
         } else if ((result.ptIndex == -1 && result.geoIndex == -1 &&
-                    result.axes == CoinManager::PreselectionResult::Axes::None && result.constrIndices.empty()) &&
+                    result.axes == EditModeCoinManager::PreselectionResult::Axes::None && result.constrIndices.empty()) &&
                    (preselection.PreselectPoint != -1 || preselection.PreselectCurve != -1 || preselection.PreselectCross != -1
                     || preselection.PreselectConstraintSet.empty() != true || preselection.blockedPreselection)) {
             // we have just left a preselection
@@ -1754,7 +1754,7 @@ void ViewProviderSketch::centerSelection()
     if (!view || !isInEditMode())
         return;
 
-    SoGroup* group = coinManager->getSelectedConstraints();
+    SoGroup* group = editCoinManager->getSelectedConstraints();
 
     Gui::View3DInventorViewer* viewer = view->getViewer();
     SoGetBoundingBoxAction action(viewer->getSoRenderManager()->getViewportRegion());
@@ -2353,7 +2353,7 @@ void ViewProviderSketch::updateColor(void)
 {
     assert(isInEditMode());
 
-    coinManager->updateColor();
+    editCoinManager->updateColor();
 }
 
 bool ViewProviderSketch::doubleClicked(void)
@@ -2365,7 +2365,7 @@ bool ViewProviderSketch::doubleClicked(void)
 float ViewProviderSketch::getScaleFactor() const
 {
     assert(isInEditMode());
-    Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(coinManager->getRootEditNode());
+    Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(editCoinManager->getRootEditNode());
     if (mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())) {
         Gui::View3DInventorViewer *viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
         SoCamera* camera = viewer->getSoRenderManager()->getCamera();
@@ -2544,12 +2544,12 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 
     // ============== Render geometry, constraints and geometry information overlays ==================================
 
-    coinManager->processGeometryConstraintsInformationOverlay(geolist, rebuildinformationoverlay);
+    editCoinManager->processGeometryConstraintsInformationOverlay(geolist, rebuildinformationoverlay);
 
     // Avoids unneeded calls to pixmapFromSvg
     if(Mode==STATUS_NONE || Mode==STATUS_SKETCH_UseHandler) {
-       coinManager->drawConstraintIcons(geolist);
-       coinManager->updateColor(geolist);
+       editCoinManager->drawConstraintIcons(geolist);
+       editCoinManager->updateColor(geolist);
     }
 
     Gui::MDIView *mdi = this->getActiveView();
@@ -2562,7 +2562,7 @@ void ViewProviderSketch::setIsShownVirtualSpace(bool isshownvirtualspace)
 {
     viewProviderParameters.isShownVirtualSpace = isshownvirtualspace;
 
-    coinManager->updateVirtualSpace();
+    editCoinManager->updateVirtualSpace();
 
     signalConstraintsChanged();
 }
@@ -2575,12 +2575,12 @@ bool ViewProviderSketch::getIsShownVirtualSpace() const
 
 void ViewProviderSketch::drawEdit(const std::vector<Base::Vector2d> &EditCurve)
 {
-    coinManager->drawEdit(EditCurve);
+    editCoinManager->drawEdit(EditCurve);
 }
 
 void ViewProviderSketch::drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel)
 {
-    coinManager->drawEditMarkers(EditMarkers, augmentationlevel);
+    editCoinManager->drawEditMarkers(EditMarkers, augmentationlevel);
 }
 
 void ViewProviderSketch::updateData(const App::Property *prop)
@@ -2685,7 +2685,7 @@ bool ViewProviderSketch::setEdit(int ModNum)
     assert(!isInEditMode());
     preselection.reset();
     selection.reset();
-    coinManager = std::make_unique<CoinManager>(*this);
+    editCoinManager = std::make_unique<EditModeCoinManager>(*this);
 
     auto editDoc = Gui::Application::Instance->editDocument();
     App::DocumentObject *editObj = getSketchObject();
@@ -2915,7 +2915,7 @@ void ViewProviderSketch::unsetEdit(int ModNum)
         if (sketchHandler)
             deactivateHandler();
 
-        coinManager = nullptr;
+        editCoinManager = nullptr;
         preselection.reset();
         selection.reset();
         this->detachSelection();
@@ -3245,7 +3245,7 @@ bool ViewProviderSketch::onDelete(const std::vector<std::string> &subList)
             Gui::Command::updateActive();
         }
         else {
-            coinManager->drawConstraintIcons();
+            editCoinManager->drawConstraintIcons();
             this->updateColor();
         }
 
@@ -3291,22 +3291,22 @@ QIcon ViewProviderSketch::mergeColorfulOverlayIcons (const QIcon & orig) const
 
 void ViewProviderSketch::setPositionText(const Base::Vector2d &Pos, const SbString &text)
 {
-    coinManager->setPositionText(Pos,text);
+    editCoinManager->setPositionText(Pos,text);
 }
 
 void ViewProviderSketch::setPositionText(const Base::Vector2d &Pos)
 {
-    coinManager->setPositionText(Pos);
+    editCoinManager->setPositionText(Pos);
 }
 
 void ViewProviderSketch::resetPositionText(void)
 {
-    coinManager->resetPositionText();
+    editCoinManager->resetPositionText();
 }
 
 void ViewProviderSketch::setPreselectPoint(int PreselectPoint)
 {
-    coinManager->drawPreselectPoint(PreselectPoint);
+    editCoinManager->drawPreselectPoint(PreselectPoint);
     preselection.PreselectPoint = PreselectPoint;
     preselection.PreselectCurve = -1;
     preselection.PreselectCross = -1;
@@ -3315,7 +3315,7 @@ void ViewProviderSketch::setPreselectPoint(int PreselectPoint)
 
 void ViewProviderSketch::setPreselectRootPoint()
 {
-    coinManager->drawPreselectRootPoint();
+    editCoinManager->drawPreselectRootPoint();
     preselection.PreselectPoint = -1;
     preselection.PreselectCurve = -1;
     preselection.PreselectCross = -1;
@@ -3325,7 +3325,7 @@ void ViewProviderSketch::setPreselectRootPoint()
 
 void ViewProviderSketch::resetPreselectPoint(void)
 {
-    coinManager->clearPointPreselection();
+    editCoinManager->clearPointPreselection();
     preselection.PreselectPoint = -1;
     preselection.PreselectCurve = -1;
     preselection.PreselectCross = -1;
@@ -3334,19 +3334,19 @@ void ViewProviderSketch::resetPreselectPoint(void)
 
 void ViewProviderSketch::addSelectPoint(int SelectPoint)
 {
-    coinManager->drawPointAsSelected(SelectPoint);
+    editCoinManager->drawPointAsSelected(SelectPoint);
     selection.SelPointSet.insert(SelectPoint);
 }
 
 void ViewProviderSketch::removeSelectPoint(int SelectPoint)
 {
-    coinManager->clearPointSelection(SelectPoint);
+    editCoinManager->clearPointSelection(SelectPoint);
     selection.SelPointSet.erase(SelectPoint);
 }
 
 void ViewProviderSketch::clearSelectPoints(void)
 {
-    coinManager->clearPointSelection();
+    editCoinManager->clearPointSelection();
     selection.SelPointSet.clear();
 }
 
@@ -3377,7 +3377,7 @@ bool ViewProviderSketch::setPreselect(const std::string &subNameSuffix, float x,
 
 /*************************** private functions to decouple Attorneys and Clients  ********************************************/
 
-// Establishes a private collaboration interface with CoinManager to perform CoinManager tasks, while abstracting CoinManager
+// Establishes a private collaboration interface with EditModeCoinManager to perform EditModeCoinManager tasks, while abstracting EditModeCoinManager
 // from the specific ViewProviderSketch implementation, while allowing ViewProviderSketch to fully delegate coin management.
 
 const std::vector<Sketcher::Constraint *> ViewProviderSketch::getConstraints() const
@@ -3404,7 +3404,7 @@ bool ViewProviderSketch::constraintHasExpression(int constrid) const
 std::unique_ptr<SoRayPickAction> ViewProviderSketch::getRayPickAction() const
 {
     assert(isInEditMode());
-    Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(coinManager->getRootEditNode());
+    Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(editCoinManager->getRootEditNode());
     if (!(mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())))
         return nullptr;
     Gui::View3DInventorViewer *viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
@@ -3481,7 +3481,7 @@ double ViewProviderSketch::getRotation(SbVec3f pos0, SbVec3f pos1) const
 {
     double x0,y0,x1,y1;
 
-    Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(coinManager->getRootEditNode());
+    Gui::MDIView *mdi = Gui::Application::Instance->editViewOfNode(editCoinManager->getRootEditNode());
     if (!(mdi && mdi->isDerivedFrom(Gui::View3DInventor::getClassTypeId())))
         return 0;
     Gui::View3DInventorViewer *viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
@@ -3571,5 +3571,5 @@ void ViewProviderSketch::executeOnSelectionPointSet(std::function<void(const int
 
 bool ViewProviderSketch::isInEditMode() const
 {
-    return coinManager != nullptr;
+    return editCoinManager != nullptr;
 }
