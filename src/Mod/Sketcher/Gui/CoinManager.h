@@ -252,9 +252,7 @@ public:
     void drawConstraintIcons(const GeoList & geolist);
     //@}
 
-    /** @name coin nodes creation*/
-    void createEditModeInventorNodes();
-    void rebuildConstraintNodes(void);
+    /** @name coin node access*/
     SoSeparator* getRootEditNode();
     //@}
 
@@ -413,6 +411,11 @@ private:
     void updateInventorNodeSizes();
 
     SoSeparator * getConstraintIdSeparator(int i);
+
+    /** @name coin nodes creation*/
+    void createEditModeInventorNodes();
+    void rebuildConstraintNodes(void);
+    //@}
 
 private:
     ViewProviderSketch & viewProvider;
