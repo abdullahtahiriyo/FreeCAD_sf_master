@@ -30,4 +30,9 @@ const int GeoEnum::RtPnt  = -1;
 const int GeoEnum::HAxis  = -1;
 const int GeoEnum::VAxis  = -2;
 const int GeoEnum::RefExt = -3;
+const int GeoEnum::GeoUndef = -2000;
 
+
+GeoElementId::GeoElementId(int geoId, PointPos pos): GeoId(geoId), Pos(pos)
+{
+}
