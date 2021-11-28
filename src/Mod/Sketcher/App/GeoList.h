@@ -45,6 +45,8 @@ namespace Part {
 namespace Sketcher {
     enum class PointPos : int;
 
+    class GeoElementId;
+
     class GeometryFacade;
 }
 
@@ -124,6 +126,8 @@ public:
 
 
     Vector3d getPoint(int geoId, Sketcher::PointPos pos) const;
+
+    Vector3d getPoint(GeoElementId geid) const;
 
     /**
     * returns the amount of internal geometry objects.
