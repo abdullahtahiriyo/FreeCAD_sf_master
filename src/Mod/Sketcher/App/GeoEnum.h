@@ -55,6 +55,8 @@ namespace Sketcher
  * elements of complex geometries are actual separate geometries (focus of an ellipse, line defining the
  * major axis of an ellipse, circle representing the weight of a BSpline), and they are call InternalAlignment
  * geometries.
+ *
+ * For Geometry lists, refer to GeoListModel template.
  */
 struct SketcherExport GeoEnum
 {
@@ -82,10 +84,14 @@ enum class PointPos : int {
 class SketcherExport GeoElementId
 {
 public:
-    explicit GeoElementId(int geoId = GeoEnum::GeoUndef, PointPos pos = PointPos::none);
+    explicit constexpr GeoElementId(int geoId = GeoEnum::GeoUndef, PointPos pos = PointPos::none);
 
     int GeoId;
     PointPos Pos;
+
+    static const GeoElementId RtPnt;     // GeoElementId of the Root Point
+    static const GeoElementId HAxis;     // GeoElementId of the Horizontal Axis
+    static const GeoElementId VAxis;     // GeoElementId of the Vertical Axis
 };
 
 } // namespace Sketcher
