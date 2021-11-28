@@ -367,7 +367,7 @@ int DrawSketchHandler::seekAutoConstraint(std::vector<AutoConstraint> &suggested
     int preSelPnt = getPreselectPoint();
     int preSelCrv = getPreselectCurve();
     int preSelCrs = getPreselectCross();
-    int GeoId = Constraint::GeoUndef;
+    int GeoId = GeoEnum::GeoUndef;
     Sketcher::PointPos PosId = Sketcher::none;
     if (preSelPnt != -1)
         sketchgui->getSketchObject()->getGeoVertexIndex(preSelPnt, GeoId, PosId);
@@ -395,7 +395,7 @@ int DrawSketchHandler::seekAutoConstraint(std::vector<AutoConstraint> &suggested
         hitShapeDir = Base::Vector3d(0,1,0);
     }
 
-    if (GeoId != Constraint::GeoUndef) {
+    if (GeoId != GeoEnum::GeoUndef) {
 
         const Part::Geometry * hitobject = sketchgui->getSketchObject()->getGeometry(GeoId);
 
@@ -442,7 +442,7 @@ int DrawSketchHandler::seekAutoConstraint(std::vector<AutoConstraint> &suggested
 
     AutoConstraint constr;
     constr.Type = Sketcher::None;
-    constr.GeoId = Constraint::GeoUndef;
+    constr.GeoId = GeoEnum::GeoUndef;
     constr.PosId = Sketcher::none;
     double angle = std::abs(atan2(Dir.y, Dir.x));
     if (angle < angleDevRad || (M_PI - angle) < angleDevRad )
@@ -460,7 +460,7 @@ int DrawSketchHandler::seekAutoConstraint(std::vector<AutoConstraint> &suggested
 
     // Find if there are tangent constraints (currently arcs and circles)
 
-    int tangId = Constraint::GeoUndef;
+    int tangId = GeoEnum::GeoUndef;
 
     // Do not consider if distance is more than that.
     // Decrease this value when a candidate is found.
@@ -602,7 +602,7 @@ int DrawSketchHandler::seekAutoConstraint(std::vector<AutoConstraint> &suggested
         }
     }
 
-    if (tangId != Constraint::GeoUndef) {
+    if (tangId != GeoEnum::GeoUndef) {
         if (tangId > getHighestCurveIndex()) // external Geometry
             tangId = getHighestCurveIndex() - tangId;
         // Suggest vertical constraint
@@ -658,11 +658,11 @@ void DrawSketchHandler::createAutoConstraints(const std::vector<AutoConstraint> 
         // In this case the caller as to set geoId2, then it will be used as target instead of geoId2
             case Sketcher::Horizontal: {
                 Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Horizontal',%i)) ",
-                                      geoId2 != Constraint::GeoUndef ? geoId2 : geoId1);
+                                      geoId2 != GeoEnum::GeoUndef ? geoId2 : geoId1);
                 } break;
             case Sketcher::Vertical: {
                 Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Vertical',%i)) ",
-                                      geoId2 != Constraint::GeoUndef ? geoId2 : geoId1);
+                                      geoId2 != GeoEnum::GeoUndef ? geoId2 : geoId1);
                 } break;
             case Sketcher::Tangent: {
                 Sketcher::SketchObject* Obj = static_cast<Sketcher::SketchObject*>(sketchgui->getObject());
