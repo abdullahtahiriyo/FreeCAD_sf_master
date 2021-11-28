@@ -432,7 +432,7 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
             }
             if (isInEditMode() && drag.DragCurve >= 0) {
                 if (!pressed) {
-                    getSketchObject()->movePoint(drag.DragCurve, Sketcher::none, Base::Vector3d(0,0,0), true);
+                    getSketchObject()->movePoint(drag.DragCurve, Sketcher::PointPos::none, Base::Vector3d(0,0,0), true);
                     drag.DragCurve = -1;
                     resetPositionText();
                     Mode = STATUS_NONE;
@@ -740,11 +740,11 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                         int GeoId;
                         Sketcher::PointPos PosId;
                         getSketchObject()->getGeoVertexIndex(drag.DragPoint, GeoId, PosId);
-                        if (GeoId != Sketcher::GeoEnum::GeoUndef && PosId != Sketcher::none) {
+                        if (GeoId != Sketcher::GeoEnum::GeoUndef && PosId != Sketcher::PointPos::none) {
                             getDocument()->openCommand(QT_TRANSLATE_NOOP("Command", "Drag Point"));
                             try {
                                 Gui::cmdAppObjectArgs(getObject(), "movePoint(%i,%i,App.Vector(%f,%f,0),%i)"
-                                        ,GeoId, PosId, x-drag.xInit, y-drag.yInit, 0);
+                                        ,GeoId, static_cast<int>(PosId), x-drag.xInit, y-drag.yInit, 0);
                                 getDocument()->commitCommand();
 
                                 tryAutoRecomputeIfNotSolve(getSketchObject());
@@ -804,7 +804,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
 
                             try {
                                 Gui::cmdAppObjectArgs(getObject(), "movePoint(%i,%i,App.Vector(%f,%f,0),%i)"
-                                        ,drag.DragCurve, Sketcher::none, vec.x, vec.y, drag.relative ? 1 : 0);
+                                        ,drag.DragCurve, static_cast<int>(Sketcher::PointPos::none), vec.x, vec.y, drag.relative ? 1 : 0);
                                 getDocument()->commitCommand();
 
                                 tryAutoRecomputeIfNotSolve(getSketchObject());
@@ -1070,7 +1070,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                 int GeoId;
                 Sketcher::PointPos PosId;
                 getSketchObject()->getGeoVertexIndex(drag.DragPoint, GeoId, PosId);
-                if (GeoId != Sketcher::GeoEnum::GeoUndef && PosId != Sketcher::none) {
+                if (GeoId != Sketcher::GeoEnum::GeoUndef && PosId != Sketcher::PointPos::none) {
                     getSketchObject()->initTemporaryMove(GeoId, PosId, false);
                     drag.resetVector();
                 }
@@ -1102,7 +1102,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
 
                         // The B-Spline is constrained to be non-rational (equal weights), moving produces a bad effect
                         // because OCCT will normalize the values of the weights.
-                        auto grp = getSolvedSketch().getDependencyGroup(drag.DragCurve, Sketcher::none);
+                        auto grp = getSolvedSketch().getDependencyGroup(drag.DragCurve, Sketcher::PointPos::none);
 
                         int bsplinegeoid = -1;
 
@@ -1135,7 +1135,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                         bool allingroup = true;
 
                         for( auto polegeoid : polegeoids ) {
-                            std::pair< int, Sketcher::PointPos > thispole = std::make_pair(polegeoid,Sketcher::none);
+                            std::pair< int, Sketcher::PointPos > thispole = std::make_pair(polegeoid,Sketcher::PointPos::none);
 
                             if(grp.find(thispole) == grp.end()) // not found
                                 allingroup  = false;
@@ -1164,7 +1164,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                     drag.resetVector();
                 }
 
-                getSketchObject()->initTemporaryMove(drag.DragCurve, Sketcher::none, false);
+                getSketchObject()->initTemporaryMove(drag.DragCurve, Sketcher::PointPos::none, false);
 
             } else {
                 Mode = STATUS_NONE;
@@ -1183,7 +1183,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                 Sketcher::PointPos PosId;
                 getSketchObject()->getGeoVertexIndex(drag.DragPoint, GeoId, PosId);
                 Base::Vector3d vec(x,y,0);
-                if (GeoId != Sketcher::GeoEnum::GeoUndef && PosId != Sketcher::none) {
+                if (GeoId != Sketcher::GeoEnum::GeoUndef && PosId != Sketcher::PointPos::none) {
                     if (getSketchObject()->moveTemporaryPoint(GeoId, PosId, vec, false) == 0) {
                         setPositionText(Base::Vector2d(x,y));
                         draw(true,false);
@@ -1221,7 +1221,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                     vec = center + dir / scalefactor;
                 }
 
-                if (getSketchObject()->moveTemporaryPoint(drag.DragCurve, Sketcher::none, vec, drag.relative) == 0) {
+                if (getSketchObject()->moveTemporaryPoint(drag.DragCurve, Sketcher::PointPos::none, vec, drag.relative) == 0) {
                     setPositionText(Base::Vector2d(x,y));
                     draw(true,false);
                 }
@@ -1291,7 +1291,7 @@ void ViewProviderSketch::moveConstraint(int constNum, const Base::Vector2d &toPo
         Constr->Type == Radius || Constr->Type == Diameter || Constr-> Type == Weight) {
 
         Base::Vector3d p1(0.,0.,0.), p2(0.,0.,0.);
-        if (Constr->SecondPos != Sketcher::none) { // point to point distance
+        if (Constr->SecondPos != Sketcher::PointPos::none) { // point to point distance
             p1 = getSolvedSketch().getPoint(Constr->First, Constr->FirstPos);
             p2 = getSolvedSketch().getPoint(Constr->Second, Constr->SecondPos);
         } else if (Constr->Second != GeoEnum::GeoUndef) { // point to line distance
@@ -1306,7 +1306,7 @@ void ViewProviderSketch::moveConstraint(int constNum, const Base::Vector2d &toPo
                 p2 += p1;
             } else
                 return;
-        } else if (Constr->FirstPos != Sketcher::none) {
+        } else if (Constr->FirstPos != Sketcher::PointPos::none) {
             p2 = getSolvedSketch().getPoint(Constr->First, Constr->FirstPos);
         } else if (Constr->First != GeoEnum::GeoUndef) {
             const Part::Geometry *geo = GeoList::getGeometryFromGeoId (geomlist, Constr->First);
@@ -1410,8 +1410,8 @@ void ViewProviderSketch::moveConstraint(int constNum, const Base::Vector2d &toPo
                 const Part::GeomLineSegment *lineSeg1 = static_cast<const Part::GeomLineSegment *>(geo1);
                 const Part::GeomLineSegment *lineSeg2 = static_cast<const Part::GeomLineSegment *>(geo2);
 
-                bool flip1 = (Constr->FirstPos == end);
-                bool flip2 = (Constr->SecondPos == end);
+                bool flip1 = (Constr->FirstPos == PointPos::end);
+                bool flip2 = (Constr->SecondPos == PointPos::end);
                 dir1 = (flip1 ? -1. : 1.) * (lineSeg1->getEndPoint()-lineSeg1->getStartPoint());
                 dir2 = (flip2 ? -1. : 1.) * (lineSeg2->getEndPoint()-lineSeg2->getStartPoint());
                 Base::Vector3d pnt1 = flip1 ? lineSeg1->getEndPoint() : lineSeg1->getStartPoint();
@@ -3168,7 +3168,7 @@ bool ViewProviderSketch::onDelete(const std::vector<std::string> &subList)
 
             if (*rit == GeoEnum::RtPnt) { // RootPoint
                 GeoId = Sketcher::GeoEnum::RtPnt;
-                PosId = start;
+                PosId = PointPos::start;
             } else {
                 getSketchObject()->getGeoVertexIndex(*rit, GeoId, PosId);
             }
