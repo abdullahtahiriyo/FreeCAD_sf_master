@@ -119,6 +119,12 @@ Base::Vector3d GeoListModel<T>::getPoint(int geoId, Sketcher::PointPos pos) cons
 }
 
 template <typename T>
+Base::Vector3d GeoListModel<T>::getPoint(GeoElementId geid) const
+{
+    return getPoint(geid.GeoId, geid.Pos);
+}
+
+template <typename T>
 Base::Vector3d GeoListModel<T>::getPoint(const Part::Geometry * geo, Sketcher::PointPos pos) const
 {
     using namespace Sketcher;
