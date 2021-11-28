@@ -797,7 +797,7 @@ Restart:
                         }
                         else {
                             assert(Constr->Second >= -extGeoCount && Constr->Second < intGeoCount);
-                            assert(Constr->FirstPos != Sketcher::none && Constr->SecondPos != Sketcher::none);
+                            assert(Constr->FirstPos != Sketcher::PointPos::none && Constr->SecondPos != Sketcher::PointPos::none);
 
                             Base::Vector3d midpos1, dir1, norm1;
                             Base::Vector3d midpos2, dir2, norm2;
@@ -842,20 +842,20 @@ Restart:
 
 
                         if (Constr->Third != GeoEnum::GeoUndef || //perpty via point
-                                Constr->FirstPos != Sketcher::none) { //endpoint-to-curve or endpoint-to-endpoint perpty
+                                Constr->FirstPos != Sketcher::PointPos::none) { //endpoint-to-curve or endpoint-to-endpoint perpty
 
                             int ptGeoId;
                             Sketcher::PointPos ptPosId;
                             do {//dummy loop to use break =) Maybe goto?
                                 ptGeoId = Constr->First;
                                 ptPosId = Constr->FirstPos;
-                                if (ptPosId != Sketcher::none) break;
+                                if (ptPosId != Sketcher::PointPos::none) break;
                                 ptGeoId = Constr->Second;
                                 ptPosId = Constr->SecondPos;
-                                if (ptPosId != Sketcher::none) break;
+                                if (ptPosId != Sketcher::PointPos::none) break;
                                 ptGeoId = Constr->Third;
                                 ptPosId = Constr->ThirdPos;
-                                if (ptPosId != Sketcher::none) break;
+                                if (ptPosId != Sketcher::PointPos::none) break;
                                 assert(0);//no point found!
                             } while (false);
 
@@ -869,7 +869,7 @@ Restart:
                             norm1.Normalize();
                             dir1 = norm1; dir1.RotateZ(-M_PI/2.0);
 
-                        } else if (Constr->FirstPos == Sketcher::none) {
+                        } else if (Constr->FirstPos == Sketcher::PointPos::none) {
 
                             if (geo1->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                                 const Part::GeomLineSegment *lineSeg1 = static_cast<const Part::GeomLineSegment *>(geo1);
@@ -1136,7 +1136,7 @@ Restart:
                         assert(Constr->First >= -extGeoCount && Constr->First < intGeoCount);
 
                         Base::Vector3d pnt1(0.,0.,0.), pnt2(0.,0.,0.);
-                        if (Constr->SecondPos != Sketcher::none) { // point to point distance
+                        if (Constr->SecondPos != Sketcher::PointPos::none) { // point to point distance
                             pnt1 = geolist.getPoint(Constr->First, Constr->FirstPos);
                             pnt2 = geolist.getPoint(Constr->Second, Constr->SecondPos);
                         } else if (Constr->Second != GeoEnum::GeoUndef) { // point to line distance
@@ -1152,7 +1152,7 @@ Restart:
                                 pnt2 += pnt1;
                             } else
                                 break;
-                        } else if (Constr->FirstPos != Sketcher::none) {
+                        } else if (Constr->FirstPos != Sketcher::PointPos::none) {
                             pnt2 = geolist.getPoint(Constr->First, Constr->FirstPos);
                         } else if (Constr->First != GeoEnum::GeoUndef) {
                             const Part::Geometry *geo = geolist.getGeometryFromGeoId(Constr->First);
@@ -1202,7 +1202,7 @@ Restart:
                         if (  Constr->Type == PointOnObject ||
                               Constr->Type == SnellsLaw ||
                               (Constr->Type == Tangent && Constr->Third != GeoEnum::GeoUndef) || //Tangency via point
-                              (Constr->Type == Tangent && Constr->FirstPos != Sketcher::none) //endpoint-to-curve or endpoint-to-endpoint tangency
+                              (Constr->Type == Tangent && Constr->FirstPos != Sketcher::PointPos::none) //endpoint-to-curve or endpoint-to-endpoint tangency
                                 ) {
 
                             //find the point of tangency/point that is on object
@@ -1212,13 +1212,13 @@ Restart:
                             do {//dummy loop to use break =) Maybe goto?
                                 ptGeoId = Constr->First;
                                 ptPosId = Constr->FirstPos;
-                                if (ptPosId != Sketcher::none) break;
+                                if (ptPosId != Sketcher::PointPos::none) break;
                                 ptGeoId = Constr->Second;
                                 ptPosId = Constr->SecondPos;
-                                if (ptPosId != Sketcher::none) break;
+                                if (ptPosId != Sketcher::PointPos::none) break;
                                 ptGeoId = Constr->Third;
                                 ptPosId = Constr->ThirdPos;
-                                if (ptPosId != Sketcher::none) break;
+                                if (ptPosId != Sketcher::PointPos::none) break;
                                 assert(0);//no point found!
                             } while (false);
 
@@ -1402,8 +1402,8 @@ Restart:
                                 const Part::GeomLineSegment *lineSeg1 = static_cast<const Part::GeomLineSegment *>(geo1);
                                 const Part::GeomLineSegment *lineSeg2 = static_cast<const Part::GeomLineSegment *>(geo2);
 
-                                bool flip1 = (Constr->FirstPos == end);
-                                bool flip2 = (Constr->SecondPos == end);
+                                bool flip1 = (Constr->FirstPos == PointPos::end);
+                                bool flip2 = (Constr->SecondPos == PointPos::end);
                                 dir1 = (flip1 ? -1. : 1.) * (lineSeg1->getEndPoint()-lineSeg1->getStartPoint());
                                 dir2 = (flip2 ? -1. : 1.) * (lineSeg2->getEndPoint()-lineSeg2->getStartPoint());
                                 Base::Vector3d pnt1 = flip1 ? lineSeg1->getEndPoint() : lineSeg1->getStartPoint();
@@ -3059,8 +3059,8 @@ void EditModeCoinManager::drawConstraintIcons(const GeoList & geolist)
         case Vertical:
             {   // second icon is available only for point alignment
                 if ((*it)->Second != GeoEnum::GeoUndef &&
-                    (*it)->FirstPos != Sketcher::none &&
-                    (*it)->SecondPos != Sketcher::none) {
+                    (*it)->FirstPos != Sketcher::PointPos::none &&
+                    (*it)->SecondPos != Sketcher::PointPos::none) {
                     multipleIcons = true;
                 }
             }
@@ -3070,7 +3070,7 @@ void EditModeCoinManager::drawConstraintIcons(const GeoList & geolist)
             break;
         case Perpendicular:
             // second icon is available only when there is no common point
-            if ((*it)->FirstPos == Sketcher::none && (*it)->Third == GeoEnum::GeoUndef)
+            if ((*it)->FirstPos == Sketcher::PointPos::none && (*it)->Third == GeoEnum::GeoUndef)
                 multipleIcons = true;
             break;
         case Equal:
