@@ -653,9 +653,9 @@ Restart:
             const Constraint *Constr = *it;
 
             if(Constr->First < -extGeoCount || Constr->First >= intGeoCount
-                    || (Constr->Second!=Constraint::GeoUndef
+                    || (Constr->Second!=GeoEnum::GeoUndef
                         && (Constr->Second < -extGeoCount || Constr->Second >= intGeoCount))
-                    || (Constr->Third!=Constraint::GeoUndef
+                    || (Constr->Third!=GeoEnum::GeoUndef
                         && (Constr->Third < -extGeoCount || Constr->Third >= intGeoCount)))
             {
                 // Constraint can refer to non-existent geometry during undo/redo
@@ -669,7 +669,7 @@ Restart:
                 case Vertical: // write the new position of the Vertical constraint
                     {
                         assert(Constr->First >= -extGeoCount && Constr->First < intGeoCount);
-                        bool alignment = Constr->Type!=Block && Constr->Second != Constraint::GeoUndef;
+                        bool alignment = Constr->Type!=Block && Constr->Second != GeoEnum::GeoUndef;
 
                         // get the geometry
                         const Part::Geometry *geo = geolist.getGeometryFromGeoId(Constr->First);
@@ -841,7 +841,7 @@ Restart:
                         bool twoIcons = false;//a very local flag. It's set to true to indicate that the second dir+norm are valid and should be used
 
 
-                        if (Constr->Third != Constraint::GeoUndef || //perpty via point
+                        if (Constr->Third != GeoEnum::GeoUndef || //perpty via point
                                 Constr->FirstPos != Sketcher::none) { //endpoint-to-curve or endpoint-to-endpoint perpty
 
                             int ptGeoId;
@@ -1139,7 +1139,7 @@ Restart:
                         if (Constr->SecondPos != Sketcher::none) { // point to point distance
                             pnt1 = geolist.getPoint(Constr->First, Constr->FirstPos);
                             pnt2 = geolist.getPoint(Constr->Second, Constr->SecondPos);
-                        } else if (Constr->Second != Constraint::GeoUndef) { // point to line distance
+                        } else if (Constr->Second != GeoEnum::GeoUndef) { // point to line distance
                             pnt1 = geolist.getPoint(Constr->First, Constr->FirstPos);
 
                             const Part::Geometry *geo = geolist.getGeometryFromGeoId(Constr->Second);
@@ -1154,7 +1154,7 @@ Restart:
                                 break;
                         } else if (Constr->FirstPos != Sketcher::none) {
                             pnt2 = geolist.getPoint(Constr->First, Constr->FirstPos);
-                        } else if (Constr->First != Constraint::GeoUndef) {
+                        } else if (Constr->First != GeoEnum::GeoUndef) {
                             const Part::Geometry *geo = geolist.getGeometryFromGeoId(Constr->First);
                             if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                                 const Part::GeomLineSegment *lineSeg = static_cast<const Part::GeomLineSegment *>(geo);
@@ -1201,7 +1201,7 @@ Restart:
                         Base::Vector3d pos, relPos;
                         if (  Constr->Type == PointOnObject ||
                               Constr->Type == SnellsLaw ||
-                              (Constr->Type == Tangent && Constr->Third != Constraint::GeoUndef) || //Tangency via point
+                              (Constr->Type == Tangent && Constr->Third != GeoEnum::GeoUndef) || //Tangency via point
                               (Constr->Type == Tangent && Constr->FirstPos != Sketcher::none) //endpoint-to-curve or endpoint-to-endpoint tangency
                                 ) {
 
@@ -1387,13 +1387,13 @@ Restart:
                     {
                         assert(Constr->First >= -extGeoCount && Constr->First < intGeoCount);
                         assert((Constr->Second >= -extGeoCount && Constr->Second < intGeoCount) ||
-                               Constr->Second == Constraint::GeoUndef);
+                               Constr->Second == GeoEnum::GeoUndef);
 
                         SbVec3f p0;
                         double startangle,range,endangle;
-                        if (Constr->Second != Constraint::GeoUndef) {
+                        if (Constr->Second != GeoEnum::GeoUndef) {
                             Base::Vector3d dir1, dir2;
-                            if(Constr->Third == Constraint::GeoUndef) { //angle between two lines
+                            if(Constr->Third == GeoEnum::GeoUndef) { //angle between two lines
                                 const Part::Geometry *geo1 = geolist.getGeometryFromGeoId(Constr->First);
                                 const Part::Geometry *geo2 = geolist.getGeometryFromGeoId(Constr->Second);
                                 if (geo1->getTypeId() != Part::GeomLineSegment::getClassTypeId() ||
@@ -1462,7 +1462,7 @@ Restart:
 
                             endangle = startangle + range;
 
-                        } else if (Constr->First != Constraint::GeoUndef) {
+                        } else if (Constr->First != GeoEnum::GeoUndef) {
                             const Part::Geometry *geo = geolist.getGeometryFromGeoId(Constr->First);
                             if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                                 const Part::GeomLineSegment *lineSeg = static_cast<const Part::GeomLineSegment *>(geo);
@@ -1507,7 +1507,7 @@ Restart:
                         assert(Constr->First >= -extGeoCount && Constr->First < intGeoCount);
 
                         Base::Vector3d pnt1(0.,0.,0.), pnt2(0.,0.,0.);
-                        if (Constr->First != Constraint::GeoUndef) {
+                        if (Constr->First != GeoEnum::GeoUndef) {
                             const Part::Geometry *geo = geolist.getGeometryFromGeoId(Constr->First);
 
                             if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
@@ -1567,7 +1567,7 @@ Restart:
 
                         Base::Vector3d pnt1(0.,0.,0.), pnt2(0.,0.,0.);
 
-                        if (Constr->First != Constraint::GeoUndef) {
+                        if (Constr->First != GeoEnum::GeoUndef) {
                             const Part::Geometry *geo = geolist.getGeometryFromGeoId(Constr->First);
 
                             if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
@@ -3058,7 +3058,7 @@ void EditModeCoinManager::drawConstraintIcons(const GeoList & geolist)
         case Horizontal:
         case Vertical:
             {   // second icon is available only for point alignment
-                if ((*it)->Second != Constraint::GeoUndef &&
+                if ((*it)->Second != GeoEnum::GeoUndef &&
                     (*it)->FirstPos != Sketcher::none &&
                     (*it)->SecondPos != Sketcher::none) {
                     multipleIcons = true;
@@ -3070,7 +3070,7 @@ void EditModeCoinManager::drawConstraintIcons(const GeoList & geolist)
             break;
         case Perpendicular:
             // second icon is available only when there is no common point
-            if ((*it)->FirstPos == Sketcher::none && (*it)->Third == Constraint::GeoUndef)
+            if ((*it)->FirstPos == Sketcher::none && (*it)->Third == GeoEnum::GeoUndef)
                 multipleIcons = true;
             break;
         case Equal:

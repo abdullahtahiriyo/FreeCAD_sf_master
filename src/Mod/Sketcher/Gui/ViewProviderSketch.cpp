@@ -740,7 +740,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                         int GeoId;
                         Sketcher::PointPos PosId;
                         getSketchObject()->getGeoVertexIndex(drag.DragPoint, GeoId, PosId);
-                        if (GeoId != Sketcher::Constraint::GeoUndef && PosId != Sketcher::none) {
+                        if (GeoId != Sketcher::GeoEnum::GeoUndef && PosId != Sketcher::none) {
                             getDocument()->openCommand(QT_TRANSLATE_NOOP("Command", "Drag Point"));
                             try {
                                 Gui::cmdAppObjectArgs(getObject(), "movePoint(%i,%i,App.Vector(%f,%f,0),%i)"
@@ -1070,7 +1070,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                 int GeoId;
                 Sketcher::PointPos PosId;
                 getSketchObject()->getGeoVertexIndex(drag.DragPoint, GeoId, PosId);
-                if (GeoId != Sketcher::Constraint::GeoUndef && PosId != Sketcher::none) {
+                if (GeoId != Sketcher::GeoEnum::GeoUndef && PosId != Sketcher::none) {
                     getSketchObject()->initTemporaryMove(GeoId, PosId, false);
                     drag.resetVector();
                 }
@@ -1183,7 +1183,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                 Sketcher::PointPos PosId;
                 getSketchObject()->getGeoVertexIndex(drag.DragPoint, GeoId, PosId);
                 Base::Vector3d vec(x,y,0);
-                if (GeoId != Sketcher::Constraint::GeoUndef && PosId != Sketcher::none) {
+                if (GeoId != Sketcher::GeoEnum::GeoUndef && PosId != Sketcher::none) {
                     if (getSketchObject()->moveTemporaryPoint(GeoId, PosId, vec, false) == 0) {
                         setPositionText(Base::Vector2d(x,y));
                         draw(true,false);
@@ -1284,7 +1284,7 @@ void ViewProviderSketch::moveConstraint(int constNum, const Base::Vector2d &toPo
 #ifdef _DEBUG
     assert(int(geomlist.size()) == extGeoCount + intGeoCount);
     assert((Constr->First >= -extGeoCount && Constr->First < intGeoCount)
-           || Constr->First != Constraint::GeoUndef);
+           || Constr->First != GeoEnum::GeoUndef);
 #endif
 
     if (Constr->Type == Distance || Constr->Type == DistanceX || Constr->Type == DistanceY ||
@@ -1294,7 +1294,7 @@ void ViewProviderSketch::moveConstraint(int constNum, const Base::Vector2d &toPo
         if (Constr->SecondPos != Sketcher::none) { // point to point distance
             p1 = getSolvedSketch().getPoint(Constr->First, Constr->FirstPos);
             p2 = getSolvedSketch().getPoint(Constr->Second, Constr->SecondPos);
-        } else if (Constr->Second != Constraint::GeoUndef) { // point to line distance
+        } else if (Constr->Second != GeoEnum::GeoUndef) { // point to line distance
             p1 = getSolvedSketch().getPoint(Constr->First, Constr->FirstPos);
             const Part::Geometry *geo = GeoList::getGeometryFromGeoId (geomlist, Constr->Second);
             if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
@@ -1308,7 +1308,7 @@ void ViewProviderSketch::moveConstraint(int constNum, const Base::Vector2d &toPo
                 return;
         } else if (Constr->FirstPos != Sketcher::none) {
             p2 = getSolvedSketch().getPoint(Constr->First, Constr->FirstPos);
-        } else if (Constr->First != Constraint::GeoUndef) {
+        } else if (Constr->First != GeoEnum::GeoUndef) {
             const Part::Geometry *geo = GeoList::getGeometryFromGeoId (geomlist, Constr->First);
             if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                 const Part::GeomLineSegment *lineSeg = static_cast<const Part::GeomLineSegment *>(geo);
@@ -1399,9 +1399,9 @@ void ViewProviderSketch::moveConstraint(int constNum, const Base::Vector2d &toPo
 
         Base::Vector3d p0(0.,0.,0.);
         double factor = 0.5;
-        if (Constr->Second != Constraint::GeoUndef) { // line to line angle
+        if (Constr->Second != GeoEnum::GeoUndef) { // line to line angle
             Base::Vector3d dir1, dir2;
-            if(Constr->Third == Constraint::GeoUndef) { //angle between two lines
+            if(Constr->Third == GeoEnum::GeoUndef) { //angle between two lines
                 const Part::Geometry *geo1 = GeoList::getGeometryFromGeoId (geomlist, Constr->First);
                 const Part::Geometry *geo2 = GeoList::getGeometryFromGeoId (geomlist, Constr->Second);
                 if (geo1->getTypeId() != Part::GeomLineSegment::getClassTypeId() ||
@@ -1444,7 +1444,7 @@ void ViewProviderSketch::moveConstraint(int constNum, const Base::Vector2d &toPo
                 factor = factor * Base::sgn<double>((dir1+dir2) * vec);
             }
 
-        } else if (Constr->First != Constraint::GeoUndef) { // line/arc angle
+        } else if (Constr->First != GeoEnum::GeoUndef) { // line/arc angle
             const Part::Geometry *geo = GeoList::getGeometryFromGeoId (geomlist, Constr->First);
             if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                 const Part::GeomLineSegment *lineSeg = static_cast<const Part::GeomLineSegment *>(geo);
@@ -3173,7 +3173,7 @@ bool ViewProviderSketch::onDelete(const std::vector<std::string> &subList)
                 getSketchObject()->getGeoVertexIndex(*rit, GeoId, PosId);
             }
 
-            if (GeoId != Constraint::GeoUndef) {
+            if (GeoId != GeoEnum::GeoUndef) {
                 for (std::vector< Sketcher::Constraint * >::const_iterator it= vals.begin(); it != vals.end(); ++it) {
                     if (((*it)->Type == Sketcher::Coincident) && (((*it)->First == GeoId && (*it)->FirstPos == PosId) ||
                         ((*it)->Second == GeoId && (*it)->SecondPos == PosId)) ) {

@@ -6083,14 +6083,14 @@ public:
 
                 EditMarkers.resize(0);
 
-                if(GeoId1 != Sketcher::Constraint::GeoUndef)
+                if(GeoId1 != Sketcher::GeoEnum::GeoUndef)
                     EditMarkers.emplace_back(intersect1.x, intersect1.y);
                 else {
                     auto start = sk->getPoint(GeoId, Sketcher::start);
                     EditMarkers.emplace_back(start.x, start.y);
                 }
 
-                if(GeoId2 != Sketcher::Constraint::GeoUndef)
+                if(GeoId2 != Sketcher::GeoEnum::GeoUndef)
                     EditMarkers.emplace_back(intersect2.x, intersect2.y);
                 else {
                     auto end = sk->getPoint(GeoId, Sketcher::end);
