@@ -31,6 +31,7 @@
 #include <vector>
 #include <memory>
 
+#include <Mod/Sketcher/App/GeoEnum.h>
 #include <Mod/Sketcher/App/GeometryFacade.h>
 
 namespace Base {
@@ -43,9 +44,6 @@ namespace Part {
 }
 
 namespace Sketcher {
-    enum class PointPos : int;
-
-    class GeometryFacade;
 }
 
 namespace Sketcher {
@@ -104,7 +102,16 @@ public:
     /**
     * returns the geometry given by the GeoId
     */
-    const T getGeometryFromGeoId(int geoId) const;
+    const Part::Geometry * getGeometryFromGeoId(int geoId) const;
+
+    /**
+     * WARNING: If the underlying model of the list is a naked pointed (Part::Geometry *), the client (the user) bears responsibility
+     * for releasing the GeometryFacade pointer!!
+     *
+     * This is not a problem when the model of the list is a std::unique_ptr<Sketcher::GeometryFacade>, because the lifetime is tied to
+     * the model itself.
+     */
+    const Sketcher::GeometryFacade * getGeometryFacadeFromGeoId(int geoId) const;
 
     /**
     * returns the GeoId index from the index in the geometry in geomlist format with which it was constructed.
@@ -120,10 +127,26 @@ public:
     *
     * @param index: the index of the list of geometry in geomlist format.
     */
-    static const T getGeometryFromGeoId(const std::vector<T> & geometrylist, int geoId);
+    static const Part::Geometry * getGeometryFromGeoId(const std::vector<T> & geometrylist, int geoId);
+
+    /**
+     * WARNING: If the underlying model of the list is a naked pointed (Part::Geometry *), the client (the user) bears responsibility
+     * for releasing the GeometryFacade pointer!!
+     *
+     * This is not a problem when the model of the list is a std::unique_ptr<Sketcher::GeometryFacade>, because the lifetime is tied to
+     * the model itself.
+     */
+    static const Sketcher::GeometryFacade * getGeometryFacadeFromGeoId(const std::vector<T> & geometrylist, int geoId);
+
+
+    Sketcher::GeoElementId getGeoElementIdFromVertexId(int vertexId);
+
+    int getVertexIdFromGeoElementId(const Sketcher::GeoElementId & geoelementId) const;
 
 
     Vector3d getPoint(int geoId, Sketcher::PointPos pos) const;
+
+    Vector3d getPoint(const GeoElementId & geid) const;
 
     /**
     * returns the amount of internal geometry objects.
@@ -149,13 +172,21 @@ public:
 private:
     Vector3d getPoint(const Part::Geometry * geo, Sketcher::PointPos pos) const;
 
+    void rebuildVertexIndex() const;
+
 private:
     int intGeoCount;
     bool OwnerT;
+    mutable bool indexInit;
+    mutable std::vector<Sketcher::GeoElementId> VertexId2GeoElementId;
+    mutable std::map<Sketcher::GeoElementId, int> GeoElementId2VertexId;
 };
 
-using GeoList = GeoListModel<Part::Geometry *>;
-using GeoListFacade = GeoListModel<std::unique_ptr<const Sketcher::GeometryFacade>>;
+using GeometryPtr = Part::Geometry *;
+using GeometryFacadeUniquePtr = std::unique_ptr<const Sketcher::GeometryFacade>;
+
+using GeoList = GeoListModel<GeometryPtr>;
+using GeoListFacade = GeoListModel<GeometryFacadeUniquePtr>;
 
 GeoListFacade getGeoListFacade(const GeoList & geolist);
 
