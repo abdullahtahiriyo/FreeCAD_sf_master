@@ -35,7 +35,7 @@ namespace Base {
 
 namespace Sketcher {
     enum ConstraintType : int;
-    enum PointPos : int;
+    enum class PointPos : int;
 }
 
 namespace Part {
