@@ -96,25 +96,25 @@ void GeometryCoinConverter::convert(const GeometryLayer & geolayer)
         if(pointmode == PointsMode::InsertSingle) {
             numberPoints = 1;
 
-            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::start), PointIdToGeoId.size()));
+            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::PointPos::start), PointIdToGeoId.size()));
         }
         else if (pointmode == PointsMode::InsertStartEnd) {
             numberPoints = 2;
 
-            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::start), PointIdToGeoId.size()));
-            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::end), PointIdToGeoId.size()+1));
+            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::PointPos::start), PointIdToGeoId.size()));
+            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::PointPos::end), PointIdToGeoId.size()+1));
         }
         else if (pointmode == PointsMode::InsertMidOnly) {
             numberPoints = 1;
 
-            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::mid), PointIdToGeoId.size()));
+            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::PointPos::mid), PointIdToGeoId.size()));
         }
         else if (pointmode == PointsMode::InsertStartEndMid) {
             numberPoints = 3;
-            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::start), PointIdToGeoId.size()));
-            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::end), PointIdToGeoId.size()+1));
+            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::PointPos::start), PointIdToGeoId.size()));
+            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::PointPos::end), PointIdToGeoId.size()+1));
 
-            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::mid), PointIdToGeoId.size()+2));
+            GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::PointPos::mid), PointIdToGeoId.size()+2));
         }
 
         for(int i = 0; i < numberPoints; i++)
