@@ -220,7 +220,7 @@ private:
             SelConstraintSet.clear();
         }
 
-        std::set<int> SelPointSet;              // Indices as PreselectPoint (and -1 for rootpoint)
+        std::set<int> SelPointSet;              // Indices as PreselectPoint (and -1 for rootpoint) TODO: Not true or not fully true
         std::set<int> SelCurvSet;               // also holds cross axes at -1 and -2
         std::set<int> SelConstraintSet;         // ConstraintN, N = index + 1.
     };
