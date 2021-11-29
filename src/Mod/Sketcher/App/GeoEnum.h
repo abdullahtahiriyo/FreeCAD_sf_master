@@ -23,6 +23,8 @@
 #ifndef SKETCHER_GeoEnum_H
 #define SKETCHER_GeoEnum_H
 
+#include <functional>
+
 namespace Sketcher
 {
 
@@ -86,6 +88,8 @@ class SketcherExport GeoElementId
 public:
     explicit constexpr GeoElementId(int geoId = GeoEnum::GeoUndef, PointPos pos = PointPos::none);
 
+    bool operator==(const GeoElementId& obj) const;
+
     int GeoId;
     PointPos Pos;
 
@@ -94,8 +98,22 @@ public:
     static const GeoElementId VAxis;     // GeoElementId of the Vertical Axis
 };
 
+constexpr GeoElementId::GeoElementId(int geoId, PointPos pos): GeoId(geoId), Pos(pos)
+{
+}
+
 } // namespace Sketcher
 
+namespace std
+{
+    template<> struct less<Sketcher::GeoElementId>
+    {
+       bool operator() (const Sketcher::GeoElementId& lhs, const Sketcher::GeoElementId& rhs) const
+       {
+           return (lhs.GeoId != rhs.GeoId)?(lhs.GeoId < rhs.GeoId):(static_cast<int>(lhs.Pos) < static_cast<int>(rhs.Pos));
+       }
+    };
+} // namespace std
 
 #endif // SKETCHER_GeoEnum_H
 

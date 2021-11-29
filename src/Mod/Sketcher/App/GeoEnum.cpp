@@ -32,11 +32,11 @@ const int GeoEnum::VAxis  = -2;
 const int GeoEnum::RefExt = -3;
 const int GeoEnum::GeoUndef = -2000;
 
-
-constexpr GeoElementId::GeoElementId(int geoId, PointPos pos): GeoId(geoId), Pos(pos)
-{
-}
-
 constexpr const GeoElementId GeoElementId::RtPnt = GeoElementId(GeoEnum::RtPnt, PointPos::start);
 constexpr const GeoElementId GeoElementId::HAxis = GeoElementId(GeoEnum::HAxis, PointPos::none);
 constexpr const GeoElementId GeoElementId::VAxis = GeoElementId(GeoEnum::VAxis, PointPos::end);
+
+bool GeoElementId::operator==(const GeoElementId& obj) const
+{
+    return this->GeoId == obj.GeoId && this->Pos == obj.Pos;
+}
