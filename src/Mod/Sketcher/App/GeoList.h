@@ -31,6 +31,7 @@
 #include <vector>
 #include <memory>
 
+#include <Mod/Sketcher/App/GeoEnum.h>
 #include <Mod/Sketcher/App/GeometryFacade.h>
 
 namespace Base {
@@ -43,11 +44,6 @@ namespace Part {
 }
 
 namespace Sketcher {
-    enum class PointPos : int;
-
-    class GeoElementId;
-
-    class GeometryFacade;
 }
 
 namespace Sketcher {
@@ -125,9 +121,14 @@ public:
     static const T getGeometryFromGeoId(const std::vector<T> & geometrylist, int geoId);
 
 
+    Sketcher::GeoElementId getGeoElementIdFromVertexId(int vertexId);
+
+    int getVertexIdFromGeoElementId(const Sketcher::GeoElementId & geoelementId);
+
+
     Vector3d getPoint(int geoId, Sketcher::PointPos pos) const;
 
-    Vector3d getPoint(GeoElementId geid) const;
+    Vector3d getPoint(const GeoElementId & geid) const;
 
     /**
     * returns the amount of internal geometry objects.
@@ -153,9 +154,14 @@ public:
 private:
     Vector3d getPoint(const Part::Geometry * geo, Sketcher::PointPos pos) const;
 
+    void rebuildVertexIndex();
+
 private:
     int intGeoCount;
     bool OwnerT;
+    bool indexInit;
+    std::vector<Sketcher::GeoElementId> VertexId2GeoElementId;
+    std::map<Sketcher::GeoElementId, int> GeoElementId2VertexId;
 };
 
 using GeoList = GeoListModel<Part::Geometry *>;
