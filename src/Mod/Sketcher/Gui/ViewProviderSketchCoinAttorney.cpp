@@ -21,30 +21,15 @@
  ***************************************************************************/
 
 
-#ifndef SKETCHERGUI_ConstraintCoinConverter_H
-#define SKETCHERGUI_ConstraintCoinConverter_H
+#include "PreCompiled.h"
 
-#include <vector>
+#ifndef _PreComp_
 
+#endif  // #ifndef _PreComp_
 
-namespace SketcherGui {
+#include "ViewProviderSketch.h"
 
-class ConstraintCoinConverter {
+#include "ViewProviderSketchCoinAttorney.h"
 
-public:
-    ConstraintCoinConverter(  );
-
-    void convert();
-
-
-private:
-    // Parameters
-
-};
-
-
-} // namespace SketcherGui
-
-
-#endif // SKETCHERGUI_ConstraintCoinConverter_H
-
+using namespace SketcherGui;
+using namespace Sketcher;

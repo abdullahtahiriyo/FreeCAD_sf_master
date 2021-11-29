@@ -60,74 +60,50 @@ namespace Sketcher {
 namespace SketcherGui {
 
 class ViewProviderSketch;
+class EditModeConstraintCoinManager;
+class EditModeGeometryCoinManager;
 
 using GeoList = Sketcher::GeoList;
 using GeoListFacade = Sketcher::GeoListFacade;
 
-/** @brief      Attorney class for limiting access to viewprovider
+/** @brief      Helper class for managing the Coin nodes of ViewProviderSketch.
  *  @details
- *  ViewProviderSketch delegates a substantial part of coin related visualisation to
- *  EditModeCoinManager during edit mode.
  *
- *  Sometimes EditModeCoinManager needs to access selected functionalities only available to ViewProviderSketch.
+ * Given the substantial amount of code involved in coin node management, EditModeCoinManager
+ * further delegates on other specialised helper classes. Some of them share the
+ * ViewProviderSketchCoinAttorney, which defines the maximum coupling and minimum encapsulation.
  *
- *  This attorney class regulates which specific functionalities EditModeCoinManager is able to access in
- *  ViewProviderSketch.
+ * The most important such delegates are: EditModeGeometryCoinManager and EditModeConstraintCoinManager.
  *
- *  The objective is:
- *  - to preserve as much as possible ViewProviderSketch encapsulation
- *  - to promote as much loose coupling as possible.
- *  - to keep control over the interactions between these classes and easily identify the cooperation interface.
- */
-class ViewProviderSketchCoinAttorney {
-private:
-    static inline bool constraintHasExpression(const ViewProviderSketch &vp, int constrid);
-    static inline const std::vector<Sketcher::Constraint *> getConstraints(const ViewProviderSketch & vp);
-    static inline const GeoList getGeoList(const ViewProviderSketch & vp);
-    static inline const GeoListFacade getGeoListFacade(const ViewProviderSketch & vp);
-    static inline Base::Placement getEditingPlacement(const ViewProviderSketch & vp);
-    static inline void updateGridExtent(ViewProviderSketch & vp, float minx, float maxx, float miny, float maxy);
-    static inline bool isShownVirtualSpace(const ViewProviderSketch & vp);
-    static inline std::unique_ptr<SoRayPickAction> getRayPickAction(const ViewProviderSketch & vp);
-
-    static inline float getScaleFactor(const ViewProviderSketch & vp);
-    static inline SbVec2f getScreenCoordinates(const ViewProviderSketch & vp, SbVec2f sketchcoordinates);
-    static inline QFont getApplicationFont(const ViewProviderSketch & vp);
-    static inline double getRotation(const ViewProviderSketch & vp, SbVec3f pos0, SbVec3f pos1);
-    static inline int defaultApplicationFontSizePixels(const ViewProviderSketch & vp);
-    static inline int getApplicationLogicalDPIX(const ViewProviderSketch & vp);
-
-    static inline bool isSketchInvalid(const ViewProviderSketch & vp);
-    static inline bool isSketchFullyConstrained(const ViewProviderSketch & vp);
-    static inline bool haveConstraintsInvalidGeometry(const ViewProviderSketch & vp);
-
-    static inline void addNodeToRoot(ViewProviderSketch & vp, SoSeparator * node);
-
-    static inline void removeNodeFromRoot(ViewProviderSketch & vp, SoSeparator * node);
-
-    static inline int getPreselectPoint(const ViewProviderSketch &vp);
-    static inline int getPreselectCurve(const ViewProviderSketch &vp);
-    static inline int getPreselectCross(const ViewProviderSketch &vp);
-
-    static inline bool isConstraintPreselected(const ViewProviderSketch &vp, int constraintId);
-    static inline bool isPointSelected(const ViewProviderSketch &vp, int pointId);
-    static inline bool isCurveSelected(const ViewProviderSketch &vp, int curveId);
-    static inline bool isConstraintSelected(const ViewProviderSketch &vp, int constraintId);
-
-    static inline void executeOnSelectionPointSet(const ViewProviderSketch &vp, std::function<void(const int)> && operation);
-
-    friend class EditModeCoinManager;
-};
-
-/** @brief      Class for managing the Coin nodes of ViewProviderSketch.
- *  @details    To be documented.
+ * EditModeCoinManager takes over the responsibility of creating the Coin (Inventor) scenograph
+ * and modifying it, including all the drawing of geometry, constraints and overlay layer. This
+ * is an exclusive responsibility under the Single Responsibility Principle.
  *
+ * EditModeCoinManager exposes a public interface to be used by ViewProviderSketch. Where,
+ * EditModeCoinManager needs special access to facilities of ViewProviderSketch in order to fulfil
+ * its responsibility, this access is defined by ViewProviderSketchCoinAttorney.
+ *
+ * EditModeCoinManager is responsible, under the Single Responsibility Principle, to manage the coin
+ * EditRoot node. This node is ref-ed on creation and unref-ed on destruction to ensure that its lifetime
+ * matches the one of EditModecoinManager.
+ *
+ * EditRoot is added on request to pcRoot by ViewProviderSketch. The node pcRoot belongs, under the Single
+ * Responsibility Principle, to ViewProviderSketch. EditModeCoinManager delegates addition and removal of
+ * child notes of EditRoot to specialised helper classes.
+ *
+ * EditModeCoinManager is designed to define the span of time in which ViewProviderSketch is in edit mode.
+ *
+ * In addition to the scenograph, EditModeCoinManager is responsible for keeping any necessary mapping between
+ * indices used at ViewProviderSketch level, and internal indexing used by EditModeCoinManager and its subclasses.
  */
 class SketcherGuiExport EditModeCoinManager
 {
     /** @brief      Class for monitoring changes in parameters affecting drawing and coin node generation
-    *  @details    To be documented.
+    *  @details
     *
+    * This nested class is a helper responsible for attaching to the parameters relevant for
+    * EditModeCoinManager and its helpers, initialising the EditModeCoinManager to the current configuration
+    * and handle in real time any change to their values.
     */
     class ParameterObserver : public ParameterGrp::ObserverType
     {
@@ -167,19 +143,26 @@ class SketcherGuiExport EditModeCoinManager
         EditModeCoinManager &Client;
     };
 
-    /** @brief     Struct to hold the results of analysis
-    *  @details    To be documented.
-    *
-    */
-    struct AnalysisResults { // TODO: This needs to be refactored
-        double combRepresentationScale = 0;
-        float boundingBoxMagnitudeOrder = 0;
-        std::vector<int> bsplineGeoIds;
-
-    };
-
 public:
+    /** @brief This struct defines the information provided to other classes about preselection.
+     *
+     * @details
+     *
+     * PointIndex: Only Positive values corresponding to VertexId (are positive for both normal and external geometry)
+     * GeoIndex: Same values as GeoId of GeoElementId, except for axes which are not included. -1 represents an invalid curve.
+     *
+     * In other words valid values are 0,1,2,... for normal geometry and -3,-4,-5,... for external geometry
+     *
+     * Cross: Axes and RootPoint values as defined in the enum class.
+     *
+     */
     struct PreselectionResult {
+        enum SpecialValues {
+            InvalidPoint = -1,
+            InvalidCurve = -1,
+            ExternalCurve = -3
+        };
+
         enum class Axes {
             None = -1,
             RootPoint = 0,
@@ -187,31 +170,19 @@ public:
             VerticalAxis = 2
         };
 
-        int ptIndex = -1;
-        int geoIndex = -1; // valid values are 0,1,2,... for normal geometry and -3,-4,-5,... for external geometry
-        Axes axes = Axes::None;
-        std::set<int> constrIndices;
+        int PointIndex = InvalidPoint;
+        int GeoIndex = InvalidCurve; // valid values are 0,1,2,... for normal geometry and -3,-4,-5,... for external geometry
+        Axes Cross = Axes::None;
+        std::set<int> ConstrIndices;
 
         inline void clear() {
-            ptIndex = -1;
-            geoIndex = -1;
-            axes = Axes::None;
-            constrIndices.clear();
+            PointIndex = InvalidPoint;
+            GeoIndex = InvalidCurve;
+            Cross = Axes::None;
+            ConstrIndices.clear();
         }
     };
 
-private:
-    // TODO: This should probably go in ConstraintCoinConverter, but then updateColor should go there TODO
-    enum class ConstraintNodePosition {
-        MaterialIndex = 0,
-        DatumLabelIndex = 0,
-        FirstTranslationIndex = 1,
-        FirstIconIndex = 2,
-        FirstConstraintIdIndex = 3,
-        SecondTranslationIndex = 4,
-        SecondIconIndex = 5,
-        SecondConstraintIdIndex = 6
-    };
 public:
     explicit EditModeCoinManager(ViewProviderSketch &vp);
     ~EditModeCoinManager();
@@ -229,18 +200,12 @@ public:
     /** @name handle preselection and selection of points */
     //@{
     PreselectionResult detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos);
-    void drawPreselectPoint(int PreselectPoint);
-    void drawPreselectRootPoint();
-    void clearPointPreselection(void);
-    void drawPointAsSelected(int selectpointId);
-    void clearPointSelection(int selectpointId);
-    void clearPointSelection(void);
     /// The client is responsible for unref-ing the SoGroup to release the memory.
     SoGroup* getSelectedConstraints();
     //@}
 
     /** @name update coin nodes*/
-    void processGeometryConstraintsInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer);
+    void processGeometryConstraintsInformationOverlay(const GeoListFacade & geolistfacade, bool rebuildinformationlayer);
 
     void updateVirtualSpace();
 
@@ -259,7 +224,7 @@ public:
     /** @name update coin colors*/
     //@{
     void updateColor();
-    void updateColor(const GeoList & geolist); // overload to be used with temporal geometry.
+    void updateColor(const GeoListFacade & geolistfacade); // overload to be used with temporal geometry.
     //@}
 
 
@@ -270,14 +235,11 @@ public:
 
 private:
     // This function populates the coin nodes with the information of the current geometry
-    void processGeometry(const GeoList & geolist);
-
-    // geometry list to be used for constraints, which may be a temporal geometry
-    void processConstraints(const GeoList & geolist);
+    void processGeometry(const GeoListFacade & geolistfacade);
 
     // This function populates the geometry information layer of coin. It requires the analysis information
     // gathered during the processGeometry step, so it is not possible to run both in parallel.
-    void processGeometryInformationOverlay(const GeoList & geolist);
+    void processGeometryInformationOverlay(const GeoListFacade & geolistfacade);
 
     // updates the Axes length to extend beyond the calculated bounding box magnitude
     void updateAxesLength();
@@ -286,123 +248,9 @@ private:
     void updateOverlayParameters();
 
     void updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid);
-    void updateConstraintColor(const std::vector<Sketcher::Constraint *> & constraints);
 
     // causes the ViewProvider to draw
     void redrawViewProvider();
-
-    void rebuildConstraintNodes(const GeoList & geolist); // with specific geometry
-
-    void rebuildConstraintNodes(const GeoList & geolist, const std::vector<Sketcher::Constraint *> constrlist, SbVec3f norm);
-
-    /// finds a free position for placing a constraint icon
-    Base::Vector3d seekConstraintPosition(const Base::Vector3d &origPos,
-                                          const Base::Vector3d &norm,
-                                          const Base::Vector3d &dir, float step,
-                                          const SoNode *constraint);
-
-    /// Return display string for constraint including hiding units if
-    //requested.
-    QString getPresentationString(const Sketcher::Constraint *constraint);
-
-    std::set<int> detectPreselectionConstr( const SoPickedPoint *Point,
-                                            const SbVec2s &cursorPos);
-
-    /// Returns the size that Coin should display the indicated image at
-    SbVec3s getDisplayedSize(const SoImage *) const;
-
-    /** @name Protected helpers for drawing constraint icons*/
-    //@{
-    QString iconTypeFromConstraint(Sketcher::Constraint *constraint);
-
-    /// Returns a QColor object appropriate for constraint with given id
-    /*! In the case of combined icons, the icon color is chosen based on
-     *  the constraint with the highest priority from constrColorPriority()
-     */
-    QColor constrColor(int constraintId);
-    /// Used by drawMergedConstraintIcons to decide what color to make icons
-    /*! See constrColor() */
-    int constrColorPriority(int constraintId);
-
-    // TODO: Review and refactor where these structs and types relating constraints
-    // should actually go.
-
-    // helper data structures for the constraint rendering
-    std::vector<Sketcher::ConstraintType> vConstrType;
-
-    // For each of the combined constraint icons drawn, also create a vector
-    // of bounding boxes and associated constraint IDs, to go from the icon's
-    // pixel coordinates to the relevant constraint IDs.
-    //
-    // The outside map goes from a string representation of a set of constraint
-    // icons (like the one used by the constraint IDs we insert into the Coin
-    // rendering tree) to a vector of those bounding boxes paired with relevant
-    // constraint IDs.
-
-    using ConstrIconBB = std::pair<QRect, std::set<int> >;
-    using ConstrIconBBVec = std::vector<ConstrIconBB>;
-
-    std::map<QString, ConstrIconBBVec> combinedConstrBoxes;
-
-
-    /// Internal type used for drawing constraint icons
-    struct constrIconQueueItem {
-        /// Type of constraint the icon represents.  Eg: "small/Constraint_PointOnObject_sm"
-        QString type;
-
-        /// Internal constraint ID number
-        /// These map to results of getSketchObject()->Constraints.getValues()
-        int constraintId;
-
-        /// Label to be rendered with this icon, if any
-        QString label;
-
-        /// Absolute coordinates of the constraint icon
-        SbVec3f position;
-
-        /// Pointer to the SoImage object where the icon should be written
-        SoImage *destination;
-
-        /// Pointer to SoInfo object where we store the constraint IDs that the icon refers to
-        SoInfo *infoPtr;
-
-        /// Angle to rotate an icon
-        double iconRotation;
-
-        bool visible;
-    };
-
-    using IconQueue = std::vector<constrIconQueueItem>;
-
-    void combineConstraintIcons(IconQueue iconQueue);
-
-    /// Renders an icon for a single constraint and sends it to Coin
-    void drawTypicalConstraintIcon(const constrIconQueueItem &i);
-
-    /// Combines multiple constraint icons and sends them to Coin
-    void drawMergedConstraintIcons(IconQueue iconQueue);
-
-    /// Helper for drawMergedConstraintIcons and drawTypicalConstraintIcon
-    QImage renderConstrIcon(const QString &type,
-                            const QColor &iconColor,
-                            const QStringList &labels,
-                            const QList<QColor> &labelColors,
-                            double iconRotation,
-                            //! Gets populated with bounding boxes (in icon
-                            //! image coordinates) for the icon at left, then
-                            //! labels for different constraints.
-                            std::vector<QRect> *boundingBoxes = NULL,
-                            //! If not NULL, gets set to the number of pixels
-                            //! that the text extends below the icon base.
-                            int *vPad = NULL);
-
-    /// Copies a QImage constraint icon into a SoImage*
-    /*! Used by drawTypicalConstraintIcon() and drawMergedConstraintIcons() */
-    void sendConstraintIconToCoin(const QImage &icon, SoImage *soImagePtr);
-
-    /// Essentially a version of sendConstraintIconToCoin, with a blank icon
-    void clearCoinImage(SoImage *soImagePtr);
-    //@}
 
     int defaultApplicationFontSizePixels() const;
 
@@ -410,26 +258,31 @@ private:
 
     void updateInventorNodeSizes();
 
-    SoSeparator * getConstraintIdSeparator(int i);
-
     /** @name coin nodes creation*/
     void createEditModeInventorNodes();
-    void rebuildConstraintNodes(void);
     //@}
 
 private:
+    /// Reference to ViewProviderSketch in order to access the public and the Attorney Interface
     ViewProviderSketch & viewProvider;
+    /// Observer to track all the needed parameters.
     std::unique_ptr<EditModeCoinManager::ParameterObserver> pObserver;
 
     DrawingParameters drawingParameters;
     AnalysisResults analysisResults;
     OverlayParameters overlayParameters;
     ConstraintParameters constraintParameters;
+    GeometryLayerParameters geometryLayerParameters;
 
+    /// The pointers to Coin Scenegraph
     EditModeScenegraphNodes editModeScenegraphNodes;
 
+    /// Mapping between external and internal indices
     CoinMapping coinMapping;
 
+    // Coin Helpers
+    std::unique_ptr<EditModeConstraintCoinManager> pEditModeConstraintCoinManager;
+    std::unique_ptr<EditModeGeometryCoinManager> pEditModeGeometryCoinManager;
 };
 
 

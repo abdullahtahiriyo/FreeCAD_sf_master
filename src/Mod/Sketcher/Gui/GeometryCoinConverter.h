@@ -46,6 +46,8 @@ namespace SketcherGui {
     struct GeometryLayer;
     struct GeometryLayerNodes;
     struct DrawingParameters;
+    struct GeometryLayerParameters;
+    struct CoinMapping;
 
 /** @brief      Class for creating the Geometry layer into coin nodes
  *  @details
@@ -95,14 +97,16 @@ public:
      * @param drawingparameters: Parameters for drawing the overlay information
      */
     GeometryCoinConverter(  GeometryLayerNodes & geometrylayernodes,
-                            DrawingParameters & drawingparameters );
+                            DrawingParameters & drawingparameters,
+                            GeometryLayerParameters& geometryLayerParams,
+                            CoinMapping & coinMap );
 
     /**
     * converts the geometry defined by GeometryLayer into the coin nodes.
     *
     * @param geometry: the geometry to be processed
     */
-    void convert(const GeometryLayer & geolayer);
+    void convert(const Sketcher::GeoListFacade & geolistfacade);
 
     /**
     * returns the maximum of the vertical and horizontal magnitudes of the
@@ -121,43 +125,34 @@ public:
     */
     auto getBSplineGeoIds(){ return std::move(bsplineGeoIds);}
 
-    /**
-    * returns the local mapping of CurveIds of this layer and GeoIds.
-    * CurveIds are the position in the layer occupied by the curves.
-    */
-    auto getCurveMap(){ return std::move(CurvIdToGeoId);}
-
-    /**
-    * returns the local mapping of PointIds of this layer and GeoIds.
-    * PointIds are the position in the layer occupied by the points.
-    */
-    auto getPointMap(){ return std::move(PointIdToGeoId);}
-
-    auto getReversePointMap() { return std::move(GeoIdPointPosToPointId);}
-
 private:
     template < typename GeoType, PointsMode pointmode, CurveMode curvemode, AnalyseMode analysemode >
-    void convert(const Part::Geometry * geometry);
+    void convert(const Sketcher::GeometryFacade * geometryfacade);
 
 private:
     GeometryLayerNodes & geometryLayerNodes;
 
-    std::vector<Base::Vector3d> Coords;
-    std::vector<Base::Vector3d> Points;
-    std::vector<unsigned int> Index;
+    std::vector<std::vector<Base::Vector3d>> Coords;
+    std::vector<std::vector<Base::Vector3d>> Points;
+    std::vector<std::vector<unsigned int>> Index;
+
+    // temporal counters, one per layer
+    std::vector<int> pointCounter;
+    std::vector<int> curveCounter;
+
+    // temporal global vertex counter
+    int vertexCounter = 0;
 
     // Parameters
     DrawingParameters & drawingParameters;
+    GeometryLayerParameters& geometryLayerParameters;
+    // Mappings coin geoId
+    CoinMapping & coinMapping;
 
     // measurements
     float boundingBoxMaxMagnitude = 100;
     double combrepscale = 0; // the repscale that would correspond to this comb based only on this calculation.
     std::vector<int> bsplineGeoIds;
-
-    // Mappings coin geoId
-    std::vector<int> CurvIdToGeoId;
-    std::vector<int> PointIdToGeoId;
-    std::map<std::pair<int, Sketcher::PointPos>, int> GeoIdPointPosToPointId;
 
 };
 
