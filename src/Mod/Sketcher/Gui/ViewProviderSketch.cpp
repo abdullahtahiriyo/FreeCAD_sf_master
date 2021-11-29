@@ -3335,7 +3335,7 @@ void ViewProviderSketch::resetPreselectPoint(void)
 void ViewProviderSketch::addSelectPoint(int SelectPoint)
 {
     editCoinManager->drawPointAsSelected(SelectPoint);
-    selection.SelPointSet.insert(SelectPoint);
+    selection.SelPointSet.insert(SelectPoint + 1); // TODO: Yet another hack? PreselectPoint is stored without + 1, SelectPoint with it ???
 }
 
 void ViewProviderSketch::removeSelectPoint(int SelectPoint)
