@@ -30,6 +30,7 @@
 #include <assert.h>
 
 #include <Base/Vector3D.h>
+#include <Base/Exception.h>
 
 #include <Mod/Sketcher/App/GeometryFacade.h>
 
@@ -45,7 +46,8 @@ GeoListModel<T>::GeoListModel(  std::vector<T> && geometrylist,
                                 int intgeocount,
                                 bool ownerT): geomlist(std::move(geometrylist)),
                                               intGeoCount(intgeocount),
-                                              OwnerT(ownerT)
+                                              OwnerT(ownerT),
+                                              indexInit(false)
 {
 
 }
@@ -56,7 +58,8 @@ GeoListModel<T>::GeoListModel(  const std::vector<T> & geometrylist,
                                 int intgeocount,
                                 bool ownerT): geomlist(geometrylist), // copy constructed here
                                               intGeoCount(intgeocount),
-                                              OwnerT(ownerT)
+                                              OwnerT(ownerT),
+                                              indexInit(false)
 {
 
 }
@@ -119,7 +122,7 @@ Base::Vector3d GeoListModel<T>::getPoint(int geoId, Sketcher::PointPos pos) cons
 }
 
 template <typename T>
-Base::Vector3d GeoListModel<T>::getPoint(GeoElementId geid) const
+Base::Vector3d GeoListModel<T>::getPoint(const GeoElementId & geid) const
 {
     return getPoint(geid.GeoId, geid.Pos);
 }
@@ -190,6 +193,83 @@ Base::Vector3d GeoListModel<T>::getPoint(const Part::Geometry * geo, Sketcher::P
     return Base::Vector3d();
 }
 
+template <typename T>
+void GeoListModel<T>::rebuildVertexIndex(void)
+{
+    VertexId2GeoElementId.clear();
+    GeoElementId2VertexId.clear();
+
+    int geoId=0;
+    int pointId=0;
+
+    auto addGeoElement = [this, &pointId](int geoId, PointPos pos) {
+        VertexId2GeoElementId.emplace_back(geoId,pos);
+        GeoElementId2VertexId.emplace(std::piecewise_construct,
+                                        std::forward_as_tuple(geoId, pos),
+                                        std::forward_as_tuple(pointId++));
+    };
+
+    if (geomlist.size() <= 2)
+        return;
+    for (auto it = geomlist.begin(); it != geomlist.end(); ++it, geoId++) {
+
+        Base::Type type;
+
+        if constexpr (std::is_same<T, Part::Geometry *>::value)
+            type = (*it)->getTypeId();
+        else if constexpr (std::is_same<T, std::unique_ptr<const Sketcher::GeometryFacade>>::value)
+            type = (*it)->getGeometry()->getTypeId();
+
+        if ( geoId > getInternalCount())
+            geoId = -getExternalCount();
+
+        if (type == Part::GeomPoint::getClassTypeId()) {
+            addGeoElement(geoId,PointPos::start);
+        } else if (type == Part::GeomLineSegment::getClassTypeId() ||
+                   type == Part::GeomBSplineCurve::getClassTypeId()) {
+            addGeoElement(geoId,PointPos::start);
+            addGeoElement(geoId,PointPos::end);
+        } else if (type == Part::GeomCircle::getClassTypeId() ||
+                   type == Part::GeomEllipse::getClassTypeId()) {
+            addGeoElement(geoId,PointPos::mid);
+        } else if (type == Part::GeomArcOfCircle::getClassTypeId() ||
+                   type == Part::GeomArcOfEllipse::getClassTypeId() ||
+                   type == Part::GeomArcOfHyperbola::getClassTypeId() ||
+                   type == Part::GeomArcOfParabola::getClassTypeId()) {
+            addGeoElement(geoId,PointPos::start);
+            addGeoElement(geoId,PointPos::end);
+            addGeoElement(geoId,PointPos::mid);
+        }
+    }
+
+    indexInit = true;
+}
+
+template <typename T>
+Sketcher::GeoElementId GeoListModel<T>::getGeoElementIdFromVertexId(int vertexId)
+{
+    if(!indexInit) // lazy initialised
+        rebuildVertexIndex();
+
+    return VertexId2GeoElementId[vertexId];
+}
+
+template <typename T>
+int GeoListModel<T>::getVertexIdFromGeoElementId(const Sketcher::GeoElementId & geoelementId)
+{
+    if(!indexInit) // lazy initialised
+        rebuildVertexIndex();
+
+    auto found = std::find(VertexId2GeoElementId.begin(), VertexId2GeoElementId.end(), geoelementId);
+
+    if( found != VertexId2GeoElementId.end() )
+        return std::distance(found, VertexId2GeoElementId.begin());
+
+    THROWM(Base::IndexError, "GeoElementId not indexed");
+}
+
+
+
 namespace Sketcher {
 
 // Template specialisations
@@ -199,7 +279,8 @@ GeoListModel<std::unique_ptr< const Sketcher::GeometryFacade>>::GeoListModel(
                                 int intgeocount,
                                 bool ownerT) :  geomlist(std::move(geometrylist)),
                                                 intGeoCount(intgeocount),
-                                                OwnerT(false)
+                                                OwnerT(false),
+                                                indexInit(false)
 {
     // GeometryFacades hold the responsibility for releasing the resources.
     //
@@ -218,7 +299,8 @@ GeoListModel<std::unique_ptr< const Sketcher::GeometryFacade>>::GeoListModel(
                                 const std::vector<std::unique_ptr< const Sketcher::GeometryFacade>> & geometrylist,
                                 int intgeocount,
                                 bool ownerT):   intGeoCount(intgeocount),
-                                                OwnerT(false)
+                                                OwnerT(false),
+                                                indexInit(false)
 {
     // GeometryFacades are movable, but not copiable, so they need to be reconstructed (shallow copy of vector)
     // Under the Single Responsibility Principle, these will not take over a responsibility that shall be enforced
