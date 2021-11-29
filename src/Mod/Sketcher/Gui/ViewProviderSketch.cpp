@@ -2544,12 +2544,14 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 
     // ============== Render geometry, constraints and geometry information overlays ==================================
 
-    editCoinManager->processGeometryConstraintsInformationOverlay(geolist, rebuildinformationoverlay);
+    auto geolistfacade = Sketcher::getGeoListFacade(geolist);
+
+    editCoinManager->processGeometryConstraintsInformationOverlay(geolistfacade, rebuildinformationoverlay);
 
     // Avoids unneeded calls to pixmapFromSvg
     if(Mode==STATUS_NONE || Mode==STATUS_SKETCH_UseHandler) {
        editCoinManager->drawConstraintIcons(geolist);
-       editCoinManager->updateColor(geolist);
+       editCoinManager->updateColor(geolistfacade);
     }
 
     Gui::MDIView *mdi = this->getActiveView();
@@ -3337,7 +3339,7 @@ void ViewProviderSketch::resetPreselectPoint(void)
 void ViewProviderSketch::addSelectPoint(int SelectPoint)
 {
     editCoinManager->drawPointAsSelected(SelectPoint);
-    selection.SelPointSet.insert(SelectPoint);
+    selection.SelPointSet.insert(SelectPoint + 1); // TODO: Yet another hack? PreselectPoint is stored without + 1, SelectPoint with it ???
 }
 
 void ViewProviderSketch::removeSelectPoint(int SelectPoint)
