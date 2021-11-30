@@ -2219,20 +2219,6 @@ void EditModeCoinManager::updateConstraintColor(const std::vector<Sketcher::Cons
             } else if (hasMaterial) {
                 m->diffuseColor = drawingParameters.SelectColor;
             } else if (type == Sketcher::Coincident) {
-
-                auto selectpoint = [this, pcolor, PtNum](int geoid, Sketcher::PointPos pos){
-                    if(geoid >= 0) {
-                        auto indexit = coinMapping.GeoIdPointPosToPointId.find(std::make_pair(geoid, pos));
-
-                        if (indexit != coinMapping.GeoIdPointPosToPointId.end()) {
-                            int index = indexit->second + 1;
-                            if(index >= 0 && index < PtNum) {
-                                pcolor[index] = drawingParameters.SelectColor;
-                            }
-                        }
-                    }
-                };
-
                 selectpoint(constraint->First, constraint->FirstPos);
                 selectpoint(constraint->Second, constraint->SecondPos);
             } else if (type == Sketcher::InternalAlignment) {
