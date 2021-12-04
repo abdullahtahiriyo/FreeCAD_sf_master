@@ -102,7 +102,16 @@ public:
     /**
     * returns the geometry given by the GeoId
     */
-    const T getGeometryFromGeoId(int geoId) const;
+    const Part::Geometry * getGeometryFromGeoId(int geoId) const;
+
+    /**
+     * WARNING: If the underlying model of the list is a naked pointed (Part::Geometry *), the client (the user) bears responsibility
+     * for releasing the GeometryFacade pointer!!
+     *
+     * This is not a problem when the model of the list is a std::unique_ptr<Sketcher::GeometryFacade>, because the lifetime is tied to
+     * the model itself.
+     */
+    const Sketcher::GeometryFacade * getGeometryFacadeFromGeoId(int geoId) const;
 
     /**
     * returns the GeoId index from the index in the geometry in geomlist format with which it was constructed.
@@ -118,7 +127,16 @@ public:
     *
     * @param index: the index of the list of geometry in geomlist format.
     */
-    static const T getGeometryFromGeoId(const std::vector<T> & geometrylist, int geoId);
+    static const Part::Geometry * getGeometryFromGeoId(const std::vector<T> & geometrylist, int geoId);
+
+    /**
+     * WARNING: If the underlying model of the list is a naked pointed (Part::Geometry *), the client (the user) bears responsibility
+     * for releasing the GeometryFacade pointer!!
+     *
+     * This is not a problem when the model of the list is a std::unique_ptr<Sketcher::GeometryFacade>, because the lifetime is tied to
+     * the model itself.
+     */
+    static const Sketcher::GeometryFacade * getGeometryFacadeFromGeoId(const std::vector<T> & geometrylist, int geoId);
 
 
     Sketcher::GeoElementId getGeoElementIdFromVertexId(int vertexId);
@@ -164,8 +182,11 @@ private:
     std::map<Sketcher::GeoElementId, int> GeoElementId2VertexId;
 };
 
-using GeoList = GeoListModel<Part::Geometry *>;
-using GeoListFacade = GeoListModel<std::unique_ptr<const Sketcher::GeometryFacade>>;
+using GeometryPtr = Part::Geometry *;
+using GeometryFacadeUniquePtr = std::unique_ptr<const Sketcher::GeometryFacade>;
+
+using GeoList = GeoListModel<GeometryPtr>;
+using GeoListFacade = GeoListModel<GeometryFacadeUniquePtr>;
 
 GeoListFacade getGeoListFacade(const GeoList & geolist);
 
