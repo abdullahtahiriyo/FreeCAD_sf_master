@@ -133,6 +133,24 @@ struct GeometryLayerNodes {
     SoLineSet     *CurveSet;
 };
 
+class MultiFieldId {
+public:
+    explicit constexpr MultiFieldId(int fieldindex = -1, int layerid = 0):  fieldIndex(fieldindex),
+                                                                            layerId(layerid){}
+
+    inline bool operator==(const MultiFieldId& obj) const
+    {
+        return this->fieldIndex == obj.fieldIndex && this->layerId == obj.layerId;
+    }
+
+    int fieldIndex = -1;
+    int layerId = 0;
+};
+
+struct GeometryLayerParameters {
+    int Layers = 1;
+};
+
 /** @brief      Struct adapted to store the parameters necessary to create and update
  *  the information overlay layer.
  */
@@ -198,6 +216,16 @@ struct CoinMapping {
 
 } // namespace SketcherGui
 
+namespace std
+{
+    template<> struct less<SketcherGui::MultiFieldId>
+    {
+       bool operator() (const SketcherGui::MultiFieldId& lhs, const SketcherGui::MultiFieldId& rhs) const
+       {
+           return (lhs.layerId != rhs.layerId)?(lhs.layerId < rhs.layerId):(static_cast<int>(lhs.fieldIndex) < static_cast<int>(rhs.fieldIndex));
+       }
+    };
+} // namespace std
 
 #endif // SKETCHERGUI_EditModeCoinManagerParameters_H
 
