@@ -102,7 +102,7 @@ public:
     *
     * @param geometry: the geometry to be processed
     */
-    void convert(const GeometryLayer & geolayer);
+    void convert(const Sketcher::GeoListFacade & geolistfacade);
 
     /**
     * returns the maximum of the vertical and horizontal magnitudes of the

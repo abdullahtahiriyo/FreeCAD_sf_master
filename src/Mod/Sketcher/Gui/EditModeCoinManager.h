@@ -174,7 +174,7 @@ public:
     //@}
 
     /** @name update coin nodes*/
-    void processGeometryConstraintsInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer);
+    void processGeometryConstraintsInformationOverlay(const GeoListFacade & geolistfacade, bool rebuildinformationlayer);
 
     void updateVirtualSpace();
 
@@ -204,11 +204,11 @@ public:
 
 private:
     // This function populates the coin nodes with the information of the current geometry
-    void processGeometry(const GeoList & geolist);
+    void processGeometry(const GeoListFacade & geolistfacade);
 
     // This function populates the geometry information layer of coin. It requires the analysis information
     // gathered during the processGeometry step, so it is not possible to run both in parallel.
-    void processGeometryInformationOverlay(const GeoList & geolist);
+    void processGeometryInformationOverlay(const GeoListFacade & geolistfacade);
 
     // updates the Axes length to extend beyond the calculated bounding box magnitude
     void updateAxesLength();

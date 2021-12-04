@@ -94,7 +94,7 @@ public:
 
     /** @name update coin nodes*/
     // geometry list to be used for constraints, which may be a temporal geometry
-    void processConstraints(const GeoList & geolist);
+    void processConstraints(const GeoListFacade & geolistfacade);
 
     void updateVirtualSpace();
 
@@ -121,9 +121,9 @@ public:
     SoSeparator * getConstraintIdSeparator(int i);
 
 private:
-    void rebuildConstraintNodes(const GeoList & geolist); // with specific geometry
+    void rebuildConstraintNodes(const GeoListFacade & geolistfacade); // with specific geometry
 
-    void rebuildConstraintNodes(const GeoList & geolist, const std::vector<Sketcher::Constraint *> constrlist, SbVec3f norm);
+    void rebuildConstraintNodes(const GeoListFacade & geolistfacade, const std::vector<Sketcher::Constraint *> constrlist, SbVec3f norm);
 
     /// finds a free position for placing a constraint icon
     Base::Vector3d seekConstraintPosition(const Base::Vector3d &origPos,

@@ -133,22 +133,6 @@ struct GeometryLayerNodes {
     SoLineSet     *CurveSet;
 };
 
-/** @brief      Struct adapted to store the input information defining a layer.
- *  @details
- *  It has the responsibility to define which geoids belong and need to be processed
- *  in this layer.
- *
- * - geolist is the list of all sketcher geometry (including all layers)
- * - other parameters such as layerId are necessary
- *
- * N.B.: Note that the index of the geomlist (all layers) and the GeoId can be converted
- * from each other at needed using the member fuctions (and sometimes the statics).
- */
-struct GeometryLayer {
-    //int layerId = 0;  // currently unused
-    const Sketcher::GeoList & geolist;
-};
-
 /** @brief      Struct adapted to store the parameters necessary to create and update
  *  the information overlay layer.
  */

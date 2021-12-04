@@ -2544,7 +2544,9 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 
     // ============== Render geometry, constraints and geometry information overlays ==================================
 
-    editCoinManager->processGeometryConstraintsInformationOverlay(geolist, rebuildinformationoverlay);
+    auto geolistfacade = Sketcher::getGeoListFacade(geolist);
+
+    editCoinManager->processGeometryConstraintsInformationOverlay(geolistfacade, rebuildinformationoverlay);
 
     // Avoids unneeded calls to pixmapFromSvg
     if(Mode==STATUS_NONE || Mode==STATUS_SKETCH_UseHandler) {

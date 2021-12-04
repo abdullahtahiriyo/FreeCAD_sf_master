@@ -58,7 +58,7 @@ GeometryCoinConverter::GeometryCoinConverter(   GeometryLayerNodes & geometrylay
 
 }
 
-void GeometryCoinConverter::convert(const GeometryLayer & geolayer)
+void GeometryCoinConverter::convert(const Sketcher::GeoListFacade & geolistfacade)
 {
 
     // measurements
@@ -125,10 +125,10 @@ void GeometryCoinConverter::convert(const GeometryLayer & geolayer)
     };
 
     // currently the whole geometrylist is processed in a single layer
-    for (size_t i = 0 ; i < geolayer.geolist.geomlist.size()- 2; i++) {
+    for (size_t i = 0 ; i < geolistfacade.geomlist.size()- 2; i++) {
 
-        const auto GeoId = geolayer.geolist.getGeoIdFromGeomListIndex(i);
-        const auto geom = geolayer.geolist.getGeometryFromGeoId(GeoId);
+        const auto GeoId = geolistfacade.getGeoIdFromGeomListIndex(i);
+        const auto geom = geolistfacade.getGeometryFromGeoId(GeoId);
 
         if (geom->getTypeId() == Part::GeomPoint::getClassTypeId()) { // add a point
             convert< Part::GeomPoint,
