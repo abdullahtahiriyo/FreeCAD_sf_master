@@ -709,31 +709,15 @@ void EditModeCoinManager::updateGridExtent()
     ViewProviderSketchCoinAttorney::updateGridExtent(viewProvider,-dMagF, dMagF, -dMagF, dMagF);
 }
 
-
-
-
 void EditModeCoinManager::updateColor()
 {
     auto geolistfacade = ViewProviderSketchCoinAttorney::getGeoListFacade(viewProvider);
 
-    bool sketchinvalid = ViewProviderSketchCoinAttorney::isSketchInvalid(viewProvider);
-
-    updateGeometryColor(geolistfacade, sketchinvalid);
-
-    // update constraint color
-
-    auto constraints = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
-
-    if(ViewProviderSketchCoinAttorney::haveConstraintsInvalidGeometry(viewProvider))
-        return;
-
-    pEditModeConstraintCoinManager->updateConstraintColor(constraints);
+    updateColor(geolistfacade);
 }
 
-void EditModeCoinManager::updateColor(const GeoList & geolist)
+void EditModeCoinManager::updateColor(const GeoListFacade & geolistfacade)
 {
-    auto geolistfacade = Sketcher::getGeoListFacade(geolist);
-
     bool sketchinvalid = ViewProviderSketchCoinAttorney::isSketchInvalid(viewProvider);
 
     updateGeometryColor(geolistfacade, sketchinvalid);
@@ -747,7 +731,6 @@ void EditModeCoinManager::updateColor(const GeoList & geolist)
 
     pEditModeConstraintCoinManager->updateConstraintColor(constraints);
 }
-
 
 void EditModeCoinManager::updateGeometryColor(const GeoListFacade & geolistfacade, bool issketchinvalid)
 {
