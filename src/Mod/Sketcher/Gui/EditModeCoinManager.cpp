@@ -712,10 +712,7 @@ void EditModeCoinManager::updateGridExtent()
     ViewProviderSketchCoinAttorney::updateGridExtent(viewProvider,-dMagF, dMagF, -dMagF, dMagF);
 }
 
-void EditModeCoinManager::updateVirtualSpace()
-{
-    pEditModeConstraintCoinManager->updateVirtualSpace();
-}
+
 
 
 void EditModeCoinManager::updateColor()
@@ -1239,6 +1236,9 @@ void EditModeCoinManager::redrawViewProvider()
 }
 
 
+
+/************************ Delegated constraint public interface **********/
+
 // public function that triggers drawing of most constraint icons
 void EditModeCoinManager::drawConstraintIcons()
 {
@@ -1250,6 +1250,12 @@ void EditModeCoinManager::drawConstraintIcons(const GeoList & geolist)
     pEditModeConstraintCoinManager->drawConstraintIcons(geolist);
 }
 
+void EditModeCoinManager::updateVirtualSpace()
+{
+    pEditModeConstraintCoinManager->updateVirtualSpace();
+}
+
+/************************ Resizing of coin nodes ************************/
 
 int EditModeCoinManager::defaultApplicationFontSizePixels() const {
     return ViewProviderSketchCoinAttorney::defaultApplicationFontSizePixels(viewProvider);
@@ -1273,6 +1279,8 @@ void EditModeCoinManager::updateInventorNodeSizes()
 
     pEditModeConstraintCoinManager->rebuildConstraintNodes();
 }
+
+/************************ Edit node access ************************/
 
 SoSeparator* EditModeCoinManager::getRootEditNode()
 {
