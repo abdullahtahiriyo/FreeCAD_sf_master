@@ -147,6 +147,22 @@ public:
     int layerId = 0;
 };
 
+} // namespace SketcherGui
+
+namespace std
+{
+    template<> struct less<SketcherGui::MultiFieldId>
+    {
+       bool operator() (const SketcherGui::MultiFieldId& lhs, const SketcherGui::MultiFieldId& rhs) const
+       {
+           return (lhs.layerId != rhs.layerId)?(lhs.layerId < rhs.layerId):(static_cast<int>(lhs.fieldIndex) < static_cast<int>(rhs.fieldIndex));
+       }
+    };
+} // namespace std
+
+
+namespace SketcherGui {
+
 struct GeometryLayerParameters {
     int Layers = 1;
 };
@@ -211,21 +227,15 @@ struct CoinMapping {
     std::vector<int> CurvIdToGeoId; // conversion of SoLineSet index to GeoId
     std::vector<int> PointIdToGeoId; // conversion of SoCoordinate3 index to GeoId
     std::map<std::pair<int, Sketcher::PointPos>, int> GeoIdPointPosToPointId; // conversion of [GeoId,Pos] to PointId
+
+    std::map<MultiFieldId,Sketcher::GeoElementId> PointSetId2GeoElementId;
+    std::map<MultiFieldId,Sketcher::GeoElementId> CurveSetId2GeoElementId;
+
+    std::map<Sketcher::GeoElementId,MultiFieldId> GeoElementId2SetId;
 };
 
 
 } // namespace SketcherGui
-
-namespace std
-{
-    template<> struct less<SketcherGui::MultiFieldId>
-    {
-       bool operator() (const SketcherGui::MultiFieldId& lhs, const SketcherGui::MultiFieldId& rhs) const
-       {
-           return (lhs.layerId != rhs.layerId)?(lhs.layerId < rhs.layerId):(static_cast<int>(lhs.fieldIndex) < static_cast<int>(rhs.fieldIndex));
-       }
-    };
-} // namespace std
 
 #endif // SKETCHERGUI_EditModeCoinManagerParameters_H
 

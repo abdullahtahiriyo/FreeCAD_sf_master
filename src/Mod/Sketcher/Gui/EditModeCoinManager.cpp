@@ -1183,7 +1183,7 @@ void EditModeCoinManager::createEditModeInventorNodes()
     editModeScenegraphNodes.ConstraintDrawStyle = new SoDrawStyle;
     editModeScenegraphNodes.ConstraintDrawStyle->setName("ConstraintDrawStyle");
     editModeScenegraphNodes.ConstraintDrawStyle->lineWidth = 1 * drawingParameters.pixelScalingFactor;
-   editModeScenegraphNodes.EditRoot->addChild(editModeScenegraphNodes.ConstraintDrawStyle);
+    editModeScenegraphNodes.EditRoot->addChild(editModeScenegraphNodes.ConstraintDrawStyle);
 
     // add the group where all the constraints has its SoSeparator
     editModeScenegraphNodes.constrGroup = new SmSwitchboard();
