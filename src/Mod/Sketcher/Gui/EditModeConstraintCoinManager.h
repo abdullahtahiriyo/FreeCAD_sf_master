@@ -86,6 +86,7 @@ private:
 public:
     explicit EditModeConstraintCoinManager( ViewProviderSketch &vp,
                                             DrawingParameters & drawingParams,
+                                            GeometryLayerParameters & geometryLayerParams,
                                             ConstraintParameters & constraintParams,
                                             EditModeScenegraphNodes & editModeScenegraph,
                                             CoinMapping & coinMap);
@@ -237,6 +238,7 @@ private:
     ViewProviderSketch & viewProvider;
 
     DrawingParameters & drawingParameters;
+    GeometryLayerParameters & geometryLayerParameters;
     ConstraintParameters & constraintParameters;
 
     EditModeScenegraphNodes & editModeScenegraphNodes;

@@ -362,6 +362,7 @@ EditModeCoinManager::EditModeCoinManager(ViewProviderSketch &vp):viewProvider(vp
 
     pEditModeConstraintCoinManager = std::make_unique<EditModeConstraintCoinManager>(viewProvider,
                                                                                     drawingParameters,
+                                                                                    geometryLayerParameters,
                                                                                     constraintParameters,
                                                                                     editModeScenegraphNodes,
                                                                                     coinMapping);
@@ -477,6 +478,8 @@ void EditModeCoinManager::setAxisPickStyle(bool on)
 
 void EditModeCoinManager::drawPreselectPoint(int PreselectPoint)
 {
+    // TODO Re-write this
+    /*
     int oldPtId = -1;
     auto preselectpoint = ViewProviderSketchCoinAttorney::getPreselectPoint(viewProvider);
     if (preselectpoint != -1)
@@ -496,10 +499,12 @@ void EditModeCoinManager::drawPreselectPoint(int PreselectPoint)
     pverts[newPtId].setValue(x,y,drawingParameters.zHighlight);
 
     editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
+    */
 }
 
 void EditModeCoinManager::clearPointPreselection(void)
 {
+    /*
     int oldPtId = -1;
      auto preselectpoint = ViewProviderSketchCoinAttorney::getPreselectPoint(viewProvider);
     if (preselectpoint != -1)
@@ -513,7 +518,7 @@ void EditModeCoinManager::clearPointPreselection(void)
         pverts[oldPtId].getValue(x,y,z);
         pverts[oldPtId].setValue(x,y,drawingParameters.zLowPoints);
         editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
-    }
+    }*/
 }
 
 void EditModeCoinManager::drawPreselectRootPoint()
@@ -525,6 +530,7 @@ void EditModeCoinManager::drawPreselectRootPoint()
 
 void EditModeCoinManager::drawPointAsSelected(int selectpointId)
 {
+    /*
     int PtId = selectpointId + 1;
     SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
     // bring to foreground
@@ -532,10 +538,12 @@ void EditModeCoinManager::drawPointAsSelected(int selectpointId)
     pverts[PtId].getValue(x,y,z);
     pverts[PtId].setValue(x,y,drawingParameters.zHighlight);
     editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
+    */
 }
 
 void EditModeCoinManager::clearPointSelection(int selectpointId)
 {
+    /*
     int PtId = selectpointId + 1;
     SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
     // send to background
@@ -543,10 +551,12 @@ void EditModeCoinManager::clearPointSelection(int selectpointId)
     pverts[PtId].getValue(x,y,z);
     pverts[PtId].setValue(x,y,drawingParameters.zLowPoints);
     editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
+    */
 }
 
 void EditModeCoinManager::clearPointSelection(void)
 {
+    /*
     SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
     // send to background
     ViewProviderSketchCoinAttorney::executeOnSelectionPointSet(viewProvider,
@@ -556,12 +566,14 @@ void EditModeCoinManager::clearPointSelection(void)
             pverts[i].setValue(x,y,drawingParameters.zLowPoints);
         });
     editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
+    */
 }
 
 EditModeCoinManager::PreselectionResult EditModeCoinManager::detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos)
 {
     EditModeCoinManager::PreselectionResult result;
 
+    /*
     if(!Point)
         return result;
 
@@ -605,7 +617,7 @@ EditModeCoinManager::PreselectionResult EditModeCoinManager::detectPreselection(
             result.constrIndices = pEditModeConstraintCoinManager->detectPreselectionConstr(Point, cursorPos);
         }
     }
-
+    */
     return result;
 }
 
@@ -712,7 +724,7 @@ void EditModeCoinManager::createEditModeInventorNodes()
 {
     // 1 - Create the edit root node
     editModeScenegraphNodes.EditRoot = new SoSeparator;
-    editModeScenegraphNodes.EditRoot->ref();
+    editModeScenegraphNodes.EditRoot->ref(); // Node is unref in the destructor of EditModeCoinManager
     editModeScenegraphNodes.EditRoot->setName("Sketch_EditRoot");
     ViewProviderSketchCoinAttorney::addNodeToRoot(viewProvider, editModeScenegraphNodes.EditRoot);
     editModeScenegraphNodes.EditRoot->renderCaching = SoSeparator::OFF ;
@@ -880,9 +892,12 @@ int EditModeCoinManager::getApplicationLogicalDPIX() const {
 
 void EditModeCoinManager::updateInventorNodeSizes()
 {
-    editModeScenegraphNodes.PointsDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;
-    editModeScenegraphNodes.PointSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_FILLED", drawingParameters.markerSize);
-    editModeScenegraphNodes.CurvesDrawStyle->lineWidth = 3 * drawingParameters.pixelScalingFactor;
+    for(int l = 0; l < geometryLayerParameters.Layers; l++) {
+        editModeScenegraphNodes.PointsDrawStyle[l]->pointSize = 8 * drawingParameters.pixelScalingFactor;
+        editModeScenegraphNodes.PointSet[l]->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_FILLED", drawingParameters.markerSize);
+        editModeScenegraphNodes.CurvesDrawStyle[l]->lineWidth = 3 * drawingParameters.pixelScalingFactor;
+    }
+
     editModeScenegraphNodes.RootCrossDrawStyle->lineWidth = 2 * drawingParameters.pixelScalingFactor;
     editModeScenegraphNodes.EditCurvesDrawStyle->lineWidth = 3 * drawingParameters.pixelScalingFactor;
     editModeScenegraphNodes.EditMarkersDrawStyle->pointSize = 8 * drawingParameters.pixelScalingFactor;

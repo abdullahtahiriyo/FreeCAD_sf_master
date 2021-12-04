@@ -126,11 +126,12 @@ struct DrawingParameters {
 /** @brief      Struct for storing the nodes that need to be edited to represent a geometry layer
  */
 struct GeometryLayerNodes {
-    SoMaterial    *PointsMaterials;
-    SoMaterial    *CurvesMaterials;
-    SoCoordinate3 *PointsCoordinate;
-    SoCoordinate3 *CurvesCoordinate;
-    SoLineSet     *CurveSet;
+    std::vector<SoMaterial *> &     PointsMaterials;
+    std::vector<SoCoordinate3 *>&   PointsCoordinate;
+
+    std::vector<SoMaterial *> &     CurvesMaterials;
+    std::vector<SoCoordinate3 *> &  CurvesCoordinate;
+    std::vector<SoLineSet *> &      CurveSet;
 };
 
 class MultiFieldId {
@@ -201,22 +202,30 @@ struct ConstraintParameters {
 };
 
 struct EditModeScenegraphNodes {
-    SoSeparator   *EditRoot;
-    SoMaterial    *PointsMaterials;
-    SoMaterial    *CurvesMaterials;
+    SoSeparator *                   EditRoot;
+    SmSwitchboard *                 PointsGroup;
+    std::vector<SoMaterial *>       PointsMaterials;
+    std::vector<SoCoordinate3 *>    PointsCoordinate;
+    std::vector<SoDrawStyle *>      PointsDrawStyle;
+    std::vector<SoMarkerSet *>      PointSet;
+
+    SmSwitchboard *                 CurvesGroup;
+    std::vector<SoMaterial *>       CurvesMaterials;
+    std::vector<SoCoordinate3 *>    CurvesCoordinate;
+    std::vector<SoDrawStyle *>      CurvesDrawStyle;
+    std::vector<SoLineSet *>        CurveSet;
+
     SoMaterial    *RootCrossMaterials;
     SoMaterial    *EditCurvesMaterials;
     SoMaterial    *EditMarkersMaterials;
-    SoCoordinate3 *PointsCoordinate;
-    SoCoordinate3 *CurvesCoordinate;
+
     SoCoordinate3 *RootCrossCoordinate;
     SoCoordinate3 *EditCurvesCoordinate;
     SoCoordinate3 *EditMarkersCoordinate;
-    SoLineSet     *CurveSet;
+
     SoLineSet     *RootCrossSet;
     SoLineSet     *EditCurveSet;
     SoMarkerSet   *EditMarkerSet;
-    SoMarkerSet   *PointSet;
 
     SoText2       *textX;
     SoTranslation *textPos;
@@ -225,8 +234,6 @@ struct EditModeScenegraphNodes {
     SoGroup       *infoGroup;
     SoPickStyle   *pickStyleAxes;
 
-    SoDrawStyle * PointsDrawStyle;
-    SoDrawStyle * CurvesDrawStyle;
     SoDrawStyle * RootCrossDrawStyle;
     SoDrawStyle * EditCurvesDrawStyle;
     SoDrawStyle * EditMarkersDrawStyle;
@@ -235,6 +242,16 @@ struct EditModeScenegraphNodes {
 };
 
 struct CoinMapping {
+
+    void clear() {
+        CurvIdToGeoId.clear();
+        PointIdToGeoId.clear();
+        GeoIdPointPosToPointId.clear();
+        PointSetId2GeoElementId.clear();
+        CurveSetId2GeoElementId.clear();
+        GeoElementId2SetId.clear();
+    };
+
     std::vector<int> CurvIdToGeoId; // conversion of SoLineSet index to GeoId
     std::vector<int> PointIdToGeoId; // conversion of SoCoordinate3 index to GeoId
     std::map<std::pair<int, Sketcher::PointPos>, int> GeoIdPointPosToPointId; // conversion of [GeoId,Pos] to PointId

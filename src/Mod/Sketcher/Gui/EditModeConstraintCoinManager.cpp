@@ -106,11 +106,13 @@ using namespace Sketcher;
 
 EditModeConstraintCoinManager::EditModeConstraintCoinManager(   ViewProviderSketch &vp,
                                                                 DrawingParameters & drawingParams,
+                                                                GeometryLayerParameters & geometryLayerParams,
                                                                 ConstraintParameters & constraintParams,
                                                                 EditModeScenegraphNodes & editModeScenegraph,
                                                                 CoinMapping & coinMap):
     viewProvider(vp),
     drawingParameters(drawingParams),
+    geometryLayerParameters(geometryLayerParams),
     constraintParameters(constraintParams),
     editModeScenegraphNodes(editModeScenegraph),
     coinMapping(coinMap)
@@ -1238,8 +1240,14 @@ void EditModeConstraintCoinManager::updateConstraintColor(const std::vector<Sket
 {
     // Because coincident constraints are selected using the point color, we need to edit the point materials.
     // TODO: Review this
-    int PtNum = editModeScenegraphNodes.PointsMaterials->diffuseColor.getNum();
-    SbColor *pcolor = editModeScenegraphNodes.PointsMaterials->diffuseColor.startEditing();
+
+    std::vector<int> PtNum;
+    std::vector<SbColor *> pcolor;
+
+    for(int l=0; l<geometryLayerParameters.Layers; l++) {
+        PtNum.push_back(editModeScenegraphNodes.PointsMaterials[l]->diffuseColor.getNum());
+        pcolor.push_back(editModeScenegraphNodes.PointsMaterials[l]->diffuseColor.startEditing());
+    }
 
     int maxNumberOfConstraints = std::min(editModeScenegraphNodes.constrGroup->getNumChildren(), static_cast<int>(constraints.size()));
 
@@ -1270,12 +1278,13 @@ void EditModeConstraintCoinManager::updateConstraintColor(const std::vector<Sket
 
         auto selectpoint = [this, pcolor, PtNum](int geoid, Sketcher::PointPos pos){
             if(geoid >= 0) {
-                auto indexit = coinMapping.GeoIdPointPosToPointId.find(std::make_pair(geoid, pos));
+                auto indexit = coinMapping.GeoElementId2SetId.find(GeoElementId(geoid, pos));
 
-                if (indexit != coinMapping.GeoIdPointPosToPointId.end()) {
-                    int index = indexit->second + 1;
-                    if(index >= 0 && index < PtNum) {
-                        pcolor[index] = drawingParameters.SelectColor;
+                if (indexit != coinMapping.GeoElementId2SetId.end()) {
+                    int index = indexit->second.fieldIndex + 1;
+                    int layer = indexit->second.layerId;
+                    if(layer < static_cast<int>(PtNum.size()) && index >= 0 && index < PtNum[layer]) {
+                        pcolor[layer][index] = drawingParameters.SelectColor;
                     }
                 }
             }
@@ -1295,6 +1304,8 @@ void EditModeConstraintCoinManager::updateConstraintColor(const std::vector<Sket
                     case EllipseMajorDiameter:
                     case EllipseMinorDiameter:
                     {
+                        // TODO: THis code does not make sense
+                        /*
                         // color line
                         int CurvNum = editModeScenegraphNodes.CurvesMaterials->diffuseColor.getNum();
                         for (int  i=0; i < CurvNum; i++) {
@@ -1304,7 +1315,7 @@ void EditModeConstraintCoinManager::updateConstraintColor(const std::vector<Sket
                                 pcolor[i] = drawingParameters.SelectColor;
                                 break;
                             }
-                        }
+                        }*/
                     }
                     break;
                     case EllipseFocus1:
@@ -1347,8 +1358,9 @@ void EditModeConstraintCoinManager::updateConstraintColor(const std::vector<Sket
         }
     }
 
-    editModeScenegraphNodes.PointsMaterials->diffuseColor.finishEditing();
-
+    for(int l=0; l<geometryLayerParameters.Layers; l++) {
+        editModeScenegraphNodes.PointsMaterials[l]->diffuseColor.finishEditing();
+    }
 }
 
 void EditModeConstraintCoinManager::rebuildConstraintNodes(void)
