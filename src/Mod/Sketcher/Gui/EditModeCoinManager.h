@@ -61,6 +61,7 @@ namespace SketcherGui {
 
 class ViewProviderSketch;
 class EditModeConstraintCoinManager;
+class EditModeGeometryCoinManager;
 
 using GeoList = Sketcher::GeoList;
 using GeoListFacade = Sketcher::GeoListFacade;
@@ -111,17 +112,6 @@ class SketcherGuiExport EditModeCoinManager
     private:
         std::map<std::string, std::function<void(const std::string &)>> str2updatefunction;
         EditModeCoinManager &Client;
-    };
-
-    /** @brief     Struct to hold the results of analysis
-    *  @details    To be documented.
-    *
-    */
-    struct AnalysisResults { // TODO: This needs to be refactored
-        double combRepresentationScale = 0;
-        float boundingBoxMagnitudeOrder = 0;
-        std::vector<int> bsplineGeoIds;
-
     };
 
 public:
@@ -239,6 +229,7 @@ private:
     AnalysisResults analysisResults;
     OverlayParameters overlayParameters;
     ConstraintParameters constraintParameters;
+    GeometryLayerParameters geometryLayerParameters;
 
     EditModeScenegraphNodes editModeScenegraphNodes;
 
@@ -246,6 +237,7 @@ private:
 
     // Coin Helpers
     std::unique_ptr<EditModeConstraintCoinManager> pEditModeConstraintCoinManager;
+    std::unique_ptr<EditModeGeometryCoinManager> pEditModeGeometryCoinManager;
 
 };
 

@@ -120,6 +120,8 @@ public:
 
     SoSeparator * getConstraintIdSeparator(int i);
 
+    void createEditModeInventorNodes();
+
 private:
     void rebuildConstraintNodes(const GeoListFacade & geolistfacade); // with specific geometry
 

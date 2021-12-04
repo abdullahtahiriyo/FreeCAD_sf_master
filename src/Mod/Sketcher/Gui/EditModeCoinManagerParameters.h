@@ -167,6 +167,17 @@ struct GeometryLayerParameters {
     int Layers = 1;
 };
 
+/** @brief     Struct to hold the results of analysis
+*  @details    To be documented.
+*
+*/
+struct AnalysisResults { // TODO: This needs to be refactored
+    double combRepresentationScale = 0;
+    float boundingBoxMagnitudeOrder = 0;
+    std::vector<int> bsplineGeoIds;
+
+};
+
 /** @brief      Struct adapted to store the parameters necessary to create and update
  *  the information overlay layer.
  */

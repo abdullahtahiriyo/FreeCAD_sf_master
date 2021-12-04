@@ -28,6 +28,8 @@
 # include <Inventor/nodes/SoGroup.h>
 # include <Inventor/nodes/SoSwitch.h>
 # include <Inventor/nodes/SoMaterial.h>
+# include <Inventor/nodes/SoMaterialBinding.h>
+
 # include <Inventor/nodes/SoCoordinate3.h>
 # include <Inventor/nodes/SoLineSet.h>
 # include <Inventor/nodes/SoFont.h>
@@ -2339,4 +2341,24 @@ int EditModeConstraintCoinManager::constrColorPriority(int constraintId)
 SoSeparator * EditModeConstraintCoinManager::getConstraintIdSeparator(int i)
 {
     return dynamic_cast<SoSeparator *>(editModeScenegraphNodes.constrGroup->getChild(i));
+}
+
+void EditModeConstraintCoinManager::createEditModeInventorNodes()
+{
+    // group node for the Constraint visual +++++++++++++++++++++++++++++++++++
+    SoMaterialBinding *MtlBind = new SoMaterialBinding;
+    MtlBind->setName("ConstraintMaterialBinding");
+    MtlBind->value = SoMaterialBinding::OVERALL ;
+    editModeScenegraphNodes.EditRoot->addChild(MtlBind);
+
+    // use small line width for the Constraints
+    editModeScenegraphNodes.ConstraintDrawStyle = new SoDrawStyle;
+    editModeScenegraphNodes.ConstraintDrawStyle->setName("ConstraintDrawStyle");
+    editModeScenegraphNodes.ConstraintDrawStyle->lineWidth = 1 * drawingParameters.pixelScalingFactor;
+    editModeScenegraphNodes.EditRoot->addChild(editModeScenegraphNodes.ConstraintDrawStyle);
+
+    // add the group where all the constraints has its SoSeparator
+    editModeScenegraphNodes.constrGroup = new SmSwitchboard();
+    editModeScenegraphNodes.constrGroup->setName("ConstraintGroup");
+    editModeScenegraphNodes.EditRoot->addChild(editModeScenegraphNodes.constrGroup);
 }
