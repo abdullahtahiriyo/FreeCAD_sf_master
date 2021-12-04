@@ -141,7 +141,7 @@ public:
 
     Sketcher::GeoElementId getGeoElementIdFromVertexId(int vertexId);
 
-    int getVertexIdFromGeoElementId(const Sketcher::GeoElementId & geoelementId);
+    int getVertexIdFromGeoElementId(const Sketcher::GeoElementId & geoelementId) const;
 
 
     Vector3d getPoint(int geoId, Sketcher::PointPos pos) const;
@@ -172,14 +172,14 @@ public:
 private:
     Vector3d getPoint(const Part::Geometry * geo, Sketcher::PointPos pos) const;
 
-    void rebuildVertexIndex();
+    void rebuildVertexIndex() const;
 
 private:
     int intGeoCount;
     bool OwnerT;
-    bool indexInit;
-    std::vector<Sketcher::GeoElementId> VertexId2GeoElementId;
-    std::map<Sketcher::GeoElementId, int> GeoElementId2VertexId;
+    mutable bool indexInit;
+    mutable std::vector<Sketcher::GeoElementId> VertexId2GeoElementId;
+    mutable std::map<Sketcher::GeoElementId, int> GeoElementId2VertexId;
 };
 
 using GeometryPtr = Part::Geometry *;
