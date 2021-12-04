@@ -225,7 +225,7 @@ Base::Vector3d GeoListModel<T>::getPoint(const Part::Geometry * geo, Sketcher::P
 }
 
 template <typename T>
-void GeoListModel<T>::rebuildVertexIndex(void)
+void GeoListModel<T>::rebuildVertexIndex(void) const
 {
     VertexId2GeoElementId.clear();
     GeoElementId2VertexId.clear();
@@ -286,7 +286,7 @@ Sketcher::GeoElementId GeoListModel<T>::getGeoElementIdFromVertexId(int vertexId
 }
 
 template <typename T>
-int GeoListModel<T>::getVertexIdFromGeoElementId(const Sketcher::GeoElementId & geoelementId)
+int GeoListModel<T>::getVertexIdFromGeoElementId(const Sketcher::GeoElementId & geoelementId) const
 {
     if(!indexInit) // lazy initialised
         rebuildVertexIndex();
