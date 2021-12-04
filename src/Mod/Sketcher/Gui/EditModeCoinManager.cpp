@@ -756,21 +756,21 @@ void EditModeCoinManager::updateGeometryColor(const GeoListFacade & geolistfacad
 {
     // Lambdas for convenience retrieval of geometry information
     auto isConstructionGeom = [&geolistfacade](int GeoId) {
-        auto geom = geolistfacade.getGeometryFromGeoId(GeoId);
+        auto geom = geolistfacade.getGeometryFacadeFromGeoId(GeoId);
         if (geom)
             return geom->getConstruction();
         return false;
     };
 
     auto isDefinedGeomPoint = [&geolistfacade](int GeoId) {
-        auto geom = geolistfacade.getGeometryFromGeoId(GeoId);
+        auto geom = geolistfacade.getGeometryFacadeFromGeoId(GeoId);
         if (geom)
             return geom->isGeoType(Part::GeomPoint::getClassTypeId()) && !geom->getConstruction();
         return false;
     };
 
     auto isInternalAlignedGeom = [&geolistfacade](int GeoId) {
-        auto geom = geolistfacade.getGeometryFromGeoId(GeoId);
+        auto geom = geolistfacade.getGeometryFacadeFromGeoId(GeoId);
         if (geom) {
             return geom->isInternalAligned();
         }
@@ -778,7 +778,7 @@ void EditModeCoinManager::updateGeometryColor(const GeoListFacade & geolistfacad
     };
 
     auto isFullyConstraintElement = [&geolistfacade](int GeoId) {
-        auto geom = geolistfacade.getGeometryFromGeoId(GeoId);
+        auto geom = geolistfacade.getGeometryFacadeFromGeoId(GeoId);
 
         if(geom) {
             if(geom->hasExtension(Sketcher::SolverGeometryExtension::getClassTypeId())) {
@@ -868,7 +868,7 @@ void EditModeCoinManager::updateGeometryColor(const GeoListFacade & geolistfacad
 
     for (int  i=0; i < PtNum; i++) { // 0 is the origin
         pverts[i].getValue(x,y,z);
-        auto geom = geolistfacade.getGeometryFromGeoId(coinMapping.PointIdToGeoId[i]);
+        auto geom = geolistfacade.getGeometryFacadeFromGeoId(coinMapping.PointIdToGeoId[i]);
         if(geom && z < drawingParameters.zHighlight) {
             if(geom->getConstruction())
                 pverts[i].setValue(x,y,zConstrPoint);
