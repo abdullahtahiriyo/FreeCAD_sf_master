@@ -619,28 +619,25 @@ SoGroup* EditModeCoinManager::getSelectedConstraints()
 
 /***** update coin nodes *****/
 
-void EditModeCoinManager::processGeometryConstraintsInformationOverlay(const GeoList & geolist, bool rebuildinformationlayer)
+void EditModeCoinManager::processGeometryConstraintsInformationOverlay(const GeoListFacade & geolistfacade, bool rebuildinformationlayer)
 {
     overlayParameters.rebuildInformationLayer = rebuildinformationlayer;
 
-    processGeometry(geolist);
+    processGeometry(geolistfacade);
 
     updateOverlayParameters();
 
-    processGeometryInformationOverlay(geolist);
+    processGeometryInformationOverlay(geolistfacade);
 
     updateAxesLength();
 
     updateGridExtent();
 
-    pEditModeConstraintCoinManager->processConstraints(geolist);
+    pEditModeConstraintCoinManager->processConstraints(geolistfacade);
 }
 
-void EditModeCoinManager::processGeometry(const GeoList & geolist)
+void EditModeCoinManager::processGeometry(const GeoListFacade & geolistfacade)
 {
-    // Define a single layer processing to be converted to coin (currently it is the whole geometry)
-    GeometryLayer geolayer { geolist };
-
     // Define the coin nodes that will be filled in with the single layer
     GeometryLayerNodes geometryLayerNodes {
         editModeScenegraphNodes.PointsMaterials,
@@ -654,7 +651,7 @@ void EditModeCoinManager::processGeometry(const GeoList & geolist)
     // TODO: Root is set by GeometryCoinConverter which is ok for one layer only.
     GeometryCoinConverter gcconv(geometryLayerNodes, drawingParameters);
 
-    gcconv.convert(geolayer);
+    gcconv.convert(geolistfacade);
 
     // set cross coordinates
     editModeScenegraphNodes.RootCrossSet->numVertices.set1Value(0,2);
@@ -678,7 +675,7 @@ void EditModeCoinManager::updateOverlayParameters()
         overlayParameters.currentBSplineCombRepresentationScale = analysisResults.combRepresentationScale ;
 }
 
-void EditModeCoinManager::processGeometryInformationOverlay(const GeoList & geolist)
+void EditModeCoinManager::processGeometryInformationOverlay(const GeoListFacade & geolistfacade)
 {
     if(overlayParameters.rebuildInformationLayer) {
         // every time we start with empty information overlay
@@ -689,7 +686,7 @@ void EditModeCoinManager::processGeometryInformationOverlay(const GeoList & geol
 
     // geometry information layer for bsplines, as they need a second round now that max curvature is known
     for (auto geoid : analysisResults.bsplineGeoIds) {
-        const Part::Geometry *geo = geolist.getGeometryFromGeoId(geoid);
+        const Part::Geometry *geo = geolistfacade.getGeometryFromGeoId(geoid);
 
         ioconv.convert(geo);
     }

@@ -137,25 +137,25 @@ void EditModeConstraintCoinManager::updateVirtualSpace()
     }
 }
 
-void EditModeConstraintCoinManager::processConstraints(const GeoList & geolist)
+void EditModeConstraintCoinManager::processConstraints(const GeoListFacade & geolistfacade)
 {
     const auto &constrlist = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
 
     // After an undo/redo it can happen that we have an empty geometry list but a non-empty constraint list
     // In this case just ignore the constraints. (See bug #0000421)
-    if (geolist.geomlist.size() <= 2 && !constrlist.empty()) {
-        rebuildConstraintNodes(geolist);
+    if (geolistfacade.geomlist.size() <= 2 && !constrlist.empty()) {
+        rebuildConstraintNodes(geolistfacade);
         return;
     }
 
-    int extGeoCount = geolist.getExternalCount();
-    int intGeoCount = geolist.getInternalCount();
+    int extGeoCount = geolistfacade.getExternalCount();
+    int intGeoCount = geolistfacade.getInternalCount();
 
     // reset point if the constraint type has changed
 Restart:
     // check if a new constraint arrived
     if (constrlist.size() != vConstrType.size())
-        rebuildConstraintNodes(geolist);
+        rebuildConstraintNodes(geolistfacade);
 
     assert(int(constrlist.size()) == editModeScenegraphNodes.constrGroup->getNumChildren());
     assert(int(vConstrType.size()) == editModeScenegraphNodes.constrGroup->getNumChildren());
@@ -163,8 +163,8 @@ Restart:
     // update the virtual space
     updateVirtualSpace();
 
-    auto getNormal = [] (const GeoList & geolist, const int geoid, const Base::Vector3d & pointoncurve) {
-        auto geom = geolist.getGeometryFromGeoId(geoid);
+    auto getNormal = [] (const GeoListFacade & geolistfacade, const int geoid, const Base::Vector3d & pointoncurve) {
+        auto geom = geolistfacade.getGeometryFromGeoId(geoid);
         auto curve = dynamic_cast<const Part::GeomCurve *>(geom);
 
         Base::Vector3d normal;
@@ -211,7 +211,7 @@ Restart:
                         bool alignment = Constr->Type!=Block && Constr->Second != GeoEnum::GeoUndef;
 
                         // get the geometry
-                        const Part::Geometry *geo = geolist.getGeometryFromGeoId(Constr->First);
+                        const Part::Geometry *geo = geolistfacade.getGeometryFromGeoId(Constr->First);
 
                         if (!alignment) {
                             // Vertical & Horiz can only be a GeomLineSegment, but Blocked can be anything.
@@ -341,8 +341,8 @@ Restart:
                             Base::Vector3d midpos1, dir1, norm1;
                             Base::Vector3d midpos2, dir2, norm2;
 
-                            midpos1 = geolist.getPoint(Constr->First, Constr->FirstPos);
-                            midpos2 = geolist.getPoint(Constr->Second, Constr->SecondPos);
+                            midpos1 = geolistfacade.getPoint(Constr->First, Constr->FirstPos);
+                            midpos2 = geolistfacade.getPoint(Constr->Second, Constr->SecondPos);
 
                             dir1 = (midpos2-midpos1).Normalize();
                             dir2 = -dir1;
@@ -372,8 +372,8 @@ Restart:
                         assert(Constr->First >= -extGeoCount && Constr->First < intGeoCount);
                         assert(Constr->Second >= -extGeoCount && Constr->Second < intGeoCount);
                         // get the geometry
-                        const Part::Geometry *geo1 = geolist.getGeometryFromGeoId(Constr->First);
-                        const Part::Geometry *geo2 = geolist.getGeometryFromGeoId(Constr->Second);
+                        const Part::Geometry *geo1 = geolistfacade.getGeometryFromGeoId(Constr->First);
+                        const Part::Geometry *geo2 = geolistfacade.getGeometryFromGeoId(Constr->Second);
 
                         Base::Vector3d midpos1, dir1, norm1;
                         Base::Vector3d midpos2, dir2, norm2;
@@ -398,9 +398,9 @@ Restart:
                                 assert(0);//no point found!
                             } while (false);
 
-                            midpos1 = geolist.getPoint(ptGeoId, ptPosId);
+                            midpos1 = geolistfacade.getPoint(ptGeoId, ptPosId);
 
-                            norm1 = getNormal(geolist, Constr->Second, midpos1);
+                            norm1 = getNormal(geolistfacade, Constr->Second, midpos1);
 
                             // TODO: Check the method above. This was the old one making use of the solver.
                             //norm1 = getSolvedSketch().calculateNormalAtPoint(Constr->Second, midpos1.x, midpos1.y);
@@ -478,8 +478,8 @@ Restart:
                         assert(Constr->First >= -extGeoCount && Constr->First < intGeoCount);
                         assert(Constr->Second >= -extGeoCount && Constr->Second < intGeoCount);
                         // get the geometry
-                        const Part::Geometry *geo1 = geolist.getGeometryFromGeoId(Constr->First);
-                        const Part::Geometry *geo2 = geolist.getGeometryFromGeoId(Constr->Second);
+                        const Part::Geometry *geo1 = geolistfacade.getGeometryFromGeoId(Constr->First);
+                        const Part::Geometry *geo2 = geolistfacade.getGeometryFromGeoId(Constr->Second);
 
                         Base::Vector3d midpos1, dir1, norm1;
                         Base::Vector3d midpos2, dir2, norm2;
@@ -676,12 +676,12 @@ Restart:
 
                         Base::Vector3d pnt1(0.,0.,0.), pnt2(0.,0.,0.);
                         if (Constr->SecondPos != Sketcher::PointPos::none) { // point to point distance
-                            pnt1 = geolist.getPoint(Constr->First, Constr->FirstPos);
-                            pnt2 = geolist.getPoint(Constr->Second, Constr->SecondPos);
+                            pnt1 = geolistfacade.getPoint(Constr->First, Constr->FirstPos);
+                            pnt2 = geolistfacade.getPoint(Constr->Second, Constr->SecondPos);
                         } else if (Constr->Second != GeoEnum::GeoUndef) { // point to line distance
-                            pnt1 = geolist.getPoint(Constr->First, Constr->FirstPos);
+                            pnt1 = geolistfacade.getPoint(Constr->First, Constr->FirstPos);
 
-                            const Part::Geometry *geo = geolist.getGeometryFromGeoId(Constr->Second);
+                            const Part::Geometry *geo = geolistfacade.getGeometryFromGeoId(Constr->Second);
                             if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                                 const Part::GeomLineSegment *lineSeg = static_cast<const Part::GeomLineSegment *>(geo);
                                 Base::Vector3d l2p1 = lineSeg->getStartPoint();
@@ -692,9 +692,9 @@ Restart:
                             } else
                                 break;
                         } else if (Constr->FirstPos != Sketcher::PointPos::none) {
-                            pnt2 = geolist.getPoint(Constr->First, Constr->FirstPos);
+                            pnt2 = geolistfacade.getPoint(Constr->First, Constr->FirstPos);
                         } else if (Constr->First != GeoEnum::GeoUndef) {
-                            const Part::Geometry *geo = geolist.getGeometryFromGeoId(Constr->First);
+                            const Part::Geometry *geo = geolistfacade.getGeometryFromGeoId(Constr->First);
                             if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                                 const Part::GeomLineSegment *lineSeg = static_cast<const Part::GeomLineSegment *>(geo);
                                 pnt1 = lineSeg->getStartPoint();
@@ -761,8 +761,8 @@ Restart:
                                 assert(0);//no point found!
                             } while (false);
 
-                            pos = geolist.getPoint(ptGeoId, ptPosId);
-                            auto norm = getNormal(geolist, Constr->Second, pos);
+                            pos = geolistfacade.getPoint(ptGeoId, ptPosId);
+                            auto norm = getNormal(geolistfacade, Constr->Second, pos);
 
                             // TODO: Check substitution
                             // Base::Vector3d norm = getSolvedSketch().calculateNormalAtPoint(Constr->Second, pos.x, pos.y);
@@ -778,8 +778,8 @@ Restart:
                         }
                         else if (Constr->Type == Tangent) {
                             // get the geometry
-                            const Part::Geometry *geo1 = geolist.getGeometryFromGeoId(Constr->First);
-                            const Part::Geometry *geo2 = geolist.getGeometryFromGeoId(Constr->Second);
+                            const Part::Geometry *geo1 = geolistfacade.getGeometryFromGeoId(Constr->First);
+                            const Part::Geometry *geo2 = geolistfacade.getGeometryFromGeoId(Constr->Second);
 
                             if (geo1->getTypeId() == Part::GeomLineSegment::getClassTypeId() &&
                                 geo2->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
@@ -897,8 +897,8 @@ Restart:
                         assert(Constr->First >= -extGeoCount && Constr->First < intGeoCount);
                         assert(Constr->Second >= -extGeoCount && Constr->Second < intGeoCount);
 
-                        Base::Vector3d pnt1 = geolist.getPoint(Constr->First, Constr->FirstPos);
-                        Base::Vector3d pnt2 = geolist.getPoint(Constr->Second, Constr->SecondPos);
+                        Base::Vector3d pnt1 = geolistfacade.getPoint(Constr->First, Constr->FirstPos);
+                        Base::Vector3d pnt2 = geolistfacade.getPoint(Constr->Second, Constr->SecondPos);
 
                         SbVec3f p1(pnt1.x, pnt1.y, drawingParameters.zConstr);
                         SbVec3f p2(pnt2.x, pnt2.y, drawingParameters.zConstr);
@@ -933,8 +933,8 @@ Restart:
                         if (Constr->Second != GeoEnum::GeoUndef) {
                             Base::Vector3d dir1, dir2;
                             if(Constr->Third == GeoEnum::GeoUndef) { //angle between two lines
-                                const Part::Geometry *geo1 = geolist.getGeometryFromGeoId(Constr->First);
-                                const Part::Geometry *geo2 = geolist.getGeometryFromGeoId(Constr->Second);
+                                const Part::Geometry *geo1 = geolistfacade.getGeometryFromGeoId(Constr->First);
+                                const Part::Geometry *geo2 = geolistfacade.getGeometryFromGeoId(Constr->Second);
                                 if (geo1->getTypeId() != Part::GeomLineSegment::getClassTypeId() ||
                                     geo2->getTypeId() != Part::GeomLineSegment::getClassTypeId())
                                     break;
@@ -983,13 +983,13 @@ Restart:
                                 startangle = atan2(dir1.y,dir1.x);
                             }
                             else {//angle-via-point
-                                Base::Vector3d p = geolist.getPoint(Constr->Third, Constr->ThirdPos);
+                                Base::Vector3d p = geolistfacade.getPoint(Constr->Third, Constr->ThirdPos);
                                 p0 = SbVec3f(p.x, p.y, 0);
-                                dir1 = getNormal(geolist, Constr->First, p);
+                                dir1 = getNormal(geolistfacade, Constr->First, p);
                                 // TODO: Check
                                 // dir1 = getSolvedSketch().calculateNormalAtPoint(Constr->First, p.x, p.y);
                                 dir1.RotateZ(-M_PI/2);//convert to vector of tangency by rotating
-                                dir2 = getNormal(geolist, Constr->Second, p);
+                                dir2 = getNormal(geolistfacade, Constr->Second, p);
                                 // TODO: Check
                                 // dir2 = getSolvedSketch().calculateNormalAtPoint(Constr->Second, p.x, p.y);
                                 dir2.RotateZ(-M_PI/2);
@@ -1002,7 +1002,7 @@ Restart:
                             endangle = startangle + range;
 
                         } else if (Constr->First != GeoEnum::GeoUndef) {
-                            const Part::Geometry *geo = geolist.getGeometryFromGeoId(Constr->First);
+                            const Part::Geometry *geo = geolistfacade.getGeometryFromGeoId(Constr->First);
                             if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
                                 const Part::GeomLineSegment *lineSeg = static_cast<const Part::GeomLineSegment *>(geo);
                                 p0 = Base::convertTo<SbVec3f>((lineSeg->getEndPoint()+lineSeg->getStartPoint())/2);
@@ -1047,7 +1047,7 @@ Restart:
 
                         Base::Vector3d pnt1(0.,0.,0.), pnt2(0.,0.,0.);
                         if (Constr->First != GeoEnum::GeoUndef) {
-                            const Part::Geometry *geo = geolist.getGeometryFromGeoId(Constr->First);
+                            const Part::Geometry *geo = geolistfacade.getGeometryFromGeoId(Constr->First);
 
                             if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
                                 const Part::GeomArcOfCircle *arc = static_cast<const Part::GeomArcOfCircle *>(geo);
@@ -1107,7 +1107,7 @@ Restart:
                         Base::Vector3d pnt1(0.,0.,0.), pnt2(0.,0.,0.);
 
                         if (Constr->First != GeoEnum::GeoUndef) {
-                            const Part::Geometry *geo = geolist.getGeometryFromGeoId(Constr->First);
+                            const Part::Geometry *geo = geolistfacade.getGeometryFromGeoId(Constr->First);
 
                             if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
                                 const Part::GeomArcOfCircle *arc = static_cast<const Part::GeomArcOfCircle *>(geo);
@@ -1351,12 +1351,12 @@ void EditModeConstraintCoinManager::updateConstraintColor(const std::vector<Sket
 
 void EditModeConstraintCoinManager::rebuildConstraintNodes(void)
 {
-    auto geolist = ViewProviderSketchCoinAttorney::getGeoList(viewProvider);
+    auto geolistfacade = ViewProviderSketchCoinAttorney::getGeoListFacade(viewProvider);
 
-    rebuildConstraintNodes(geolist);
+    rebuildConstraintNodes(geolistfacade);
 }
 
-void EditModeConstraintCoinManager::rebuildConstraintNodes(const GeoList & geolist)
+void EditModeConstraintCoinManager::rebuildConstraintNodes(const GeoListFacade & geolistfacade)
 {
     const std::vector<Sketcher::Constraint *> &constrlist = ViewProviderSketchCoinAttorney::getConstraints(viewProvider);
 
@@ -1376,10 +1376,10 @@ void EditModeConstraintCoinManager::rebuildConstraintNodes(const GeoList & geoli
 
     SbVec3f norm(RN.x, RN.y, RN.z);
 
-    rebuildConstraintNodes(geolist, constrlist, norm);
+    rebuildConstraintNodes(geolistfacade, constrlist, norm);
 }
 
-void EditModeConstraintCoinManager::rebuildConstraintNodes(const GeoList & geolist, const std::vector<Sketcher::Constraint *> constrlist, SbVec3f norm)
+void EditModeConstraintCoinManager::rebuildConstraintNodes(const GeoListFacade & geolistfacade, const std::vector<Sketcher::Constraint *> constrlist, SbVec3f norm)
 {
 
     for (std::vector<Sketcher::Constraint *>::const_iterator it=constrlist.begin(); it != constrlist.end(); ++it) {
@@ -1496,8 +1496,8 @@ void EditModeConstraintCoinManager::rebuildConstraintNodes(const GeoList & geoli
                 sep->addChild(new SoInfo());
 
                 if ((*it)->Type == Tangent) {
-                    const Part::Geometry *geo1 = geolist.getGeometryFromGeoId((*it)->First);
-                    const Part::Geometry *geo2 = geolist.getGeometryFromGeoId((*it)->Second);
+                    const Part::Geometry *geo1 = geolistfacade.getGeometryFromGeoId((*it)->First);
+                    const Part::Geometry *geo2 = geolistfacade.getGeometryFromGeoId((*it)->Second);
                     if (!geo1 || !geo2) {
                         Base::Console().Warning("Tangent constraint references non-existing geometry\n");
                     }
