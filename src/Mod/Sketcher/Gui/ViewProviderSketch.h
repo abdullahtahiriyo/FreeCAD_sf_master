@@ -233,7 +233,6 @@ private:
       */
     class Drag {
     public:
-        // TODO: When c++20 is here, change to "using enum class".
         enum SpecialValues {
             InvalidPoint = -1,
             InvalidCurve = -1
@@ -251,10 +250,13 @@ private:
         }
 
         void resetIds() {
-            DragPoint = -1;
-            DragCurve = -1;
+            DragPoint = InvalidPoint;
+            DragCurve = InvalidCurve;
             DragConstraintSet.clear();
         }
+
+        bool isDragPointValid() { return DragPoint > InvalidPoint;}
+        bool isDragCurveValid() { return DragCurve > InvalidCurve;}
 
         double xInit, yInit;                // starting point of the dragging operation
         bool relative;                      // whether the dragging move vector is relative or absolute
@@ -267,32 +269,62 @@ private:
 
     /** Class to store preselected element ids.
       *
-      * Ids are zero-indexed points and curves.
+      * VertexN, with N = PreselectPoint + 1, same as DragPoint indexing (NOTE -1 is NOT the root point)
+      *
+      * EdgeN, with N = PreselectCurve + 1 for positive values ; ExternalEdgeN, with N = -PreselectCurve - 2
       *
       * The PreselectPoint indexing matches DragPoint indexing.
       *
       */
     class Preselection {
     public:
+        enum SpecialValues {
+            InvalidPoint = -1,
+            InvalidCurve = -1,
+            ExternalCurve = -3
+        };
+
+        enum class Axes {
+            None = -1,
+            RootPoint = 0,
+            HorizontalAxis = 1,
+            VerticalAxis = 2
+        };
+
         Preselection() {
             reset();
         }
 
         void reset(){
-            PreselectPoint = -1;
-            PreselectCurve = -1;
-            PreselectCross = -1;
+            PreselectPoint = InvalidPoint;
+            PreselectCurve = InvalidCurve;
+            PreselectCross = Axes::None;
             PreselectConstraintSet.clear();
             blockedPreselection = false;
         }
 
+        bool isPreselectPointValid() const { return PreselectPoint > InvalidPoint;}
+        bool isPreselectCurveValid() const { return PreselectCurve > InvalidCurve || PreselectCurve <= ExternalCurve;}
+        bool isCrossPreselected() const { return PreselectCross != Axes::None;}
+        bool isEdge() const { return PreselectCurve > InvalidCurve;}
+        bool isExternalEdge() const { return PreselectCurve <= ExternalCurve;}
+
+        int getPreselectionVertexIndex() const { return PreselectPoint + 1;}
+        int getPreselectionEdgeIndex() const { return PreselectCurve + 1;}
+        int getPreselectionExternalEdgeIndex() const { return -PreselectCurve - 2;}
+
         int PreselectPoint;                     // VertexN, with N = PreselectPoint + 1, same as DragPoint indexing (NOTE -1 is NOT the root point)
         int PreselectCurve;                     // EdgeN, with N = PreselectCurve + 1 for positive values ; ExternalEdgeN, with N = -PreselectCurve - 2
-        int PreselectCross;                     // 0 => rootPoint, 1 => HAxis, 2 => VAxis
+        Axes PreselectCross;                    // 0 => rootPoint, 1 => HAxis, 2 => VAxis
         std::set<int> PreselectConstraintSet;   // ConstraintN, N = index + 1
         bool blockedPreselection;
     };
 
+    /** Class to store selected element ids.
+      *
+      * The PreselectPoint indexing matches DragPoint indexing.
+      *
+      */
     class Selection {
     public:
         Selection() {
