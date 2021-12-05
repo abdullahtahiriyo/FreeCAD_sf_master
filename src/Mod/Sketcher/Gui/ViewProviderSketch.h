@@ -87,30 +87,66 @@ class DrawSketchHandler;
 using GeoList = Sketcher::GeoList;
 using GeoListFacade = Sketcher::GeoListFacade;
 
-
 /** The Sketch ViewProvider
-  * This class handles mainly the drawing and editing of the sketch.
-  * It draws the geometry and the constraints applied to the sketch.
-  * It uses the class DrawSketchHandler to facilitate the creation
-  * of new geometry while editing.
-  */
+ *
+ * As any ViewProvider, this class is responsible for the view representation
+ * of Sketches.
+ *
+ * Functionality inherited from parent classes deal with the majority of the
+ * representation of a sketch when it is ** not ** in edit mode.
+ *
+ * This class handles mainly the drawing and editing of the sketch.
+ *
+ * The class delegates a substantial part of this functionality on two main
+ * classes, DrawSketchHandler and EditModeCoinManager.
+ *
+ * In order to enforce a certain degree of encapsulation and promote a not
+ * too tight coupling, while still allowing well defined collaboration,
+ * DrawSketchHandler and EditModeCoinManager access ViewProviderSketch via
+ * two Attorney classes (Attorney-Client pattern), ViewProviderSketchDrawSketchHandlerAttorney
+ * and ViewProviderSketchCoinAttorney.
+ *
+ * Given the substantial amount of code involved in coin node management, EditModeCoinManager
+ * further delegates on other specialised helper classes. Some of them share the
+ * ViewProviderSketchCoinAttorney, which defines the maximum coupling and minimum encapsulation.
+ *
+ * DrawSketchHandler aids temporary edit mode drawing and is extensively used for the creation
+ * of geometry.
+ *
+ * EditModeCoinManager takes over the responsibility of creating the Coin (Inventor) scenograph
+ * and modifying it, including all the drawing of geometry, constraints and overlay layer. This
+ * is an exclusive responsibility under the Single Responsibility Principle.
+ *
+ * EditModeCoinManager exposes a public interface to be used by ViewProviderSketch. Where,
+ * EditModeCoinManager needs special access to facilities of ViewProviderSketch in order to fulfil
+ * its responsibility, this access is defined by ViewProviderSketchCoinAttorney.
+ *
+ * Similarly, DrawSketchHandler takes over the responsibility of drawing edit temporal curves and
+ * markers necessary to enable visual feedback to the user, as well as the UI interaction during
+ * such edits. This is its exclusive responsibility under the Single Responsibility Principle.
+ *
+ * A plethora of speciliased handlers derive from DrawSketchHandler for each specialised editing (see
+ * for example all the handlers for creation of new geometry). These derived classes do * not * have
+ * direct access to the ViewProviderSketchDrawSketchHandlerAttorney. This is intended to keep coupling
+ * under control. However, generic functionality requiring access to the Attorney can be implemented
+ * in DrawSketchHandler and used from its derived classes by virtue of the inheritance. This promotes a
+ * concentrating the coupling in a single point (and code reuse).
+ *
+ */
 class SketcherGuiExport ViewProviderSketch : public PartGui::ViewProvider2DObjectGrid
                                             , public PartGui::ViewProviderAttachExtension
                                             , public Gui::SelectionObserver
 {
     Q_DECLARE_TR_FUNCTIONS(SketcherGui::ViewProviderSketch)
-    /// generates a warning message about constraint conflicts and appends it to the given message
-    static QString appendConflictMsg(const std::vector<int> &conflicting);
-    /// generates a warning message about redundant constraints and appends it to the given message
-    static QString appendRedundantMsg(const std::vector<int> &redundant);
-    /// generates a warning message about partially redundant constraints and appends it to the given message
-    static QString appendPartiallyRedundantMsg(const std::vector<int> &partiallyredundant);
-    /// generates a warning message about redundant constraints and appends it to the given message
-    static QString appendMalformedMsg(const std::vector<int> &redundant);
 
     PROPERTY_HEADER_WITH_OVERRIDE(SketcherGui::ViewProviderSketch);
 
 private:
+    /**
+     * This nested class is responsible for attaching to the parameters relevant for
+     * ViewProviderSketch, initialising the ViewProviderSketch to the current configuration
+     * and handle in real time any change to their values.
+     */
     class ParameterObserver : public ParameterGrp::ObserverType
     {
     public:
@@ -145,6 +181,49 @@ private:
         std::map<std::string, std::tuple<std::function<void(const std::string & string, App::Property *)>, App::Property * >> parameterMap;
     };
 
+    /** @name Classes storing the state of Dragging, Selection and Preselection
+     * All these classes enable the identification of a Vertex, a Curve, the root
+     * Point, axes, and constraints.
+     *
+     * A word on indices and ways to identify elements and parts of them:
+     *
+     * The Sketcher has a general main way to identify geometry, {GeoId, PointPos},
+     * these can be provided as separate data, or using Sketcher::GeoElementId. The
+     * latter defines comparison and equality operators enabling, for example to use
+     * it as key in a std::map.
+     *
+     * While it is indeed possible to refer to any point using that nomenclature, creating
+     * maps in certain circumnstances leads to a performance drawback. Additionally, the
+     * legacy selection mechanism refers to positive indexed Vertices (for both normal and
+     * external vertices). Both reasons discourage moving to a single identification. This
+     * situation has been identified at different levels:
+     *
+     * (1) In sketch.cpp, the solver facade defining the interface with GCS, both
+     * {GeoId, PointPos} and PointId are used.
+     *
+     * (2) In SketchObject.cpp, the actual document object, both {GeoId, PointPos} and VertexId
+     * are used (see VertexId2GeoId and VertexId2GeoPosId).
+     *
+     * (3) In ViewProviderSketch, both {GeoId, PointPos} an Point indices are used (see these structures)
+     *
+     * (4) At CoinManager level, {GeoId, PointPos}, Point indices (for selection) and MultiFieldIds (specific
+     * structure defining a coin multifield index and layer) are used.
+     *
+     * Using a single index instead of a multi-index field, allows mappings to be implemented via std::vectors
+     * instead of std::maps. Direct mappings using std::vectors are accessed in constant time. Multi-index mappings
+     * relying on std::maps involve a search for the key. This leads to a drop in performance.
+     *
+     * What are these indices and how do they relate each other?
+     * 1. PointId, VertexId depend on the order of the geometries in the sketch. GeoList and GeoListFacade enable to
+     * convert between indices.
+     * 2. CurveId is basically the GeoId assuming PointPos to be PointPos::none (edge)
+     * 3. Sometimes, Axes and root point are separated into a third index or enum. Legacy reasons aside, the root point
+     * is has GeoId=-1, which is sometimes used as invalid value in positive only indices. Additionally, root point and
+     * the Horizontal Axes both have GeoId=-1 (differing in PointPos only). Following the decision not to rely on PointPos,
+     * creating a separate index, best when enum-ed, appears justified.
+     */
+    //@{
+
     /** Class to store vector and item Id for dragging.
       *
       * Ids are zero-indexed points and curves.
@@ -154,6 +233,12 @@ private:
       */
     class Drag {
     public:
+        // TODO: When c++20 is here, change to "using enum class".
+        enum SpecialValues {
+            InvalidPoint = -1,
+            InvalidCurve = -1
+        };
+
         Drag() {
             resetVector();
             resetIds();
@@ -175,8 +260,8 @@ private:
         bool relative;                      // whether the dragging move vector is relative or absolute
 
 
-        int DragPoint;                      // dragged point id
-        int DragCurve;                      // dragged curve id
+        int DragPoint;                      // dragged point id (only positive integers)
+        int DragCurve;                      // dragged curve id (only positive integers), negative external curves cannot be dragged.
         std::set<int> DragConstraintSet;    // dragged constraints ids
     };
 
@@ -224,7 +309,11 @@ private:
         std::set<int> SelCurvSet;               // also holds cross axes at -1 and -2
         std::set<int> SelConstraintSet;         // ConstraintN, N = index + 1.
     };
+    //@}
 
+    /** Private struct maintaining information necessary
+     * for detecting double click.
+     */
     struct DoubleClick {
         static SbTime prvClickTime;
         static SbVec2s prvClickPos; //used by double-click-detector
@@ -232,6 +321,8 @@ private:
         static SbVec2s newCursorPos;
     };
 
+    /** Private struct grouping ViewProvider parameters and internal variables
+     */
     struct ViewProviderParameters {
         bool handleEscapeButton = false;
         bool autoRecompute = false;
@@ -261,13 +352,14 @@ public:
     App::PropertyString EditingWorkbench;
     //@}
 
+    // TODO: It is difficult to imagine that these functions are necessary in the public interface. This requires review at a second stage and possibly
+    // refactor it.
     /** @name handler control */
     //@{
     /// sets an DrawSketchHandler in control
     void activateHandler(DrawSketchHandler *newHandler);
     /// removes the active handler
     void purgeHandler(void);
-
     //@}
 
 
@@ -318,7 +410,6 @@ public:
     virtual void onSelectionChanged(const Gui::SelectionChanges& msg) override;
     //@}
 
-
     /** @name Access to Sketch and Solver objects */
     //@{
     /// get the pointer to the sketch document object
@@ -327,7 +418,7 @@ public:
     /** returns a const reference to the last solved sketch object. It guarantees that
      *  the solver object does not lose synchronisation with the SketchObject properties.
      *
-     * NOTE: Operations requiring write access to the solver must be done via SketchObject
+     * NOTE: Operations requiring * write * access to the solver must be done via SketchObject
      * interface. See for example functions:
      * -> inline void setRecalculateInitialSolutionWhileMovingPoint(bool recalculateInitialSolutionWhileMovingPoint)
      * -> inline int initTemporaryMove(int geoId, PointPos pos, bool fine=true)
@@ -341,19 +432,19 @@ public:
     //@{
     /*! Look at the center of the bounding of all selected items */
     void centerSelection();
-
+    /// returns the scale factor
     float getScaleFactor() const;
     //@}
 
-
-    /// updates the visibility of the virtual space
     /** @name constraint Virtual Space visibility management */
     //@{
+    /// updates the visibility of the virtual space of constraints
     void updateVirtualSpace(void);
+    /// determines whether the constraints in the normal space or the ones in the virtual are to be shown
     void setIsShownVirtualSpace(bool isshownvirtualspace);
+    /// returns whether the virtual space is being shown
     bool getIsShownVirtualSpace(void) const;
     //@}
-
 
     /** @name base class implementer */
     //@{
@@ -377,20 +468,25 @@ public:
     virtual bool mouseButtonPressed(int Button, bool pressed, const SbVec2s& cursorPos, const Gui::View3DInventorViewer* viewer) override;
     //@}
 
-    /// Icons and Icon overlays
+    /// Control the overlays appearing on the Tree and reflecting different sketcher states
     virtual QIcon mergeColorfulOverlayIcons (const QIcon & orig) const override;
 
+    /** @name Signals for controlling information in Task dialogs */
+    //@{
     /// signals if the constraints list has changed
     boost::signals2::signal<void ()> signalConstraintsChanged;
     /// signals if the sketch has been set up
     boost::signals2::signal<void (const QString &state, const QString &msg, const QString &url, const QString &linkText)> signalSetUp;
     /// signals if the elements list has changed
     boost::signals2::signal<void ()> signalElementsChanged;
+    //@}
 
+    /** @name Attorneys for collaboration with helper classes */
+    //@{
     friend class ViewProviderSketchDrawSketchHandlerAttorney;
     friend class ViewProviderSketchCoinAttorney;
     friend class ViewProviderSketchShortcutListenerAttorney;
-
+    //@}
 protected:
     /** @name enter/exit edit mode */
     //@{
@@ -402,9 +498,8 @@ protected:
 
     /** @name miscelanea editing functions */
     //@{
-
+    /// purges the DrawHandler if existing and tidies up
     void deactivateHandler();
-
     /// get called if a subelement is double clicked while editing
     void editDoubleClicked(void);
     //@}
@@ -489,6 +584,7 @@ private:
     /// moves a selected constraint
     void moveConstraint(int constNum, const Base::Vector2d &toPos);
 
+    /// returns whether the sketch is in edit mode.
     bool isInEditMode() const;
     //@}
 
@@ -558,6 +654,23 @@ private:
     void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
     /// set the pick style of the sketch coordinate axes
     void setAxisPickStyle(bool on);
+    //@}
+
+private:
+   /** @name Solver message creation*/
+    //@{
+    /* private functions to decouple Attorneys and Clients from the internal implementation of
+    the ViewProvider and its members, such as sketchObject (see friend attorney classes) and
+    improve encapsulation.
+    */
+    /// generates a warning message about constraint conflicts and appends it to the given message
+    static QString appendConflictMsg(const std::vector<int> &conflicting);
+    /// generates a warning message about redundant constraints and appends it to the given message
+    static QString appendRedundantMsg(const std::vector<int> &redundant);
+    /// generates a warning message about partially redundant constraints and appends it to the given message
+    static QString appendPartiallyRedundantMsg(const std::vector<int> &partiallyredundant);
+    /// generates a warning message about redundant constraints and appends it to the given message
+    static QString appendMalformedMsg(const std::vector<int> &redundant);
     //@}
 
 private:
