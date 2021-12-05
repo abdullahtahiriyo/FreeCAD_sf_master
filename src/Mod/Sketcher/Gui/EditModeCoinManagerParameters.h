@@ -139,14 +139,27 @@ public:
     explicit constexpr MultiFieldId(int fieldindex = -1, int layerid = 0):  fieldIndex(fieldindex),
                                                                             layerId(layerid){}
 
+    MultiFieldId(const MultiFieldId & ) = default;
+    MultiFieldId & operator=(const MultiFieldId &) = default;
+
     inline bool operator==(const MultiFieldId& obj) const
     {
         return this->fieldIndex == obj.fieldIndex && this->layerId == obj.layerId;
     }
 
+    inline bool operator!=(const MultiFieldId& obj) const
+    {
+        return this->fieldIndex != obj.fieldIndex || this->layerId != obj.layerId;
+    }
+
+
+
     int fieldIndex = -1;
     int layerId = 0;
+
+    static const MultiFieldId Invalid;
 };
+
 
 } // namespace SketcherGui
 
@@ -246,18 +259,44 @@ struct CoinMapping {
     void clear() {
         CurvIdToGeoId.clear();
         PointIdToGeoId.clear();
-        GeoIdPointPosToPointId.clear();
-        PointSetId2GeoElementId.clear();
-        CurveSetId2GeoElementId.clear();
         GeoElementId2SetId.clear();
+        PointIdToVertexId.clear();
     };
 
-    std::vector<int> CurvIdToGeoId; // conversion of SoLineSet index to GeoId
-    std::vector<int> PointIdToGeoId; // conversion of SoCoordinate3 index to GeoId
-    std::map<std::pair<int, Sketcher::PointPos>, int> GeoIdPointPosToPointId; // conversion of [GeoId,Pos] to PointId
+    int getCurveGeoId(int curveindex, int layerindex) {return CurvIdToGeoId[layerindex][curveindex];}
+    int getPointGeoId(int pointindex, int layerindex) {return PointIdToGeoId[layerindex][pointindex];}
+    int getPointVertexId(int pointindex, int layerindex) {return PointIdToVertexId[layerindex][pointindex];}
 
-    std::map<MultiFieldId,Sketcher::GeoElementId> PointSetId2GeoElementId;
-    std::map<MultiFieldId,Sketcher::GeoElementId> CurveSetId2GeoElementId;
+
+    MultiFieldId getIndexLayer(int geoid, Sketcher::PointPos pos) {
+        auto indexit = GeoElementId2SetId.find(Sketcher::GeoElementId(geoid, pos));
+
+        if (indexit != GeoElementId2SetId.end()) {
+            return indexit->second;
+        }
+
+        return MultiFieldId::Invalid;
+    }
+
+    MultiFieldId getIndexLayer(int vertexId) {
+
+        for(size_t l=0; l<PointIdToVertexId.size(); l++) {
+            auto indexit = std::find(PointIdToVertexId[l].begin(), PointIdToVertexId[l].end(), vertexId);
+
+            if(indexit != PointIdToVertexId[l].end())
+                return MultiFieldId(std::distance(PointIdToVertexId[l].begin(),indexit),l);
+        }
+
+        return MultiFieldId::Invalid;
+    }
+
+
+    //* These map an index within layer for points or curves to a GeoId */
+    std::vector<std::vector<int>> CurvIdToGeoId; // conversion of SoLineSet index to GeoId
+    std::vector<std::vector<int>> PointIdToGeoId; // conversion of SoCoordinate3 index to GeoId
+
+    //* This maps an index within layer for points to a global VertexId */
+    std::vector<std::vector<int>> PointIdToVertexId; // TODO: It is very possible that this wont be necessary anymore and can be removed. Check at the end.
 
     std::map<Sketcher::GeoElementId,MultiFieldId> GeoElementId2SetId;
 };

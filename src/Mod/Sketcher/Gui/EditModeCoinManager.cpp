@@ -474,106 +474,10 @@ void EditModeCoinManager::setAxisPickStyle(bool on)
         editModeScenegraphNodes.pickStyleAxes->style = SoPickStyle::UNPICKABLE;
 }
 
-/***** Selection and Preselection *****/
-
-void EditModeCoinManager::drawPreselectPoint(int PreselectPoint)
-{
-    // TODO Re-write this
-    /*
-    int oldPtId = -1;
-    auto preselectpoint = ViewProviderSketchCoinAttorney::getPreselectPoint(viewProvider);
-    if (preselectpoint != -1)
-        oldPtId = preselectpoint + 1;
-    else if (ViewProviderSketchCoinAttorney::getPreselectCross(viewProvider) == 0)
-        oldPtId = 0;
-    int newPtId = PreselectPoint + 1;
-    SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
-    float x,y,z;
-    if (oldPtId != -1 && !ViewProviderSketchCoinAttorney::isPointSelected(viewProvider, oldPtId)) {
-        // send to background
-        pverts[oldPtId].getValue(x,y,z);
-        pverts[oldPtId].setValue(x,y,drawingParameters.zLowPoints);
-    }
-    // bring to foreground
-    pverts[newPtId].getValue(x,y,z);
-    pverts[newPtId].setValue(x,y,drawingParameters.zHighlight);
-
-    editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
-    */
-}
-
-void EditModeCoinManager::clearPointPreselection(void)
-{
-    /*
-    int oldPtId = -1;
-     auto preselectpoint = ViewProviderSketchCoinAttorney::getPreselectPoint(viewProvider);
-    if (preselectpoint != -1)
-        oldPtId = preselectpoint + 1;
-    else if (ViewProviderSketchCoinAttorney::getPreselectCross(viewProvider) == 0)
-        oldPtId = 0;
-    if (oldPtId != -1 && !ViewProviderSketchCoinAttorney::isPointSelected(viewProvider, oldPtId)) {
-        // send to background
-        SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
-        float x,y,z;
-        pverts[oldPtId].getValue(x,y,z);
-        pverts[oldPtId].setValue(x,y,drawingParameters.zLowPoints);
-        editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
-    }*/
-}
-
-void EditModeCoinManager::drawPreselectRootPoint()
-{
-    drawPreselectPoint(-1);
-
-    //TODO: This is both a hack and a placeholder. It is a hack because -1 in ViewProviderSketch means 'not used'. It works because it assumes a root point at index 0. This hack was present in ViewProviderSketch. I have move it here to show intent in ViewProviderSketch, knowing that changes to the indexing will be undertaken here when geometry layers are added. So the code is functionally the same as before.
-}
-
-void EditModeCoinManager::drawPointAsSelected(int selectpointId)
-{
-    /*
-    int PtId = selectpointId + 1;
-    SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
-    // bring to foreground
-    float x,y,z;
-    pverts[PtId].getValue(x,y,z);
-    pverts[PtId].setValue(x,y,drawingParameters.zHighlight);
-    editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
-    */
-}
-
-void EditModeCoinManager::clearPointSelection(int selectpointId)
-{
-    /*
-    int PtId = selectpointId + 1;
-    SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
-    // send to background
-    float x,y,z;
-    pverts[PtId].getValue(x,y,z);
-    pverts[PtId].setValue(x,y,drawingParameters.zLowPoints);
-    editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
-    */
-}
-
-void EditModeCoinManager::clearPointSelection(void)
-{
-    /*
-    SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate->point.startEditing();
-    // send to background
-    ViewProviderSketchCoinAttorney::executeOnSelectionPointSet(viewProvider,
-        [pverts, drawingParameters = this->drawingParameters](const int i) {
-            float x,y,z;
-            pverts[i].getValue(x,y,z);
-            pverts[i].setValue(x,y,drawingParameters.zLowPoints);
-        });
-    editModeScenegraphNodes.PointsCoordinate->point.finishEditing();
-    */
-}
-
 EditModeCoinManager::PreselectionResult EditModeCoinManager::detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos)
 {
     EditModeCoinManager::PreselectionResult result;
 
-    /*
     if(!Point)
         return result;
 
@@ -581,43 +485,52 @@ EditModeCoinManager::PreselectionResult EditModeCoinManager::detectPreselection(
     SoPath *path = Point->getPath();
     SoNode *tail = path->getTail(); // Tail is directly the node containing points and curves
 
-    // checking for a hit in the points
-    if (tail == editModeScenegraphNodes.PointSet) {
-        const SoDetail *point_detail = Point->getDetail(editModeScenegraphNodes.PointSet);
-        if (point_detail && point_detail->getTypeId() == SoPointDetail::getClassTypeId()) {
-            // get the index
-            result.ptIndex = static_cast<const SoPointDetail *>(point_detail)->getCoordinateIndex();
-            result.ptIndex -= 1; // shift corresponding to RootPoint
-            if (result.ptIndex == Sketcher::GeoEnum::RtPnt)
-                result.axes = PreselectionResult::Axes::RootPoint;
+    for(int l = 0; l < geometryLayerParameters.Layers; l++) {
+        // checking for a hit in the points
+        if (tail == editModeScenegraphNodes.PointSet[l]) {
+            const SoDetail *point_detail = Point->getDetail(editModeScenegraphNodes.PointSet[l]);
+            if (point_detail && point_detail->getTypeId() == SoPointDetail::getClassTypeId()) {
+                // get the index
+                int pindex = static_cast<const SoPointDetail *>(point_detail)->getCoordinateIndex();
+                result.ptIndex = coinMapping.getPointVertexId(pindex, l); // returns -1 for root, global VertexId for the rest of vertices.
+
+                if (result.ptIndex == -1)
+                    result.axes = PreselectionResult::Axes::RootPoint;
+
+                return result;
+            }
         }
-    } else {
+
         // checking for a hit in the curves
-        if (tail == editModeScenegraphNodes.CurveSet) {
-            const SoDetail *curve_detail = Point->getDetail(editModeScenegraphNodes.CurveSet);
+        if (tail == editModeScenegraphNodes.CurveSet[l]) {
+            const SoDetail *curve_detail = Point->getDetail(editModeScenegraphNodes.CurveSet[l]);
             if (curve_detail && curve_detail->getTypeId() == SoLineDetail::getClassTypeId()) {
                 // get the index
                 int curveIndex = static_cast<const SoLineDetail *>(curve_detail)->getLineIndex();
-                result.geoIndex = coinMapping.CurvIdToGeoId[curveIndex];
-            }
-        // checking for a hit in the axes
-        } else if (tail == editModeScenegraphNodes.RootCrossSet) {
-            const SoDetail *cross_detail = Point->getDetail(editModeScenegraphNodes.RootCrossSet);
-            if (cross_detail && cross_detail->getTypeId() == SoLineDetail::getClassTypeId()) {
-                // get the index (reserve index 0 for root point)
-                int CrossIndex = static_cast<const SoLineDetail *>(cross_detail)->getLineIndex();
+                result.geoIndex = coinMapping.getCurveGeoId(curveIndex, l);
 
-                if(CrossIndex == 0)
-                    result.axes = PreselectionResult::Axes::HorizontalAxis;
-                else if(CrossIndex == 1)
-                    result.axes = PreselectionResult::Axes::VerticalAxis;
+                return result;
             }
-        } else {
-            // checking if a constraint is hit
-            result.constrIndices = pEditModeConstraintCoinManager->detectPreselectionConstr(Point, cursorPos);
         }
     }
-    */
+    // checking for a hit in the axes
+    if (tail == editModeScenegraphNodes.RootCrossSet) {
+        const SoDetail *cross_detail = Point->getDetail(editModeScenegraphNodes.RootCrossSet);
+        if (cross_detail && cross_detail->getTypeId() == SoLineDetail::getClassTypeId()) {
+            // get the index (reserve index 0 for root point)
+            int CrossIndex = static_cast<const SoLineDetail *>(cross_detail)->getLineIndex();
+
+            if(CrossIndex == 0)
+                result.axes = PreselectionResult::Axes::HorizontalAxis;
+            else if(CrossIndex == 1)
+                result.axes = PreselectionResult::Axes::VerticalAxis;
+
+            return result;
+        }
+    }
+    // checking if a constraint is hit
+    result.constrIndices = pEditModeConstraintCoinManager->detectPreselectionConstr(Point, cursorPos);
+
     return result;
 }
 

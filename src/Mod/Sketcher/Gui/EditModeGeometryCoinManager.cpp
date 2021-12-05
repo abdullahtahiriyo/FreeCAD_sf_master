@@ -226,7 +226,7 @@ void EditModeGeometryCoinManager::updateGeometryColor(const GeoListFacade & geol
         }
         else {
             for (int  i=0; i < PtNum; i++) {
-                int GeoId = coinMapping.PointIdToGeoId[i];
+                int GeoId = coinMapping.getPointGeoId(i, l);
 
                 bool constrainedElement = isFullyConstraintElement(GeoId);
 
@@ -278,7 +278,7 @@ void EditModeGeometryCoinManager::updateGeometryColor(const GeoListFacade & geol
 
         for (int  i=0; i < PtNum; i++) { // 0 is the origin
             pverts[i].getValue(x,y,z);
-            auto geom = geolistfacade.getGeometryFacadeFromGeoId(coinMapping.PointIdToGeoId[i]);
+            auto geom = geolistfacade.getGeometryFacadeFromGeoId(coinMapping.getPointGeoId(i, l));
             if(geom && z < drawingParameters.zHighlight) {
                 if(geom->getConstruction())
                     pverts[i].setValue(x,y,zConstrPoint);
@@ -327,7 +327,7 @@ void EditModeGeometryCoinManager::updateGeometryColor(const GeoListFacade & geol
         int j=0; // vertexindex
 
         for (int  i=0; i < CurvNum; i++) {
-            int GeoId = coinMapping.CurvIdToGeoId[i];
+            int GeoId = coinMapping.getCurveGeoId(i, l);
             // CurvId has several vertices associated to 1 material
             //edit->CurveSet->numVertices => [i] indicates number of vertex for line i.
             int indexes = (editModeScenegraphNodes.CurveSet[l]->numVertices[i]);

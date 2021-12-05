@@ -3308,7 +3308,6 @@ void ViewProviderSketch::resetPositionText(void)
 
 void ViewProviderSketch::setPreselectPoint(int PreselectPoint)
 {
-    editCoinManager->drawPreselectPoint(PreselectPoint);
     preselection.PreselectPoint = PreselectPoint;
     preselection.PreselectCurve = -1;
     preselection.PreselectCross = -1;
@@ -3317,7 +3316,6 @@ void ViewProviderSketch::setPreselectPoint(int PreselectPoint)
 
 void ViewProviderSketch::setPreselectRootPoint()
 {
-    editCoinManager->drawPreselectRootPoint();
     preselection.PreselectPoint = -1;
     preselection.PreselectCurve = -1;
     preselection.PreselectCross = -1;
@@ -3327,7 +3325,6 @@ void ViewProviderSketch::setPreselectRootPoint()
 
 void ViewProviderSketch::resetPreselectPoint(void)
 {
-    editCoinManager->clearPointPreselection();
     preselection.PreselectPoint = -1;
     preselection.PreselectCurve = -1;
     preselection.PreselectCross = -1;
@@ -3336,19 +3333,16 @@ void ViewProviderSketch::resetPreselectPoint(void)
 
 void ViewProviderSketch::addSelectPoint(int SelectPoint)
 {
-    editCoinManager->drawPointAsSelected(SelectPoint);
     selection.SelPointSet.insert(SelectPoint + 1); // TODO: Yet another hack? PreselectPoint is stored without + 1, SelectPoint with it ???
 }
 
 void ViewProviderSketch::removeSelectPoint(int SelectPoint)
 {
-    editCoinManager->clearPointSelection(SelectPoint);
     selection.SelPointSet.erase(SelectPoint);
 }
 
 void ViewProviderSketch::clearSelectPoints(void)
 {
-    editCoinManager->clearPointSelection();
     selection.SelPointSet.clear();
 }
 

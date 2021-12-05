@@ -81,14 +81,22 @@ void GeometryCoinConverter::convert(const Sketcher::GeoListFacade & geolistfacad
         Coords.emplace_back();
         Points.emplace_back();
         Index.emplace_back();
+
+        coinMapping.CurvIdToGeoId.emplace_back();
+        coinMapping.PointIdToGeoId.emplace_back();
+        coinMapping.PointIdToVertexId.emplace_back();
     }
 
     pointCounter.resize(geometryLayerParameters.Layers,0);
     curveCounter.resize(geometryLayerParameters.Layers,0);
 
-    // RootPoint (TODO: This is ok for one geometry layer ONLY)
-    //Points.emplace_back(0.,0.,0.);
-    //PointIdToGeoId.push_back(-1); // root point
+    // RootPoint
+    // TODO: RootPoint is here added in layer0. However, this layer may be hidden. The point should,
+    // when that functionality is provided, be added to the first visible layer, or may even a new
+    // empty layer.
+    Points[0].emplace_back(0.,0.,0.);
+    coinMapping.PointIdToGeoId[0].push_back(-1); // root point
+    coinMapping.PointIdToVertexId[0].push_back(-1); // VertexId is the reference used for point selection/preselection
 
     auto setTracking = [this] (int geoId, int layerId, GeometryCoinConverter::PointsMode pointmode, int numberCurves) {
         // TODO: This routine only works for one layer, for multiple layers the tracking is yet TBD
@@ -97,12 +105,6 @@ void GeometryCoinConverter::convert(const Sketcher::GeoListFacade & geolistfacad
         if(pointmode == PointsMode::InsertSingle) {
             numberPoints = 1;
 
-            coinMapping.GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::PointPos::start), coinMapping.PointIdToGeoId.size()));
-
-            coinMapping.PointSetId2GeoElementId.emplace(std::piecewise_construct,
-                                                        std::forward_as_tuple(pointCounter[layerId], layerId),
-                                                        std::forward_as_tuple(geoId, Sketcher::PointPos::start));
-
             coinMapping.GeoElementId2SetId.emplace( std::piecewise_construct,
                                                     std::forward_as_tuple(geoId, Sketcher::PointPos::start),
                                                     std::forward_as_tuple(pointCounter[layerId], layerId));
@@ -110,20 +112,9 @@ void GeometryCoinConverter::convert(const Sketcher::GeoListFacade & geolistfacad
         else if (pointmode == PointsMode::InsertStartEnd) {
             numberPoints = 2;
 
-            coinMapping.GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::PointPos::start), coinMapping.PointIdToGeoId.size()));
-            coinMapping.GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::PointPos::end), coinMapping.PointIdToGeoId.size()+1));
-
-            coinMapping.PointSetId2GeoElementId.emplace(std::piecewise_construct,
-                                                        std::forward_as_tuple(pointCounter[layerId], layerId),
-                                                        std::forward_as_tuple(geoId, Sketcher::PointPos::start));
-
             coinMapping.GeoElementId2SetId.emplace( std::piecewise_construct,
                                                     std::forward_as_tuple(geoId, Sketcher::PointPos::start),
                                                     std::forward_as_tuple(pointCounter[layerId]++, layerId));
-
-            coinMapping.PointSetId2GeoElementId.emplace(std::piecewise_construct,
-                                                        std::forward_as_tuple(pointCounter[layerId], layerId),
-                                                        std::forward_as_tuple(geoId, Sketcher::PointPos::end));
 
             coinMapping.GeoElementId2SetId.emplace( std::piecewise_construct,
                                                     std::forward_as_tuple(geoId, Sketcher::PointPos::end),
@@ -131,12 +122,6 @@ void GeometryCoinConverter::convert(const Sketcher::GeoListFacade & geolistfacad
         }
         else if (pointmode == PointsMode::InsertMidOnly) {
             numberPoints = 1;
-
-            coinMapping.GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::PointPos::mid), coinMapping.PointIdToGeoId.size()));
-
-            coinMapping.PointSetId2GeoElementId.emplace(std::piecewise_construct,
-                                                        std::forward_as_tuple(pointCounter[layerId], layerId),
-                                                        std::forward_as_tuple(geoId, Sketcher::PointPos::mid));
 
             coinMapping.GeoElementId2SetId.emplace( std::piecewise_construct,
                                                     std::forward_as_tuple(geoId, Sketcher::PointPos::mid),
@@ -146,49 +131,27 @@ void GeometryCoinConverter::convert(const Sketcher::GeoListFacade & geolistfacad
         }
         else if (pointmode == PointsMode::InsertStartEndMid) {
             numberPoints = 3;
-            coinMapping.GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::PointPos::start), coinMapping.PointIdToGeoId.size()));
-            coinMapping.GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::PointPos::end), coinMapping.PointIdToGeoId.size()+1));
-
-            coinMapping.GeoIdPointPosToPointId.insert(std::make_pair(std::make_pair(geoId, Sketcher::PointPos::mid), coinMapping.PointIdToGeoId.size()+2));
-
-            coinMapping.PointSetId2GeoElementId.emplace(std::piecewise_construct,
-                                                        std::forward_as_tuple(pointCounter[layerId], layerId),
-                                                        std::forward_as_tuple(geoId, Sketcher::PointPos::start));
 
             coinMapping.GeoElementId2SetId.emplace( std::piecewise_construct,
                                                     std::forward_as_tuple(geoId, Sketcher::PointPos::start),
                                                     std::forward_as_tuple(pointCounter[layerId]++, layerId));
 
-            coinMapping.PointSetId2GeoElementId.emplace(std::piecewise_construct,
-                                                        std::forward_as_tuple(pointCounter[layerId], layerId),
-                                                        std::forward_as_tuple(geoId, Sketcher::PointPos::end));
-
             coinMapping.GeoElementId2SetId.emplace( std::piecewise_construct,
                                                     std::forward_as_tuple(geoId, Sketcher::PointPos::end),
                                                     std::forward_as_tuple(pointCounter[layerId]++, layerId));
-
-            coinMapping.PointSetId2GeoElementId.emplace(std::piecewise_construct,
-                                                        std::forward_as_tuple(pointCounter[layerId], layerId),
-                                                        std::forward_as_tuple(geoId, Sketcher::PointPos::mid));
 
             coinMapping.GeoElementId2SetId.emplace( std::piecewise_construct,
                                                     std::forward_as_tuple(geoId, Sketcher::PointPos::mid),
                                                     std::forward_as_tuple(pointCounter[layerId]++, layerId));
         }
 
-        for(int i = 0; i < numberPoints; i++)
-            coinMapping.PointIdToGeoId.push_back(geoId);
-
-        for(int i = 0; i < numberCurves; i++) {
-            coinMapping.CurvIdToGeoId.push_back(geoId);
-            coinMapping.CurveSetId2GeoElementId.emplace(std::piecewise_construct,
-                                                        std::forward_as_tuple(curveCounter[layerId], layerId),
-                                                        std::forward_as_tuple(geoId, Sketcher::PointPos::none));
-
-            coinMapping.GeoElementId2SetId.emplace( std::piecewise_construct,
-                                                    std::forward_as_tuple(geoId, Sketcher::PointPos::none),
-                                                    std::forward_as_tuple(curveCounter[layerId]++, layerId));
+        for(int i = 0; i < numberPoints; i++) {
+            coinMapping.PointIdToGeoId[layerId].push_back(geoId);
+            coinMapping.PointIdToVertexId[layerId].push_back(vertexCounter++);
         }
+
+        for(int i = 0; i < numberCurves; i++)
+            coinMapping.CurvIdToGeoId[layerId].push_back(geoId);
     };
 
     // currently the whole geometrylist is processed in a single layer

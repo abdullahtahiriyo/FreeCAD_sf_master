@@ -136,8 +136,12 @@ private:
     std::vector<std::vector<Base::Vector3d>> Points;
     std::vector<std::vector<unsigned int>> Index;
 
+    // temporal counters, one per layer
     std::vector<int> pointCounter;
     std::vector<int> curveCounter;
+
+    // temporal global vertex counter
+    int vertexCounter = 0;
 
     // Parameters
     DrawingParameters & drawingParameters;

@@ -153,12 +153,6 @@ public:
     /** @name handle preselection and selection of points */
     //@{
     PreselectionResult detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos);
-    void drawPreselectPoint(int PreselectPoint);
-    void drawPreselectRootPoint();
-    void clearPointPreselection(void);
-    void drawPointAsSelected(int selectpointId);
-    void clearPointSelection(int selectpointId);
-    void clearPointSelection(void);
     /// The client is responsible for unref-ing the SoGroup to release the memory.
     SoGroup* getSelectedConstraints();
     //@}
