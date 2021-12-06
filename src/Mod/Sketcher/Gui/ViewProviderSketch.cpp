@@ -1499,7 +1499,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
         std::string temp;
         if (msg.Type == Gui::SelectionChanges::ClrSelection) {
             // if something selected in this object?
-            if (selection.SelPointSet.size() > 0 || selection.SelCurvSet.size() > 0 || selection.SelConstraintSet.size() > 0) {
+            if (!selection.SelPointSet.empty() || !selection.SelCurvSet.empty() || !selection.SelConstraintSet.empty()) {
                 // clear our selection and update the color of the viewed edges and points
                 clearSelectPoints();
                 selection.SelCurvSet.clear();
@@ -1531,15 +1531,15 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                         this->updateColor();
                     }
                     else if (shapetype == "RootPoint") {
-                        addSelectPoint(Sketcher::GeoEnum::RtPnt);
+                        addSelectPoint(Selection::RootPoint);
                         this->updateColor();
                     }
                     else if (shapetype == "H_Axis") {
-                        selection.SelCurvSet.insert(Sketcher::GeoEnum::HAxis);
+                        selection.SelCurvSet.insert(Selection::HorizontalAxis);
                         this->updateColor();
                     }
                     else if (shapetype == "V_Axis") {
-                        selection.SelCurvSet.insert(Sketcher::GeoEnum::VAxis);
+                        selection.SelCurvSet.insert(Selection::VerticalAxis);
                         this->updateColor();
                     }
                     else if (shapetype.size() > 10 && shapetype.substr(0,10) == "Constraint") {
@@ -1553,7 +1553,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
         }
         else if (msg.Type == Gui::SelectionChanges::RmvSelection) {
             // Are there any objects selected
-            if (selection.SelPointSet.size() > 0 || selection.SelCurvSet.size() > 0 || selection.SelConstraintSet.size() > 0) {
+            if (!selection.SelPointSet.empty() || !selection.SelCurvSet.empty() || !selection.SelConstraintSet.empty()) {
                 // is it this object??
                 if (strcmp(msg.pDocName,getSketchObject()->getDocument()->getName())==0
                     && strcmp(msg.pObjectName,getSketchObject()->getNameInDocument())== 0) {
@@ -3335,7 +3335,7 @@ void ViewProviderSketch::resetPreselectPoint(void)
 
 void ViewProviderSketch::addSelectPoint(int SelectPoint)
 {
-    selection.SelPointSet.insert(SelectPoint + 1); // TODO: Yet another hack? PreselectPoint is stored without + 1, SelectPoint with it ???
+    selection.SelPointSet.insert(SelectPoint);
 }
 
 void ViewProviderSketch::removeSelectPoint(int SelectPoint)

@@ -267,13 +267,20 @@ private:
         std::set<int> DragConstraintSet;    // dragged constraints ids
     };
 
+    // TODO: Selection and Preselection should use a same structure. Probably Drag should use the same structure too. To be refactored separately.
+
     /** Class to store preselected element ids.
+      *
+      * PreselectPoint is the positive VertexId.
+      *
+      * PreselectCurve is the GeoID, but without the Axes (indices -1 and -2).
       *
       * VertexN, with N = PreselectPoint + 1, same as DragPoint indexing (NOTE -1 is NOT the root point)
       *
       * EdgeN, with N = PreselectCurve + 1 for positive values ; ExternalEdgeN, with N = -PreselectCurve - 2
       *
-      * The PreselectPoint indexing matches DragPoint indexing.
+      * The PreselectPoint indexing matches DragPoint indexing (it further includes negative edges, which are
+      * not meaningful for Dragging).
       *
       */
     class Preselection {
@@ -322,11 +329,21 @@ private:
 
     /** Class to store selected element ids.
       *
-      * The PreselectPoint indexing matches DragPoint indexing.
+      * Selection follows yet a different mechanism than preselection.
+      *
+      * SelPointSet indices as PreselectPoint, with the addition that -1 is indeed the rootpoint.
+      *
+      * SelCurvSet indices as PreselectCurve, with the addition that -1 is the HAxis and -2 is the VAxis
       *
       */
     class Selection {
     public:
+        enum SpecialValues {
+            RootPoint = -1,
+            HorizontalAxis = -1,
+            VerticalAxis = -2
+        };
+
         Selection() {
             reset();
         }
@@ -337,7 +354,7 @@ private:
             SelConstraintSet.clear();
         }
 
-        std::set<int> SelPointSet;              // Indices as PreselectPoint (and -1 for rootpoint) TODO: Not true or not fully true
+        std::set<int> SelPointSet;              // Indices as PreselectPoint (and -1 for rootpoint)
         std::set<int> SelCurvSet;               // also holds cross axes at -1 and -2
         std::set<int> SelConstraintSet;         // ConstraintN, N = index + 1.
     };
