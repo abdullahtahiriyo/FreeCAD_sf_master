@@ -113,7 +113,9 @@ EditModeGeometryCoinManager::EditModeGeometryCoinManager(   ViewProviderSketch &
     analysisResults(analysisResultStruct),
     editModeScenegraphNodes(editModeScenegraph),
     coinMapping(coinMap)
-{}
+{
+    geometryLayerParameters.Layers = 2;
+}
 
 EditModeGeometryCoinManager::~EditModeGeometryCoinManager()
 {}
@@ -202,13 +204,15 @@ void EditModeGeometryCoinManager::updateGeometryColor(const GeoListFacade & geol
     //TODO: See below cross color updated in each layer. Needs fixing. Requires decision.
 
     // Update Colors
+
+    SbColor *crosscolor = editModeScenegraphNodes.RootCrossMaterials->diffuseColor.startEditing();
+
     for(int l=0; l<geometryLayerParameters.Layers; l++) {
 
         int PtNum = editModeScenegraphNodes.PointsMaterials[l]->diffuseColor.getNum();
         SbColor *pcolor = editModeScenegraphNodes.PointsMaterials[l]->diffuseColor.startEditing();
         int CurvNum = editModeScenegraphNodes.CurvesMaterials[l]->diffuseColor.getNum();
         SbColor *color = editModeScenegraphNodes.CurvesMaterials[l]->diffuseColor.startEditing();
-        SbColor *crosscolor = editModeScenegraphNodes.RootCrossMaterials->diffuseColor.startEditing();
 
         SbVec3f *verts = editModeScenegraphNodes.CurvesCoordinate[l]->point.startEditing();
         SbVec3f *pverts = editModeScenegraphNodes.PointsCoordinate[l]->point.startEditing();
@@ -291,18 +295,23 @@ void EditModeGeometryCoinManager::updateGeometryColor(const GeoListFacade & geol
         auto preselectcross = ViewProviderSketchCoinAttorney::getPreselectCross(viewProvider);
         auto preselectcurve = ViewProviderSketchCoinAttorney::getPreselectCurve(viewProvider);
 
-        if (preselectcross == 0) {
-            pcolor[0] = drawingParameters.PreselectColor;
+        MultiFieldId preselectpointmfid;
+
+        if ( preselectcross == 0) {
+            if(l == 0) // cross only in layer 0
+                pcolor[0] = drawingParameters.PreselectColor;
         }
         else if (preselectpoint != -1) {
-            if (preselectpoint + 1 < PtNum)
-                pcolor[preselectpoint + 1] = drawingParameters.PreselectColor;
+            preselectpointmfid = coinMapping.getIndexLayer(preselectpoint);
+            if (l == preselectpointmfid.layerId && preselectpointmfid.fieldIndex < PtNum)
+                pcolor[preselectpointmfid.fieldIndex] = drawingParameters.PreselectColor;
         }
 
         ViewProviderSketchCoinAttorney::executeOnSelectionPointSet(viewProvider,
-            [pcolor, PtNum, preselectpoint, drawingParameters = this->drawingParameters](const int i) {
-                if (i < PtNum) {
-                    pcolor[i] = (i==(preselectpoint + 1) && (preselectpoint != -1))
+            [pcolor, PtNum, preselectpointmfid, layerId = l, &coinMapping = coinMapping, drawingParameters = this->drawingParameters](const int i) {
+                auto pointindex = coinMapping.getIndexLayer(i);
+                if (layerId == pointindex.layerId && pointindex.fieldIndex < PtNum) {
+                    pcolor[pointindex.fieldIndex] = (preselectpointmfid == pointindex)
                         ? drawingParameters.PreselectSelectedColor : drawingParameters.SelectColor;
                 }
             });
@@ -415,27 +424,36 @@ void EditModeGeometryCoinManager::updateGeometryColor(const GeoListFacade & geol
         }
 
         // colors of the cross
-        if (ViewProviderSketchCoinAttorney::isCurveSelected(viewProvider, Sketcher::GeoEnum::HAxis))
-            crosscolor[0] = drawingParameters.SelectColor;
-        else if (preselectcross == 1)
-            crosscolor[0] = drawingParameters.PreselectColor;
-        else
-            crosscolor[0] = drawingParameters.CrossColorH;
+        if ( l == 0 ) { // only in layer 0
+            if (ViewProviderSketchCoinAttorney::isCurveSelected(viewProvider, Sketcher::GeoEnum::HAxis)) {
+                    crosscolor[0] = drawingParameters.SelectColor;
+            }
+            else if (preselectcross == 1) { // cross only in layer 0
+                    crosscolor[0] = drawingParameters.PreselectColor;
+            }
+            else {
+                    crosscolor[0] = drawingParameters.CrossColorH;
+            }
 
-        if (ViewProviderSketchCoinAttorney::isCurveSelected(viewProvider, Sketcher::GeoEnum::VAxis))
-            crosscolor[1] = drawingParameters.SelectColor;
-        else if (preselectcross == 2)
-            crosscolor[1] = drawingParameters.PreselectColor;
-        else
-            crosscolor[1] = drawingParameters.CrossColorV;
+            if (ViewProviderSketchCoinAttorney::isCurveSelected(viewProvider, Sketcher::GeoEnum::VAxis)) {
+                crosscolor[1] = drawingParameters.SelectColor;
+            }
+            else if (preselectcross == 2) {
+                crosscolor[1] = drawingParameters.PreselectColor;
+            }
+            else {
+                crosscolor[1] = drawingParameters.CrossColorV;
+            }
+        }
 
         // end editing
         editModeScenegraphNodes.CurvesMaterials[l]->diffuseColor.finishEditing();
         editModeScenegraphNodes.PointsMaterials[l]->diffuseColor.finishEditing();
-        editModeScenegraphNodes.RootCrossMaterials->diffuseColor.finishEditing();
         editModeScenegraphNodes.CurvesCoordinate[l]->point.finishEditing();
         editModeScenegraphNodes.CurveSet[l]->numVertices.finishEditing();
     }
+
+    editModeScenegraphNodes.RootCrossMaterials->diffuseColor.finishEditing();
 }
 
 
@@ -511,6 +529,12 @@ void EditModeGeometryCoinManager::createEditModeInventorNodes()
         editModeScenegraphNodes.CurvesDrawStyle.push_back(drawstyle);
         editModeScenegraphNodes.CurvesDrawStyle[i]->setName(concat("CurvesDrawStyle",i).c_str());
         editModeScenegraphNodes.CurvesDrawStyle[i]->lineWidth = 3 * drawingParameters.pixelScalingFactor;
+
+        if(i == 1) {
+            editModeScenegraphNodes.CurvesDrawStyle[i]->linePattern = 0x3CF2;
+            editModeScenegraphNodes.CurvesDrawStyle[i]->linePatternScaleFactor = 5;
+        }
+
         sep->addChild(editModeScenegraphNodes.CurvesDrawStyle[i]);
 
         auto solineset = new SoLineSet;
