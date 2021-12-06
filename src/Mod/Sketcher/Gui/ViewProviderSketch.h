@@ -95,7 +95,6 @@ using GeoList = Sketcher::GeoListModel<Part::Geometry *>;
 class SketcherGuiExport ViewProviderSketch : public PartGui::ViewProvider2DObjectGrid
                                             , public PartGui::ViewProviderAttachExtension
                                             , public Gui::SelectionObserver
-                                            , public ParameterGrp::ObserverType
 {
     Q_DECLARE_TR_FUNCTIONS(SketcherGui::ViewProviderSketch)
     /// generates a warning message about constraint conflicts and appends it to the given message
@@ -108,6 +107,72 @@ class SketcherGuiExport ViewProviderSketch : public PartGui::ViewProvider2DObjec
     static QString appendMalformedMsg(const std::vector<int> &redundant);
 
     PROPERTY_HEADER_WITH_OVERRIDE(SketcherGui::ViewProviderSketch);
+
+private:
+    class ParameterObserver : public ParameterGrp::ObserverType
+    {
+    public:
+        ParameterObserver(ViewProviderSketch & client);
+        ~ParameterObserver();
+
+        void initParameters();
+
+        void subscribeToParameters();
+
+        void unsubscribeToParameters();
+
+        /** Observer for parameter group. */
+        void OnChange(Base::Subject<const char*> &rCaller, const char * sReason) override;
+
+    private:
+
+        void updateBoolProperty(const std::string & string, App::Property * property, bool defaultvalue);
+        void updateGridSize(const std::string & string, App::Property * property);
+
+        // Only for colors outside of edit mode, edit mode colors are handled by CoinManager.
+        void updateColorProperty(const std::string & string, App::Property * property, float r, float g, float b);
+
+        void updateEscapeKeyBehaviour(const std::string & string, App::Property * property);
+
+        void updateAutoRecompute(const std::string & string, App::Property * property);
+
+        void updateRecalculateInitialSolutionWhileDragging(const std::string & string, App::Property * property);
+
+    private:
+        ViewProviderSketch &Client;
+        std::map<std::string, std::tuple<std::function<void(const std::string & string, App::Property *)>, App::Property * >> parameterMap;
+    };
+
+    class Drag {
+    public:
+        Drag() {
+            reset();
+        }
+
+        void reset() {
+            xInit = 0;
+            yInit = 0;
+            relative = false;
+        }
+
+        double xInit, yInit;
+        bool relative;
+    };
+
+    struct DoubleClick {
+        static SbTime prvClickTime;
+        static SbVec2s prvClickPos; //used by double-click-detector
+        static SbVec2s prvCursorPos;
+        static SbVec2s newCursorPos;
+    };
+
+    struct ViewProviderParameters {
+        bool handleEscapeButton = false;
+        bool autoRecompute = false;
+        bool recalculateInitialSolutionWhileDragging = false;
+
+        bool isShownVirtualSpace = false; // indicates whether the present virtual space view is the Real Space or the Virtual Space (virtual space 1 or 2)
+    };
 
 public:
     /// constructor
@@ -269,9 +334,6 @@ public:
     /// signals if the elements list has changed
     boost::signals2::signal<void ()> signalElementsChanged;
 
-    /** Observer for parameter group. */
-    void OnChange(Base::Subject<const char*> &rCaller, const char * sReason) override;
-
     friend class ViewProviderSketchDrawSketchHandlerAttorney;
     friend class ViewProviderSketchCoinAttorney;
     friend class ViewProviderSketchShortcutListenerAttorney;
@@ -287,25 +349,11 @@ protected:
 
     /** @name miscelanea editing functions */
     //@{
-    /// set up the edition data structure EditData
-    void createEditInventorNodes(void);
 
     void deactivateHandler();
 
     /// get called if a subelement is double clicked while editing
     void editDoubleClicked(void);
-    //@}
-
-    /** @name parameter management */
-    //@{
-    /// set icon & font sizes
-    void initItemsSizes();
-    /// subscribe to parameter groups as an observer
-    void subscribeToParameters();
-    /// unsubscribe to parameter groups as an observer
-    void unsubscribeToParameters();
-    /// updates the sizes of the edit mode inventor node
-    void updateInventorNodeSizes();
     //@}
 
     /** @name Solver Information */
@@ -375,7 +423,13 @@ private:
 
     QFont getApplicationFont() const;
 
+    int defaultFontSizePixels() const;
+
+    int getApplicationLogicalDPIX() const;
+
     double getRotation(SbVec3f pos0, SbVec3f pos1) const;
+
+    void createEditRootNode(void); /// set up the edition data structure EditData
 
     //********* ViewProviderSketchShortcutListenerAttorney ***********//
     void deleteSelected();
@@ -393,7 +447,7 @@ private:
     void setAxisPickStyle(bool on);
     //@}
 
-protected:
+private:
     boost::signals2::connection connectUndoDocument;
     boost::signals2::connection connectRedoDocument;
 
@@ -403,27 +457,22 @@ protected:
     // modes while sketching
     SketchMode Mode;
 
-    static SbTime prvClickTime;
-    static SbVec2s prvClickPos; //used by double-click-detector
-    static SbVec2s prvCursorPos;
-    static SbVec2s newCursorPos;
-
     // reference coordinates for relative operations
-    double xInit,yInit;
-    bool relative;
+    Drag drag;
 
-    Gui::Rubberband* rubberband;
+    std::unique_ptr<Gui::Rubberband> rubberband;
 
     std::string editDocName;
     std::string editObjName;
     std::string editSubName;
 
-    // Virtual space variables
-    bool isShownVirtualSpace; // indicates whether the present virtual space view is the Real Space or the Virtual Space (virtual space 1 or 2)
-
     ShortcutListener* listener;
 
     std::unique_ptr<CoinManager> coinManager;
+
+    std::unique_ptr<ViewProviderSketch::ParameterObserver> pObserver;
+
+    ViewProviderParameters viewProviderParameters;
 };
 
 } // namespace PartGui

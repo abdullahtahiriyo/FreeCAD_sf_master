@@ -63,7 +63,6 @@ struct EditData {
     // pointer to the active handler for new sketch objects
     DrawSketchHandler *sketchHandler;
     bool buttonPress;
-    bool handleEscapeButton;
 
     // dragged point
     int DragPoint;
@@ -76,10 +75,6 @@ struct EditData {
     int PreselectPoint;
     int PreselectCurve;
     int PreselectCross;
-    int MarkerSize;
-    int coinFontSize;
-    int constraintIconSize;
-    double pixelScalingFactor;
     std::set<int> PreselectConstraintSet;
     bool blockedPreselection;
     bool FullyConstrained;

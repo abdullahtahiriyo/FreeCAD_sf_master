@@ -104,18 +104,178 @@
 
 FC_LOG_LEVEL_INIT("Sketch",true,true)
 
-
-
 using namespace SketcherGui;
 using namespace Sketcher;
 namespace bp = boost::placeholders;
 
-// Variables for holding previous click
-SbTime  ViewProviderSketch::prvClickTime;
-SbVec2s ViewProviderSketch::prvClickPos;
-SbVec2s ViewProviderSketch::prvCursorPos;
-SbVec2s ViewProviderSketch::newCursorPos;
+/************** ViewProviderSketch::ParameterObserver *********************/
 
+ViewProviderSketch::ParameterObserver::ParameterObserver(ViewProviderSketch &client): Client(client)
+{
+}
+
+ViewProviderSketch::ParameterObserver::~ParameterObserver()
+{
+    unsubscribeToParameters();
+}
+
+void ViewProviderSketch::ParameterObserver::updateBoolProperty(const std::string & string, App::Property * property, bool defaultvalue)
+{
+    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+
+    auto boolprop = static_cast<App::PropertyBool *>(property);
+    boolprop->setValue(hGrp->GetBool(string.c_str(), defaultvalue));
+}
+
+void ViewProviderSketch::ParameterObserver::updateColorProperty(const std::string & string, App::Property * property, float r, float g, float b)
+{
+    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
+
+    auto colorprop = static_cast<App::PropertyColor *>(property);
+
+    colorprop->setValue(r,g,b);
+
+    App::Color elementAppColor = colorprop->getValue();
+    unsigned long color = (unsigned long)(elementAppColor.getPackedValue());
+    color = hGrp->GetUnsigned(string.c_str(), color);
+    elementAppColor.setPackedValue((uint32_t)color);
+    colorprop->setValue( elementAppColor);
+
+}
+
+void ViewProviderSketch::ParameterObserver::updateGridSize(const std::string & string, App::Property * property)
+{
+    (void) property;
+    (void) string;
+
+    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+
+    Client.GridSize.setValue(Base::Quantity::parse(QString::fromLatin1(hGrp->GetGroup("GridSize")->GetASCII("Hist0", "10.0").c_str())).getValue());
+}
+
+void ViewProviderSketch::ParameterObserver::updateEscapeKeyBehaviour(const std::string & string, App::Property * property)
+{
+    (void) property;
+    (void) string;
+
+    ParameterGrp::handle hSketch = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+    Client.viewProviderParameters.handleEscapeButton = !hSketch->GetBool("LeaveSketchWithEscape", true);
+}
+
+void ViewProviderSketch::ParameterObserver::updateAutoRecompute(const std::string & string, App::Property * property)
+{
+    (void) property;
+    (void) string;
+
+    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+    Client.viewProviderParameters.autoRecompute = hGrp->GetBool("AutoRecompute",false);
+}
+
+void ViewProviderSketch::ParameterObserver::updateRecalculateInitialSolutionWhileDragging(const std::string & string, App::Property * property)
+{
+    (void) property;
+    (void) string;
+
+    ParameterGrp::handle hGrp2 = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+
+    Client.viewProviderParameters.recalculateInitialSolutionWhileDragging = hGrp2->GetBool("RecalculateInitialSolutionWhileDragging",true);
+}
+
+void ViewProviderSketch::ParameterObserver::subscribeToParameters()
+{
+    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+    hGrp->Attach(this);
+
+    ParameterGrp::handle hGrpskg = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+    hGrpskg->Attach(this);
+
+    ParameterGrp::handle hGrp2 = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+    hGrp2->Attach(this);
+}
+
+void ViewProviderSketch::ParameterObserver::unsubscribeToParameters()
+{
+    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+    hGrp->Detach(this);
+
+    ParameterGrp::handle hGrpskg = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+    hGrpskg->Detach(this);
+
+    ParameterGrp::handle hGrp2 = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+    hGrp2->Detach(this);
+}
+
+void ViewProviderSketch::ParameterObserver::initParameters()
+{
+    // once initialize the map with the properties
+
+    parameterMap = {
+        {"HideDependent",
+            {[this](const std::string & string, App::Property * property){ updateBoolProperty(string, property, true);}, &Client.HideDependent }},
+        {"ShowLinks",
+            {[this](const std::string & string, App::Property * property){ updateBoolProperty(string, property, true);}, &Client.ShowLinks }},
+        {"ShowSupport",
+            {[this](const std::string & string, App::Property * property){ updateBoolProperty(string, property, true);}, &Client.ShowSupport }},
+        {"RestoreCamera",
+            {[this](const std::string & string, App::Property * property){ updateBoolProperty(string, property, true);}, &Client.RestoreCamera }},
+        {"ForceOrtho",
+            {[this](const std::string & string, App::Property * property){ updateBoolProperty(string, property, false);}, &Client.ForceOrtho }},
+        {"SectionView",
+            {[this](const std::string & string, App::Property * property){ updateBoolProperty(string, property, false);}, &Client.SectionView }},
+        {"ShowGrid",
+            {[this](const std::string & string, App::Property * property){ updateBoolProperty(string, property, false);}, &Client.ShowGrid }},
+        {"GridSnap",
+            {[this](const std::string & string, App::Property * property){ updateBoolProperty(string, property, false);}, &Client.GridSnap }},
+        {"AutoConstraints",
+            {[this](const std::string & string, App::Property * property){ updateBoolProperty(string, property, true);}, &Client.Autoconstraints }},
+        {"AvoidRedundantAutoconstraints",
+            {[this](const std::string & string, App::Property * property){ updateBoolProperty(string, property, true);}, &Client.AvoidRedundant }},
+        {"GridSize",
+            {[this](const std::string & string, App::Property * property){ updateGridSize(string, property);}, &Client.GridSize }},
+        {"SketchEdgeColor",
+            {[this](const std::string & string, App::Property * property){ updateColorProperty(string, property, 1.f, 1.f, 1.f);}, &Client.LineColor }},
+        {"SketchVertexColor",
+            {[this](const std::string & string, App::Property * property){ updateColorProperty(string, property, 1.f, 1.f, 1.f);}, &Client.PointColor }},
+        {"updateEscapeKeyBehaviour",
+            {[this](const std::string & string, App::Property * property){ updateEscapeKeyBehaviour(string, property);}, nullptr }},
+        {"AutoRecompute",
+            {[this](const std::string & string, App::Property * property){ updateAutoRecompute(string, property);}, nullptr }},
+        {"RecalculateInitialSolutionWhileDragging",
+            {[this](const std::string & string, App::Property * property){ updateRecalculateInitialSolutionWhileDragging(string, property);}, nullptr }},
+    };
+
+    for( auto & val : parameterMap){
+        auto string     = val.first;
+        auto update     = std::get<0>(val.second);
+        auto property   = std::get<1>(val.second);
+
+        update(string, property);
+    }
+
+}
+
+void ViewProviderSketch::ParameterObserver::OnChange(Base::Subject<const char*> &rCaller, const char * sReason)
+{
+    (void) rCaller;
+
+    auto key = parameterMap.find(sReason);
+    if( key != parameterMap.end()) {
+        auto string     = key->first;
+        auto update     = std::get<0>(key->second);
+        auto property   = std::get<1>(key->second);
+
+        update(string, property);
+    }
+
+}
+
+/*************************** ViewProviderSketch **************************/
+
+// Struct for holding previous click information
+SbTime ViewProviderSketch::DoubleClick::prvClickTime;
+SbVec2s ViewProviderSketch::DoubleClick::prvClickPos; //used by double-click-detector
+SbVec2s ViewProviderSketch::DoubleClick::prvCursorPos;
+SbVec2s ViewProviderSketch::DoubleClick::newCursorPos;
 
 //**************************************************************************
 // Construction/Destruction
@@ -129,9 +289,9 @@ ViewProviderSketch::ViewProviderSketch()
   : SelectionObserver(false),
     edit(0),
     Mode(STATUS_NONE),
-    isShownVirtualSpace(false),
     listener(0),
-    coinManager(nullptr)
+    coinManager(nullptr),
+    pObserver(std::make_unique<ViewProviderSketch::ParameterObserver>(*this))
 {
     PartGui::ViewProviderAttachExtension::initExtension(this);
 
@@ -146,64 +306,24 @@ ViewProviderSketch::ViewProviderSketch()
     ADD_PROPERTY_TYPE(SectionView,(false),"Visibility automation",(App::PropertyType)(App::Prop_None),"If true, only objects (or part of) located behind the sketch plane are visible.");
     ADD_PROPERTY_TYPE(EditingWorkbench,("SketcherWorkbench"),"Visibility automation",(App::PropertyType)(App::Prop_None),"Name of the workbench to activate when editing this sketch.");
 
-    {//visibility automation: update defaults to follow preferences
-        ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
-        this->HideDependent.setValue(hGrp->GetBool("HideDependent", true));
-        this->ShowLinks.setValue(hGrp->GetBool("ShowLinks", true));
-        this->ShowSupport.setValue(hGrp->GetBool("ShowSupport", true));
-        this->RestoreCamera.setValue(hGrp->GetBool("RestoreCamera", true));
-        this->ForceOrtho.setValue(hGrp->GetBool("ForceOrtho", false));
-        this->SectionView.setValue(hGrp->GetBool("SectionView", false));
+    // Default values that will be overriden by preferences (if existing)
+    PointSize.setValue(4);
 
-        // well it is not visibility automation but a good place nevertheless
-        this->ShowGrid.setValue(hGrp->GetBool("ShowGrid", false));
-        this->GridSize.setValue(Base::Quantity::parse(QString::fromLatin1(hGrp->GetGroup("GridSize")->GetASCII("Hist0", "10.0").c_str())).getValue());
-        this->GridSnap.setValue(hGrp->GetBool("GridSnap", false));
-        this->Autoconstraints.setValue(hGrp->GetBool("AutoConstraints", true));
-        this->AvoidRedundant.setValue(hGrp->GetBool("AvoidRedundantAutoconstraints", true));
-        this->GridAutoSize.setValue(false); //Grid size is managed by this class
-    }
+    // visibility automation and other parameters: update parameter and property defaults to follow preferences
+    pObserver->initParameters();
+    pObserver->subscribeToParameters();
+
+    this->GridAutoSize.setValue(false); //Grid size is managed by this class
 
     sPixmap = "Sketcher_Sketch";
 
-    // Moving control
-    xInit=0;
-    yInit=0;
-    relative=false;
-
-    // Colors and sizes to be used by parent ViewProvider's code
-    LineColor.setValue(1,1,1);
-    PointColor.setValue(1,1,1);
-    PointSize.setValue(4);
-
-    unsigned long color;
-    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-
-    // edge color
-    App::Color edgeColor = LineColor.getValue();
-    color = (unsigned long)(edgeColor.getPackedValue());
-    color = hGrp->GetUnsigned("SketchEdgeColor", color);
-    edgeColor.setPackedValue((uint32_t)color);
-    LineColor.setValue(edgeColor);
-
-    // vertex color
-    App::Color vertexColor = PointColor.getValue();
-    color = (unsigned long)(vertexColor.getPackedValue());
-    color = hGrp->GetUnsigned("SketchVertexColor", color);
-    vertexColor.setPackedValue((uint32_t)color);
-    PointColor.setValue(vertexColor);
-
     //rubberband selection
-    rubberband = new Gui::Rubberband();
+    rubberband = std::make_unique<Gui::Rubberband>();
 
-
-    subscribeToParameters();
 }
 
 ViewProviderSketch::~ViewProviderSketch()
 {
-    delete rubberband;
-    unsubscribeToParameters();
 }
 
 void ViewProviderSketch::slotUndoDocument(const Gui::Document& /*doc*/)
@@ -340,7 +460,7 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
 
                 // More control over Sketcher edit mode Esc key behavior
                 // https://forum.freecadweb.org/viewtopic.php?f=3&t=42207
-                return edit->handleEscapeButton;
+                return viewProviderParameters.handleEscapeButton;
             }
             return false;
         }
@@ -509,21 +629,21 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     float dci = (float) QApplication::doubleClickInterval()/1000.0f;
 
                     if (done &&
-                        SbVec2f(cursorPos - prvClickPos).length() <  dblClickRadius &&
-                        (SbTime::getTimeOfDay() - prvClickTime).getValue() < dci) {
+                        SbVec2f(cursorPos - DoubleClick::prvClickPos).length() <  dblClickRadius &&
+                        (SbTime::getTimeOfDay() - DoubleClick::prvClickTime).getValue() < dci) {
 
                         // Double Click Event Occurred
                         editDoubleClicked();
                         // Reset Double Click Static Variables
-                        prvClickTime = SbTime();
-                        prvClickPos = SbVec2s(-16000,-16000); //certainly far away from any clickable place, to avoid re-trigger of double-click if next click happens fast.
+                        DoubleClick::prvClickTime = SbTime();
+                        DoubleClick::prvClickPos = SbVec2s(-16000,-16000); //certainly far away from any clickable place, to avoid re-trigger of double-click if next click happens fast.
 
                         Mode = STATUS_NONE;
                     } else {
-                        prvClickTime = SbTime::getTimeOfDay();
-                        prvClickPos = cursorPos;
-                        prvCursorPos = cursorPos;
-                        newCursorPos = cursorPos;
+                        DoubleClick::prvClickTime = SbTime::getTimeOfDay();
+                        DoubleClick::prvClickPos = cursorPos;
+                        DoubleClick::prvCursorPos = cursorPos;
+                        DoubleClick::newCursorPos = cursorPos;
                         if (!done)
                             Mode = STATUS_SKETCH_StartRubberBand;
                     }
@@ -645,7 +765,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                             getDocument()->openCommand(QT_TRANSLATE_NOOP("Command", "Drag Point"));
                             try {
                                 Gui::cmdAppObjectArgs(getObject(), "movePoint(%i,%i,App.Vector(%f,%f,0),%i)"
-                                        ,GeoId, PosId, x-xInit, y-yInit, 0);
+                                        ,GeoId, PosId, x-drag.xInit, y-drag.yInit, 0);
                                 getDocument()->commitCommand();
 
                                 tryAutoRecomputeIfNotSolve(getSketchObject());
@@ -678,7 +798,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                             auto geo = getSketchObject()->getGeometry(edit->DragCurve);
                             auto gf = GeometryFacade::getFacade(geo);
 
-                            Base::Vector3d vec(x-xInit,y-yInit,0);
+                            Base::Vector3d vec(x-drag.xInit,y-drag.yInit,0);
 
                             // BSpline weights have a radius corresponding to the weight value
                             // However, in order for them proportional to the B-Spline size,
@@ -705,7 +825,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
 
                             try {
                                 Gui::cmdAppObjectArgs(getObject(), "movePoint(%i,%i,App.Vector(%f,%f,0),%i)"
-                                        ,edit->DragCurve, Sketcher::none, vec.x, vec.y, relative ? 1 : 0);
+                                        ,edit->DragCurve, Sketcher::none, vec.x, vec.y, drag.relative ? 1 : 0);
                                 getDocument()->commitCommand();
 
                                 tryAutoRecomputeIfNotSolve(getSketchObject());
@@ -741,7 +861,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     Gui::Selection().clearSelection();
                     return true;
                 case STATUS_SKETCH_UseRubberBand:
-                    doBoxSelection(prvCursorPos, cursorPos, viewer);
+                    doBoxSelection(DoubleClick::prvCursorPos, cursorPos, viewer);
                     rubberband->setWorking(false);
 
                     // a redraw is required in order to clear the rubberband
@@ -921,7 +1041,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
         case STATUS_SELECT_Constraint:
         case STATUS_SKETCH_StartRubberBand:
             short dx, dy;
-            (cursorPos - prvCursorPos).getValue(dx, dy);
+            (cursorPos - DoubleClick::prvCursorPos).getValue(dx, dy);
             if(std::abs(dx) < dragIgnoredDistance && std::abs(dy) < dragIgnoredDistance)
                 return false;
         default:
@@ -973,9 +1093,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                 getSketchObject()->getGeoVertexIndex(edit->DragPoint, GeoId, PosId);
                 if (GeoId != Sketcher::Constraint::GeoUndef && PosId != Sketcher::none) {
                     getSketchObject()->initTemporaryMove(GeoId, PosId, false);
-                    relative = false;
-                    xInit = 0;
-                    yInit = 0;
+                    drag.reset();
                 }
             } else {
                 Mode = STATUS_NONE;
@@ -1058,19 +1176,16 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
 
                 if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId() ||
                     geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
-                    relative = true;
-                    //xInit = x;
-                    //yInit = y;
+                    drag.relative = true;
+
                     // Since the cursor moved from where it was clicked, and this is a relative move,
                     // calculate the click position and use it as initial point.
                     SbLine line2;
-                    getProjectingLine(prvCursorPos, viewer, line2);
-                    getCoordsOnSketchPlane(line2.getPosition(),line2.getDirection(),xInit,yInit);
-                    snapToGrid(xInit, yInit);
+                    getProjectingLine(DoubleClick::prvCursorPos, viewer, line2);
+                    getCoordsOnSketchPlane(line2.getPosition(),line2.getDirection(),drag.xInit,drag.yInit);
+                    snapToGrid(drag.xInit, drag.yInit);
                 } else {
-                    relative = false;
-                    xInit = 0;
-                    yInit = 0;
+                    drag.reset();
                 }
 
                 getSketchObject()->initTemporaryMove(edit->DragCurve, Sketcher::none, false);
@@ -1111,7 +1226,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                 auto geo = getSketchObject()->getGeometry(edit->DragCurve);
                 auto gf = GeometryFacade::getFacade(geo);
 
-                Base::Vector3d vec(x-xInit,y-yInit,0);
+                Base::Vector3d vec(x-drag.xInit,y-drag.yInit,0);
 
                 // BSpline weights have a radius corresponding to the weight value
                 // However, in order for them proportional to the B-Spline size,
@@ -1136,7 +1251,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                     vec = center + dir / scalefactor;
                 }
 
-                if (getSketchObject()->moveTemporaryPoint(edit->DragCurve, Sketcher::none, vec, relative) == 0) {
+                if (getSketchObject()->moveTemporaryPoint(edit->DragCurve, Sketcher::none, vec, drag.relative) == 0) {
                     setPositionText(Base::Vector2d(x,y));
                     draw(true,false);
                 }
@@ -1164,11 +1279,11 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
         case STATUS_SKETCH_UseRubberBand: {
             // Here we must use the device-pixel-ratio to compute the correct y coordinate (#0003130)
             qreal dpr = viewer->getGLWidget()->devicePixelRatioF();
-            newCursorPos = cursorPos;
-            rubberband->setCoords(prvCursorPos.getValue()[0],
-                       viewer->getGLWidget()->height()*dpr - prvCursorPos.getValue()[1],
-                       newCursorPos.getValue()[0],
-                       viewer->getGLWidget()->height()*dpr - newCursorPos.getValue()[1]);
+            DoubleClick::newCursorPos = cursorPos;
+            rubberband->setCoords(DoubleClick::prvCursorPos.getValue()[0],
+                       viewer->getGLWidget()->height()*dpr - DoubleClick::prvCursorPos.getValue()[1],
+                       DoubleClick::newCursorPos.getValue()[0],
+                       viewer->getGLWidget()->height()*dpr - DoubleClick::newCursorPos.getValue()[1]);
             viewer->redraw();
             return true;
         }
@@ -2362,95 +2477,6 @@ float ViewProviderSketch::getScaleFactor() const
     }
 }
 
-void ViewProviderSketch::OnChange(Base::Subject<const char*> &rCaller, const char * sReason)
-{
-    (void) rCaller;
-    //ParameterGrp& rclGrp = ((ParameterGrp&)rCaller);
-    if (strcmp(sReason, "ViewScalingFactor") == 0   ||
-        strcmp(sReason, "MarkerSize") == 0          ||
-        strcmp(sReason, "EditSketcherFontSize") == 0 ) {
-        if(edit) { // only if in edit mode, if not it gets updated when entering edit mode
-            initItemsSizes();
-            updateInventorNodeSizes();
-            coinManager->rebuildConstraintNodes();
-            draw();
-        }
-    }
-}
-
-void ViewProviderSketch::subscribeToParameters()
-{
-    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-    hGrp->Attach(this);
-}
-
-void ViewProviderSketch::unsubscribeToParameters()
-{
-    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-    hGrp->Detach(this);
-}
-
-void ViewProviderSketch::updateInventorNodeSizes()
-{
-    assert(edit);
-    edit->PointsDrawStyle->pointSize = 8 * edit->pixelScalingFactor;
-    edit->PointSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_FILLED", edit->MarkerSize);
-    edit->CurvesDrawStyle->lineWidth = 3 * edit->pixelScalingFactor;
-    edit->RootCrossDrawStyle->lineWidth = 2 * edit->pixelScalingFactor;
-    edit->EditCurvesDrawStyle->lineWidth = 3 * edit->pixelScalingFactor;
-    edit->EditMarkersDrawStyle->pointSize = 8 * edit->pixelScalingFactor;
-    edit->EditMarkerSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_LINE", edit->MarkerSize);
-    edit->ConstraintDrawStyle->lineWidth = 1 * edit->pixelScalingFactor;
-    edit->InformationDrawStyle->lineWidth = 1 * edit->pixelScalingFactor;
-}
-
-void ViewProviderSketch::initItemsSizes()
-{
-    //Add scaling to Constraint icons
-    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-    double viewScalingFactor = hGrp->GetFloat("ViewScalingFactor", 1.0);
-    viewScalingFactor = Base::clamp<double>(viewScalingFactor, 0.5, 5.0);
-    int markersize = hGrp->GetInt("MarkerSize", 7);
-
-    int defaultFontSizePixels = QApplication::fontMetrics().height(); // returns height in pixels, not points
-    int sketcherfontSize = hGrp->GetInt("EditSketcherFontSize", defaultFontSizePixels);
-
-    int dpi = QApplication::desktop()->logicalDpiX();
-
-    if(edit) {
-        // simple scaling factor for hardcoded pixel values in the Sketcher
-        edit->pixelScalingFactor = viewScalingFactor * dpi / 96; // 96 ppi is the standard pixel density for which pixel quantities were calculated
-
-        // Coin documentation indicates the size of a font is:
-        // SoSFFloat SoFont::size        Size of font. Defaults to 10.0.
-        //
-        // For 2D rendered bitmap fonts (like for SoText2), this value is the height of a character in screen pixels. For 3D text, this value is the world-space coordinates height of a character in the current units setting (see documentation for SoUnits node).
-        //
-        // However, with hdpi monitors, the coin font labels do not respect the size passed in pixels:
-        // https://forum.freecadweb.org/viewtopic.php?f=3&t=54347&p=467610#p467610
-        // https://forum.freecadweb.org/viewtopic.php?f=10&t=49972&start=40#p467471
-        //
-        // Because I (abdullah) have  96 dpi logical, 82 dpi physical, and I see a 35px font setting for a "1" in a datum label as 34px,
-        // and I see kilsore and Elyas screenshots showing 41px and 61px in higher resolution monitors for the same configuration, I think
-        // that coin pixel size has to be corrected by the logical dpi of the monitor. The rationale is that: a) it obviously needs dpi
-        // correction, b) with physical dpi, the ratio of representation between kilsore and me is too far away.
-        //
-        // This means that the following correction does not have a documented basis, but appears necessary so that the Sketcher is usable in
-        // HDPI monitors.
-
-        edit->coinFontSize = std::lround(sketcherfontSize * 96.0f / dpi);
-        edit->constraintIconSize = std::lround(0.8 * sketcherfontSize);
-
-        // For marker size the global default is used.
-        //
-        // Rationale:
-        // -> Other WBs use the default value as is
-        // -> If a user has a HDPI, he will eventually change the value for the other WBs
-        // -> If we correct the value here in addition, we would get two times a resize
-        edit->MarkerSize = markersize;
-    }
-}
-
 // This function ensures that the geometry used for drawing takes into account:
 // 1. the OCC mandated weight, which is normalised for non-rational BSplines, but not normalised for rational BSplines.
 // That includes properly sizing for drawing any weight constraint.
@@ -2634,7 +2660,7 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
 
 void ViewProviderSketch::setIsShownVirtualSpace(bool isshownvirtualspace)
 {
-    this->isShownVirtualSpace = isshownvirtualspace;
+    viewProviderParameters.isShownVirtualSpace = isshownvirtualspace;
 
     coinManager->updateVirtualSpace();
 
@@ -2643,7 +2669,7 @@ void ViewProviderSketch::setIsShownVirtualSpace(bool isshownvirtualspace)
 
 bool ViewProviderSketch::getIsShownVirtualSpace() const
 {
-    return this->isShownVirtualSpace;
+    return viewProviderParameters.isShownVirtualSpace;
 }
 
 
@@ -2761,14 +2787,6 @@ bool ViewProviderSketch::setEdit(int ModNum)
     edit = new EditData();
     coinManager = std::make_unique<CoinManager>(*this, edit);
 
-    // Init icon, font and marker sizes
-    initItemsSizes();
-
-    ParameterGrp::handle hSketch = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
-    edit->handleEscapeButton = !hSketch->GetBool("LeaveSketchWithEscape", true);
-
-    createEditInventorNodes();
-
     auto editDoc = Gui::Application::Instance->editDocument();
     App::DocumentObject *editObj = getSketchObject();
     std::string editSubName;
@@ -2852,9 +2870,7 @@ bool ViewProviderSketch::setEdit(int ModNum)
         ->signalRedoDocument.connect(boost::bind(&ViewProviderSketch::slotRedoDocument, this, bp::_1));
 
     // Enable solver initial solution update while dragging.
-    ParameterGrp::handle hGrp2 = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
-
-    getSketchObject()->setRecalculateInitialSolutionWhileMovingPoint(hGrp2->GetBool("RecalculateInitialSolutionWhileDragging",true));
+    getSketchObject()->setRecalculateInitialSolutionWhileMovingPoint(viewProviderParameters.recalculateInitialSolutionWhileDragging);
 
     // intercept del key press from main app
     listener = new ShortcutListener(this);
@@ -2992,7 +3008,7 @@ void ViewProviderSketch::UpdateSolverInformation()
 }
 
 
-void ViewProviderSketch::createEditInventorNodes(void)
+void ViewProviderSketch::createEditRootNode(void)
 {
     assert(edit);
 
@@ -3002,9 +3018,6 @@ void ViewProviderSketch::createEditInventorNodes(void)
     edit->EditRoot->setName("Sketch_EditRoot");
     pcRoot->addChild(edit->EditRoot);
     edit->EditRoot->renderCaching = SoSeparator::OFF ;
-
-    // 2 - Delegate edit mode coin node creation and management
-    coinManager->createEditModeInventorNodes();
 }
 
 void ViewProviderSketch::unsetEdit(int ModNum)
@@ -3145,7 +3158,7 @@ void ViewProviderSketch::setEditViewer(Gui::View3DInventorViewer* viewer, int Mo
     SoNode* root = viewer->getSceneGraph();
     static_cast<Gui::SoFCUnifiedSelection*>(root)->selectionRole.setValue(false);
 
-    viewer->addGraphicsItem(rubberband);
+    viewer->addGraphicsItem(rubberband.get());
     rubberband->setViewer(viewer);
 
     viewer->setupEditingRoot();
@@ -3153,7 +3166,7 @@ void ViewProviderSketch::setEditViewer(Gui::View3DInventorViewer* viewer, int Mo
 
 void ViewProviderSketch::unsetEditViewer(Gui::View3DInventorViewer* viewer)
 {
-    viewer->removeGraphicsItem(rubberband);
+    viewer->removeGraphicsItem(rubberband.get());
     viewer->setEditing(false);
     SoNode* root = viewer->getSceneGraph();
     static_cast<Gui::SoFCUnifiedSelection*>(root)->selectionRole.setValue(true);
@@ -3354,10 +3367,7 @@ bool ViewProviderSketch::onDelete(const std::vector<std::string> &subList)
         // as there is an event filter installed that intercepts the del key event. So now we do
         // need to tidy up after ourselves again.
 
-        ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
-        bool autoRecompute = hGrp->GetBool("AutoRecompute",false);
-
-        if (autoRecompute) {
+        if (viewProviderParameters.autoRecompute) {
             Gui::Command::updateActive();
         }
         else {
@@ -3511,6 +3521,15 @@ SbVec2f ViewProviderSketch::getScreenCoordinates(SbVec2f sketchcoordinates) cons
 QFont ViewProviderSketch::getApplicationFont() const
 {
     return QApplication::font();
+}
+
+int ViewProviderSketch::defaultFontSizePixels() const
+{
+    return QApplication::fontMetrics().height();
+}
+
+int ViewProviderSketch::getApplicationLogicalDPIX() const {
+    return QApplication::desktop()->logicalDpiX();
 }
 
 double ViewProviderSketch::getRotation(SbVec3f pos0, SbVec3f pos1) const
