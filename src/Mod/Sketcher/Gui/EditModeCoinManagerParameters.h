@@ -55,6 +55,8 @@ namespace Part {
 namespace SketcherGui {
 
 /** @brief      Struct for storing local drawing parameters
+ *
+ * Parameters based on user preferenced are auto loaded by EditCoinManager observer nested class.
  */
 struct DrawingParameters {
     int curvedEdgeCountSegments;
@@ -134,6 +136,13 @@ struct GeometryLayerNodes {
     std::vector<SoLineSet *> &      CurveSet;
 };
 
+/** @brief
+ * Helper class to store together a field index of a coin multifield object and the geometry layer to
+ * which it belongs.
+ *
+ * Overloaded operators and specialisation of std::less enable it to be used in containers including ordered
+ * containers.
+ */
 class MultiFieldId {
 public:
     explicit constexpr MultiFieldId(int fieldindex = -1, int layerid = 0):  fieldIndex(fieldindex),
@@ -151,8 +160,6 @@ public:
     {
         return this->fieldIndex != obj.fieldIndex || this->layerId != obj.layerId;
     }
-
-
 
     int fieldIndex = -1;
     int layerId = 0;
@@ -177,30 +184,30 @@ namespace std
 
 namespace SketcherGui {
 
+/** @brief
+ * Helper class to store geometry layers configuration
+ */
 struct GeometryLayerParameters {
-    int Layers = 1;
+    int Layers = 1; // defaults to a single Coin Geometry Layer.
 };
 
-/** @brief     Struct to hold the results of analysis
-*  @details    To be documented.
-*
+/** @brief     Struct to hold the results of analysis performed on geometry
 */
 struct AnalysisResults { // TODO: This needs to be refactored
-    double combRepresentationScale = 0;
-    float boundingBoxMagnitudeOrder = 0;
-    std::vector<int> bsplineGeoIds;
-
+    double combRepresentationScale = 0;     // used for information overlay (BSpline comb)
+    float boundingBoxMagnitudeOrder = 0;    // used for grid extension
+    std::vector<int> bsplineGeoIds;         // used for information overlay
 };
 
 /** @brief      Struct adapted to store the parameters necessary to create and update
  *  the information overlay layer.
  */
 struct OverlayParameters {
-    bool rebuildInformationLayer;
+    bool rebuildInformationLayer = false;
     bool visibleInformationChanged = true;
     double currentBSplineCombRepresentationScale = 0;
 
-    // Parameters
+    // Parameters (auto loaded by EditCoinManager observer nested class)
     bool bSplineDegreeVisible;
     bool bSplineControlPolygonVisible;
     bool bSplineCombVisible;
@@ -208,12 +215,17 @@ struct OverlayParameters {
     bool bSplinePoleWeightVisible;
 };
 
+/** @brief      Struct adapted to store the parameters necessary to create and update
+ *  constraints.
+ */
 struct ConstraintParameters {
     bool bHideUnits;
     bool bShowDimensionalName;
     QString sDimensionalStringFormat;
 };
 
+/** @brief      Helper struct adapted to store the pointer to edit mode scenegraph objects.
+ */
 struct EditModeScenegraphNodes {
     SoSeparator *                   EditRoot;
     SmSwitchboard *                 PointsGroup;
@@ -254,6 +266,8 @@ struct EditModeScenegraphNodes {
     SoDrawStyle * InformationDrawStyle;
 };
 
+/** @brief      Helper struct adapted to map
+ */
 struct CoinMapping {
 
     void clear() {
@@ -290,14 +304,14 @@ struct CoinMapping {
         return MultiFieldId::Invalid;
     }
 
-
     //* These map an index within layer for points or curves to a GeoId */
     std::vector<std::vector<int>> CurvIdToGeoId; // conversion of SoLineSet index to GeoId
     std::vector<std::vector<int>> PointIdToGeoId; // conversion of SoCoordinate3 index to GeoId
 
     //* This maps an index within layer for points to a global VertexId */
-    std::vector<std::vector<int>> PointIdToVertexId; // TODO: It is very possible that this wont be necessary anymore and can be removed. Check at the end.
+    std::vector<std::vector<int>> PointIdToVertexId;
 
+    /// This maps GeoElementId index {GeoId, PointPos} to a {layer and index} of a curves or points.
     std::map<Sketcher::GeoElementId,MultiFieldId> GeoElementId2SetId;
 };
 

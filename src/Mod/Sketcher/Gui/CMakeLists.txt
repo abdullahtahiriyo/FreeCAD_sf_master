@@ -103,8 +103,6 @@ SET(SketcherGui_SRCS
     TaskSketcherValidation.h
     ShortcutListener.cpp
     ShortcutListener.h
-    ConstraintCoinConverter.cpp
-    ConstraintCoinConverter.h
     InformationOverlayCoinConverter.cpp
     InformationOverlayCoinConverter.h
     GeometryCoinConverter.cpp

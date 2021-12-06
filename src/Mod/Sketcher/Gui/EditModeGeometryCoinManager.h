@@ -65,15 +65,25 @@ class EditModeConstraintCoinManager;
 using GeoList = Sketcher::GeoList;
 using GeoListFacade = Sketcher::GeoListFacade;
 
-/** @brief      Class for managing the Coin nodes of ViewProviderSketch.
- *  @details    To be documented.
+/** @brief      Class for managing the Edit mode coin nodes of ViewProviderSketch relating to geometry.
+ *  @details
+ *
+ * EditModeGeometryCoinManager is a helper of EditModeCoinManager specialised in geometry management.
+ *
+ * Three main functions are delegated to it:
+ * 1. Creation of Edit mode coin nodes to handle Geometry representation.
+ * 2. Converting Sketcher geometry into Coin information.
+ * 3. Updating the Geometry colors.
+ *
+ * Internally, EditModeGeometryCoinManager uses yet another class for geometry conversion,
+ * GeometryCoinConverter.
  *
  */
 class SketcherGuiExport EditModeGeometryCoinManager
 {
 
 public:
-    explicit EditModeGeometryCoinManager( ViewProviderSketch &vp,
+    explicit EditModeGeometryCoinManager(   ViewProviderSketch &vp,
                                             DrawingParameters & drawingParams,
                                             GeometryLayerParameters & geometryLayerParams,
                                             AnalysisResults & analysisResultStruct,

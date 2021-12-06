@@ -1655,37 +1655,37 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
 
         EditModeCoinManager::PreselectionResult result = editCoinManager->detectPreselection(Point, cursorPos);
 
-        if (result.ptIndex != -1 && result.ptIndex != preselection.PreselectPoint) { // if a new point is hit
+        if (result.PointIndex != -1 && result.PointIndex != preselection.PreselectPoint) { // if a new point is hit
             std::stringstream ss;
-            ss << "Vertex" << result.ptIndex + 1;
+            ss << "Vertex" << result.PointIndex + 1;
             bool accepted = setPreselect(ss.str(), Point->getPoint()[0], Point->getPoint()[1], Point->getPoint()[2]) != 0;
             preselection.blockedPreselection = !accepted;
             if (accepted) {
-                setPreselectPoint(result.ptIndex);
+                setPreselectPoint(result.PointIndex );
 
                 if (sketchHandler)
                     sketchHandler->applyCursor();
                 return true;
             }
-        } else if (result.geoIndex != -1 && result.geoIndex != preselection.PreselectCurve) {  // if a new curve is hit
+        } else if (result.GeoIndex != -1 && result.GeoIndex != preselection.PreselectCurve) {  // if a new curve is hit
             std::stringstream ss;
-            if (result.geoIndex >= 0)
-                ss << "Edge" << result.geoIndex + 1;
+            if (result.GeoIndex >= 0)
+                ss << "Edge" << result.GeoIndex + 1;
             else // external geometry
-                ss << "ExternalEdge" << -result.geoIndex + Sketcher::GeoEnum::RefExt + 1; // convert index start from -3 to 1
+                ss << "ExternalEdge" << -result.GeoIndex + Sketcher::GeoEnum::RefExt + 1; // convert index start from -3 to 1
             bool accepted = setPreselect(ss.str(), Point->getPoint()[0], Point->getPoint()[1], Point->getPoint()[2]) != 0;
             preselection.blockedPreselection = !accepted;
             if (accepted) {
                 resetPreselectPoint();
-                preselection.PreselectCurve = result.geoIndex;
+                preselection.PreselectCurve = result.GeoIndex;
 
                 if (sketchHandler)
                     sketchHandler->applyCursor();
                 return true;
             }
-        } else if (result.axes != EditModeCoinManager::PreselectionResult::Axes::None  && static_cast<int>(result.axes) != static_cast<int>(preselection.PreselectCross)) {  // if a cross line is hit
+        } else if (result.Cross != EditModeCoinManager::PreselectionResult::Axes::None  && static_cast<int>(result.Cross ) != static_cast<int>(preselection.PreselectCross)) {  // if a cross line is hit
             std::stringstream ss;
-            switch(result.axes){
+            switch(result.Cross ){
                 case EditModeCoinManager::PreselectionResult::Axes::RootPoint:      ss << "RootPoint" ; break;
                 case EditModeCoinManager::PreselectionResult::Axes::HorizontalAxis: ss << "H_Axis"    ; break;
                 case EditModeCoinManager::PreselectionResult::Axes::VerticalAxis:   ss << "V_Axis"    ; break;
@@ -1694,19 +1694,19 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
             bool accepted = setPreselect(ss.str(), Point->getPoint()[0], Point->getPoint()[1], Point->getPoint()[2]) != 0;
             preselection.blockedPreselection = !accepted;
             if (accepted) {
-                if (result.axes == EditModeCoinManager::PreselectionResult::Axes::RootPoint)
+                if (result.Cross == EditModeCoinManager::PreselectionResult::Axes::RootPoint)
                     setPreselectRootPoint();
                 else
                     resetPreselectPoint();
-                preselection.PreselectCross = static_cast<Preselection::Axes>(static_cast<int>(result.axes));
+                preselection.PreselectCross = static_cast<Preselection::Axes>(static_cast<int>(result.Cross ));
 
                 if (sketchHandler)
                     sketchHandler->applyCursor();
                 return true;
             }
-        } else if (result.constrIndices.empty() == false && result.constrIndices != preselection.PreselectConstraintSet) { // if a constraint is hit
+        } else if (result.ConstrIndices.empty() == false && result.ConstrIndices != preselection.PreselectConstraintSet) { // if a constraint is hit
             bool accepted = true;
-            for(std::set<int>::iterator it = result.constrIndices.begin(); it != result.constrIndices.end(); ++it) {
+            for(std::set<int>::iterator it = result.ConstrIndices.begin(); it != result.ConstrIndices.end(); ++it) {
                 std::stringstream ss;
                 ss << Sketcher::PropertyConstraintList::getConstraintName(*it);
 
@@ -1717,14 +1717,14 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
             }
             if (accepted) {
                 resetPreselectPoint();
-                preselection.PreselectConstraintSet = result.constrIndices;
+                preselection.PreselectConstraintSet = result.ConstrIndices;
 
                 if (sketchHandler)
                     sketchHandler->applyCursor();
                 return true;//Preselection changed
             }
-        } else if ((result.ptIndex == -1 && result.geoIndex == -1 &&
-                    result.axes == EditModeCoinManager::PreselectionResult::Axes::None && result.constrIndices.empty()) &&
+        } else if ((result.PointIndex == -1 && result.GeoIndex == -1 &&
+                    result.Cross == EditModeCoinManager::PreselectionResult::Axes::None && result.ConstrIndices.empty()) &&
                    (preselection.isPreselectPointValid() || preselection.isPreselectCurveValid() || preselection.isCrossPreselected()
                     || preselection.PreselectConstraintSet.empty() != true || preselection.blockedPreselection)) {
             // we have just left a preselection
