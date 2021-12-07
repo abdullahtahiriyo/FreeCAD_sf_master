@@ -1278,11 +1278,11 @@ void EditModeConstraintCoinManager::updateConstraintColor(const std::vector<Sket
 
         auto selectpoint = [this, pcolor, PtNum](int geoid, Sketcher::PointPos pos){
             if(geoid >= 0) {
-                auto indexit = coinMapping.GeoElementId2SetId.find(GeoElementId(geoid, pos));
+                auto multifieldIndex = coinMapping.getIndexLayer(geoid, pos);
 
-                if (indexit != coinMapping.GeoElementId2SetId.end()) {
-                    int index = indexit->second.fieldIndex + 1;
-                    int layer = indexit->second.layerId;
+                if (multifieldIndex != MultiFieldId::Invalid) {
+                    int index = multifieldIndex.fieldIndex + 1;
+                    int layer = multifieldIndex.layerId;
                     if(layer < static_cast<int>(PtNum.size()) && index >= 0 && index < PtNum[layer]) {
                         pcolor[layer][index] = drawingParameters.SelectColor;
                     }

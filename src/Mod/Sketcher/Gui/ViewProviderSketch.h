@@ -87,7 +87,9 @@ class DrawSketchHandler;
 using GeoList = Sketcher::GeoList;
 using GeoListFacade = Sketcher::GeoListFacade;
 
-/** The Sketch ViewProvider
+/** @brief The Sketch ViewProvider
+ *
+ * @details
  *
  * As any ViewProvider, this class is responsible for the view representation
  * of Sketches.
@@ -143,6 +145,7 @@ class SketcherGuiExport ViewProviderSketch : public PartGui::ViewProvider2DObjec
 
 private:
     /**
+     * @brief
      * This nested class is responsible for attaching to the parameters relevant for
      * ViewProviderSketch, initialising the ViewProviderSketch to the current configuration
      * and handle in real time any change to their values.
@@ -224,8 +227,9 @@ private:
      */
     //@{
 
-    /** Class to store vector and item Id for dragging.
+    /** @brief Class to store vector and item Id for dragging.
       *
+      * @details
       * Ids are zero-indexed points and curves.
       *
       * The DragPoint indexing matches PreselectPoint indexing.
@@ -269,7 +273,9 @@ private:
 
     // TODO: Selection and Preselection should use a same structure. Probably Drag should use the same structure too. To be refactored separately.
 
-    /** Class to store preselected element ids.
+    /** @brief Class to store preselected element ids.
+      *
+      * @details
       *
       * PreselectPoint is the positive VertexId.
       *
@@ -327,8 +333,9 @@ private:
         bool blockedPreselection;
     };
 
-    /** Class to store selected element ids.
+    /** @brief Class to store selected element ids.
       *
+      * @details
       * Selection follows yet a different mechanism than preselection.
       *
       * SelPointSet indices as PreselectPoint, with the addition that -1 is indeed the rootpoint.
@@ -360,8 +367,7 @@ private:
     };
     //@}
 
-    /** Private struct maintaining information necessary
-     * for detecting double click.
+    /** @brief Private struct maintaining information necessary for detecting double click.
      */
     struct DoubleClick {
         static SbTime prvClickTime;
@@ -370,7 +376,7 @@ private:
         static SbVec2s newCursorPos;
     };
 
-    /** Private struct grouping ViewProvider parameters and internal variables
+    /** @brief Private struct grouping ViewProvider parameters and internal variables
      */
     struct ViewProviderParameters {
         bool handleEscapeButton = false;
