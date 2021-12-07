@@ -1030,7 +1030,7 @@ Restart:
                             break;
 
                         SoDatumLabel *asciiText = static_cast<SoDatumLabel *>(sep->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex)));
-                        asciiText->string    = SbString(Constr->getPresentationValue().getUserString().toUtf8().constData());
+                        asciiText->string    = SbString(getPresentationString(Constr).toUtf8().constData());
                         asciiText->datumtype = SoDatumLabel::ANGLE;
                         asciiText->param1    = Constr->LabelDistance;
                         asciiText->param2    = startangle;
@@ -1587,7 +1587,7 @@ QString EditModeConstraintCoinManager::getPresentationString(const Constraint *c
     // Hide units if user has requested it, is being displayed in the base
     // units, and the schema being used has a clear base unit in the first
     // place. Otherwise, display units.
-    if(constraintParameters.bHideUnits)
+    if(constraintParameters.bHideUnits && constraint->Type != Sketcher::Angle)
     {
         // Only hide the default length unit. Right now there is not an easy way
         // to get that from the Unit system so we have to manually add it here.
