@@ -86,6 +86,7 @@ private:
 public:
     explicit EditModeConstraintCoinManager( ViewProviderSketch &vp,
                                             DrawingParameters & drawingParams,
+                                            GeometryLayerParameters & geometryLayerParams,
                                             ConstraintParameters & constraintParams,
                                             EditModeScenegraphNodes & editModeScenegraph,
                                             CoinMapping & coinMap);
@@ -119,6 +120,8 @@ public:
                                             const SbVec2s &cursorPos);
 
     SoSeparator * getConstraintIdSeparator(int i);
+
+    void createEditModeInventorNodes();
 
 private:
     void rebuildConstraintNodes(const GeoListFacade & geolistfacade); // with specific geometry
@@ -235,6 +238,7 @@ private:
     ViewProviderSketch & viewProvider;
 
     DrawingParameters & drawingParameters;
+    GeometryLayerParameters & geometryLayerParameters;
     ConstraintParameters & constraintParameters;
 
     EditModeScenegraphNodes & editModeScenegraphNodes;
