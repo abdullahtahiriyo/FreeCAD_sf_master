@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (c) 2018 Abdullah Tahiri <abdullah.tahiri.yo@gmail.com>     *
+ *   Copyright (c) 2021 Abdullah Tahiri <abdullah.tahiri.yo@gmail.com>     *
  *                                                                         *
  *   This file is part of the FreeCAD CAx development system.              *
  *                                                                         *
@@ -21,40 +21,29 @@
  ***************************************************************************/
 
 
-#ifndef SKETCHERGUI_SHORTCUTLISTENER_H
-#define SKETCHERGUI_SHORTCUTLISTENER_H
+#include "PreCompiled.h"
 
-#include <QObject>
+#ifndef _PreComp_
+# include <Inventor/nodes/SoSeparator.h>
+# include <Inventor/nodes/SoGroup.h>
+# include <Inventor/nodes/SoSwitch.h>
+
+#endif  // #ifndef _PreComp_
+
+#include <Mod/Part/App/Geometry.h>
+#include <Base/Console.h>
+#include <Base/Exception.h>
+
+#include <Base/UnitsApi.h>
+
+#include "ConstraintCoinConverter.h"
 
 
-namespace SketcherGui {
+using namespace SketcherGui;
 
-class ViewProviderSketch;
+ConstraintCoinConverter::ConstraintCoinConverter( ) {}
 
-class ViewProviderSketchShortcutListenerAttorney {
-private:
-    static inline void deleteSelected(ViewProviderSketch &vp);
-
-
-    friend class ShortcutListener;
-};
-
-class ShortcutListener: public QObject
+void ConstraintCoinConverter::convert()
 {
-    //Q_OBJECT
 
-public:
-    ShortcutListener(ViewProviderSketch * vp);
-    ~ShortcutListener();
-
-protected:
-    bool eventFilter(QObject *obj, QEvent *event);
-
-    ViewProviderSketch * pViewProvider;
-};
-
-} // namespace SketcherGui
-
-
-#endif // SKETCHERGUI_SHORTCUTLISTENER_H
-
+}
