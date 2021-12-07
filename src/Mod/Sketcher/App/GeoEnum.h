@@ -83,6 +83,18 @@ enum class PointPos : int {
     mid     = 3     // Mid point of a geometry
 };
 
+/** @brief      Struct for storing a {GeoId, PointPos} pair.
+ *
+ * @details
+ *
+ * {GeoId, PointPos} is pervasive in the sketcher as means to identify geometry (edges) and geometry elements (vertices).
+ *
+ * GeoElementId intends to substitute this pair whenever appropriate. For example in containers and ordered containers.
+ *
+ * It has overloader equality operator and specialised std::less so that it can safely be used in containers, including
+ * ordered containers.
+ *
+ */
 class SketcherExport GeoElementId
 {
 public:
