@@ -55,6 +55,8 @@ namespace Part {
 namespace SketcherGui {
 
 /** @brief      Struct for storing local drawing parameters
+ *
+ * Parameters based on user preferenced are auto loaded by EditCoinManager observer nested class.
  */
 struct DrawingParameters {
     int curvedEdgeCountSegments;
@@ -126,26 +128,45 @@ struct DrawingParameters {
 /** @brief      Struct for storing the nodes that need to be edited to represent a geometry layer
  */
 struct GeometryLayerNodes {
-    SoMaterial    *PointsMaterials;
-    SoMaterial    *CurvesMaterials;
-    SoCoordinate3 *PointsCoordinate;
-    SoCoordinate3 *CurvesCoordinate;
-    SoLineSet     *CurveSet;
+    std::vector<SoMaterial *> &     PointsMaterials;
+    std::vector<SoCoordinate3 *>&   PointsCoordinate;
+
+    std::vector<SoMaterial *> &     CurvesMaterials;
+    std::vector<SoCoordinate3 *> &  CurvesCoordinate;
+    std::vector<SoLineSet *> &      CurveSet;
 };
 
+/** @brief
+ * Helper class to store together a field index of a coin multifield object and the geometry layer to
+ * which it belongs.
+ *
+ * Overloaded operators and specialisation of std::less enable it to be used in containers including ordered
+ * containers.
+ */
 class MultiFieldId {
 public:
     explicit constexpr MultiFieldId(int fieldindex = -1, int layerid = 0):  fieldIndex(fieldindex),
                                                                             layerId(layerid){}
+
+    MultiFieldId(const MultiFieldId & ) = default;
+    MultiFieldId & operator=(const MultiFieldId &) = default;
 
     inline bool operator==(const MultiFieldId& obj) const
     {
         return this->fieldIndex == obj.fieldIndex && this->layerId == obj.layerId;
     }
 
+    inline bool operator!=(const MultiFieldId& obj) const
+    {
+        return this->fieldIndex != obj.fieldIndex || this->layerId != obj.layerId;
+    }
+
     int fieldIndex = -1;
     int layerId = 0;
+
+    static const MultiFieldId Invalid;
 };
+
 
 } // namespace SketcherGui
 
@@ -163,19 +184,30 @@ namespace std
 
 namespace SketcherGui {
 
+/** @brief
+ * Helper class to store geometry layers configuration
+ */
 struct GeometryLayerParameters {
-    int Layers = 1;
+    int Layers = 1; // defaults to a single Coin Geometry Layer.
+};
+
+/** @brief     Struct to hold the results of analysis performed on geometry
+*/
+struct AnalysisResults { // TODO: This needs to be refactored
+    double combRepresentationScale = 0;     // used for information overlay (BSpline comb)
+    float boundingBoxMagnitudeOrder = 0;    // used for grid extension
+    std::vector<int> bsplineGeoIds;         // used for information overlay
 };
 
 /** @brief      Struct adapted to store the parameters necessary to create and update
  *  the information overlay layer.
  */
 struct OverlayParameters {
-    bool rebuildInformationLayer;
+    bool rebuildInformationLayer = false;
     bool visibleInformationChanged = true;
     double currentBSplineCombRepresentationScale = 0;
 
-    // Parameters
+    // Parameters (auto loaded by EditCoinManager observer nested class)
     bool bSplineDegreeVisible;
     bool bSplineControlPolygonVisible;
     bool bSplineCombVisible;
@@ -183,29 +215,42 @@ struct OverlayParameters {
     bool bSplinePoleWeightVisible;
 };
 
+/** @brief      Struct adapted to store the parameters necessary to create and update
+ *  constraints.
+ */
 struct ConstraintParameters {
     bool bHideUnits;
     bool bShowDimensionalName;
     QString sDimensionalStringFormat;
 };
 
+/** @brief      Helper struct adapted to store the pointer to edit mode scenegraph objects.
+ */
 struct EditModeScenegraphNodes {
-    SoSeparator   *EditRoot;
-    SoMaterial    *PointsMaterials;
-    SoMaterial    *CurvesMaterials;
+    SoSeparator *                   EditRoot;
+    SmSwitchboard *                 PointsGroup;
+    std::vector<SoMaterial *>       PointsMaterials;
+    std::vector<SoCoordinate3 *>    PointsCoordinate;
+    std::vector<SoDrawStyle *>      PointsDrawStyle;
+    std::vector<SoMarkerSet *>      PointSet;
+
+    SmSwitchboard *                 CurvesGroup;
+    std::vector<SoMaterial *>       CurvesMaterials;
+    std::vector<SoCoordinate3 *>    CurvesCoordinate;
+    std::vector<SoDrawStyle *>      CurvesDrawStyle;
+    std::vector<SoLineSet *>        CurveSet;
+
     SoMaterial    *RootCrossMaterials;
     SoMaterial    *EditCurvesMaterials;
     SoMaterial    *EditMarkersMaterials;
-    SoCoordinate3 *PointsCoordinate;
-    SoCoordinate3 *CurvesCoordinate;
+
     SoCoordinate3 *RootCrossCoordinate;
     SoCoordinate3 *EditCurvesCoordinate;
     SoCoordinate3 *EditMarkersCoordinate;
-    SoLineSet     *CurveSet;
+
     SoLineSet     *RootCrossSet;
     SoLineSet     *EditCurveSet;
     SoMarkerSet   *EditMarkerSet;
-    SoMarkerSet   *PointSet;
 
     SoText2       *textX;
     SoTranslation *textPos;
@@ -214,8 +259,6 @@ struct EditModeScenegraphNodes {
     SoGroup       *infoGroup;
     SoPickStyle   *pickStyleAxes;
 
-    SoDrawStyle * PointsDrawStyle;
-    SoDrawStyle * CurvesDrawStyle;
     SoDrawStyle * RootCrossDrawStyle;
     SoDrawStyle * EditCurvesDrawStyle;
     SoDrawStyle * EditMarkersDrawStyle;
@@ -223,14 +266,52 @@ struct EditModeScenegraphNodes {
     SoDrawStyle * InformationDrawStyle;
 };
 
+/** @brief      Helper struct adapted to map
+ */
 struct CoinMapping {
-    std::vector<int> CurvIdToGeoId; // conversion of SoLineSet index to GeoId
-    std::vector<int> PointIdToGeoId; // conversion of SoCoordinate3 index to GeoId
-    std::map<std::pair<int, Sketcher::PointPos>, int> GeoIdPointPosToPointId; // conversion of [GeoId,Pos] to PointId
 
-    std::map<MultiFieldId,Sketcher::GeoElementId> PointSetId2GeoElementId;
-    std::map<MultiFieldId,Sketcher::GeoElementId> CurveSetId2GeoElementId;
+    void clear() {
+        CurvIdToGeoId.clear();
+        PointIdToGeoId.clear();
+        GeoElementId2SetId.clear();
+        PointIdToVertexId.clear();
+    };
 
+    int getCurveGeoId(int curveindex, int layerindex) {return CurvIdToGeoId[layerindex][curveindex];}
+    int getPointGeoId(int pointindex, int layerindex) {return PointIdToGeoId[layerindex][pointindex];}
+    int getPointVertexId(int pointindex, int layerindex) {return PointIdToVertexId[layerindex][pointindex];}
+
+
+    MultiFieldId getIndexLayer(int geoid, Sketcher::PointPos pos) {
+        auto indexit = GeoElementId2SetId.find(Sketcher::GeoElementId(geoid, pos));
+
+        if (indexit != GeoElementId2SetId.end()) {
+            return indexit->second;
+        }
+
+        return MultiFieldId::Invalid;
+    }
+
+    MultiFieldId getIndexLayer(int vertexId) {
+
+        for(size_t l=0; l<PointIdToVertexId.size(); l++) {
+            auto indexit = std::find(PointIdToVertexId[l].begin(), PointIdToVertexId[l].end(), vertexId);
+
+            if(indexit != PointIdToVertexId[l].end())
+                return MultiFieldId(std::distance(PointIdToVertexId[l].begin(),indexit),l);
+        }
+
+        return MultiFieldId::Invalid;
+    }
+
+    //* These map an index within layer for points or curves to a GeoId */
+    std::vector<std::vector<int>> CurvIdToGeoId; // conversion of SoLineSet index to GeoId
+    std::vector<std::vector<int>> PointIdToGeoId; // conversion of SoCoordinate3 index to GeoId
+
+    //* This maps an index within layer for points to a global VertexId */
+    std::vector<std::vector<int>> PointIdToVertexId;
+
+    /// This maps GeoElementId index {GeoId, PointPos} to a {layer and index} of a curves or points.
     std::map<Sketcher::GeoElementId,MultiFieldId> GeoElementId2SetId;
 };
 

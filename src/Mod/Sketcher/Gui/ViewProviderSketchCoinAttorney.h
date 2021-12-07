@@ -61,14 +61,14 @@ using GeoListFacade = Sketcher::GeoListFacade;
  *  ViewProviderSketch delegates a substantial part of coin related visualisation to
  *  ViewProviderSketchCoinAttorney during edit mode.
  *
- *  Sometimes ViewProviderSketchCoinAttorney needs to access selected functionalities only available to ViewProviderSketch.
+ *  Sometimes friend classes of ViewProviderSketchCoinAttorney need to access selected functionalities only available to ViewProviderSketch.
  *
  *  This attorney class regulates which specific functionalities ViewProviderSketchCoinAttorney is able to access in
  *  ViewProviderSketch.
  *
  *  The objective is:
  *  - to preserve as much as possible ViewProviderSketch encapsulation
- *  - to promote as much loose coupling as possible.
+ *  - to promote as much as reasonably possible loose coupling between tightly related classes.
  *  - to keep control over the interactions between these classes and easily identify the cooperation interface.
  */
 class ViewProviderSketchCoinAttorney {
@@ -110,6 +110,7 @@ private:
 
     friend class EditModeCoinManager;
     friend class EditModeConstraintCoinManager;
+    friend class EditModeGeometryCoinManager;
 };
 
 inline bool ViewProviderSketchCoinAttorney::constraintHasExpression(const ViewProviderSketch & vp, int constrid)
