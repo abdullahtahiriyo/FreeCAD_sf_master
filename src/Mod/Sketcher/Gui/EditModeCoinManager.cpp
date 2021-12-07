@@ -492,10 +492,10 @@ EditModeCoinManager::PreselectionResult EditModeCoinManager::detectPreselection(
             if (point_detail && point_detail->getTypeId() == SoPointDetail::getClassTypeId()) {
                 // get the index
                 int pindex = static_cast<const SoPointDetail *>(point_detail)->getCoordinateIndex();
-                result.ptIndex = coinMapping.getPointVertexId(pindex, l); // returns -1 for root, global VertexId for the rest of vertices.
+                result.PointIndex = coinMapping.getPointVertexId(pindex, l); // returns -1 for root, global VertexId for the rest of vertices.
 
-                if (result.ptIndex == -1)
-                    result.axes = PreselectionResult::Axes::RootPoint;
+                if (result.PointIndex == -1)
+                    result.Cross = PreselectionResult::Axes::RootPoint;
 
                 return result;
             }
@@ -507,7 +507,7 @@ EditModeCoinManager::PreselectionResult EditModeCoinManager::detectPreselection(
             if (curve_detail && curve_detail->getTypeId() == SoLineDetail::getClassTypeId()) {
                 // get the index
                 int curveIndex = static_cast<const SoLineDetail *>(curve_detail)->getLineIndex();
-                result.geoIndex = coinMapping.getCurveGeoId(curveIndex, l);
+                result.GeoIndex = coinMapping.getCurveGeoId(curveIndex, l);
 
                 return result;
             }
@@ -521,15 +521,15 @@ EditModeCoinManager::PreselectionResult EditModeCoinManager::detectPreselection(
             int CrossIndex = static_cast<const SoLineDetail *>(cross_detail)->getLineIndex();
 
             if(CrossIndex == 0)
-                result.axes = PreselectionResult::Axes::HorizontalAxis;
+                result.Cross = PreselectionResult::Axes::HorizontalAxis;
             else if(CrossIndex == 1)
-                result.axes = PreselectionResult::Axes::VerticalAxis;
+                result.Cross = PreselectionResult::Axes::VerticalAxis;
 
             return result;
         }
     }
     // checking if a constraint is hit
-    result.constrIndices = pEditModeConstraintCoinManager->detectPreselectionConstr(Point, cursorPos);
+    result.ConstrIndices = pEditModeConstraintCoinManager->detectPreselectionConstr(Point, cursorPos);
 
     return result;
 }

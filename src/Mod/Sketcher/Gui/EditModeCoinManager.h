@@ -66,15 +66,44 @@ class EditModeGeometryCoinManager;
 using GeoList = Sketcher::GeoList;
 using GeoListFacade = Sketcher::GeoListFacade;
 
-/** @brief      Class for managing the Coin nodes of ViewProviderSketch.
- *  @details    To be documented.
+/** @brief      Helper class for managing the Coin nodes of ViewProviderSketch.
+ *  @details
  *
+ * Given the substantial amount of code involved in coin node management, EditModeCoinManager
+ * further delegates on other specialised helper classes. Some of them share the
+ * ViewProviderSketchCoinAttorney, which defines the maximum coupling and minimum encapsulation.
+ *
+ * The most important such delegates are: EditModeGeometryCoinManager and EditModeConstraintCoinManager.
+ *
+ * EditModeCoinManager takes over the responsibility of creating the Coin (Inventor) scenograph
+ * and modifying it, including all the drawing of geometry, constraints and overlay layer. This
+ * is an exclusive responsibility under the Single Responsibility Principle.
+ *
+ * EditModeCoinManager exposes a public interface to be used by ViewProviderSketch. Where,
+ * EditModeCoinManager needs special access to facilities of ViewProviderSketch in order to fulfil
+ * its responsibility, this access is defined by ViewProviderSketchCoinAttorney.
+ *
+ * EditModeCoinManager is responsible, under the Single Responsibility Principle, to manage the coin
+ * EditRoot node. This node is ref-ed on creation and unref-ed on destruction to ensure that its lifetime
+ * matches the one of EditModecoinManager.
+ *
+ * EditRoot is added on request to pcRoot by ViewProviderSketch. The node pcRoot belongs, under the Single
+ * Responsibility Principle, to ViewProviderSketch. EditModeCoinManager delegates addition and removal of
+ * child notes of EditRoot to specialised helper classes.
+ *
+ * EditModeCoinManager is designed to define the span of time in which ViewProviderSketch is in edit mode.
+ *
+ * In addition to the scenograph, EditModeCoinManager is responsible for keeping any necessary mapping between
+ * indices used at ViewProviderSketch level, and internal indexing used by EditModeCoinManager and its subclasses.
  */
 class SketcherGuiExport EditModeCoinManager
 {
     /** @brief      Class for monitoring changes in parameters affecting drawing and coin node generation
-    *  @details    To be documented.
+    *  @details
     *
+    * This nested class is a helper responsible for attaching to the parameters relevant for
+    * EditModeCoinManager and its helpers, initialising the EditModeCoinManager to the current configuration
+    * and handle in real time any change to their values.
     */
     class ParameterObserver : public ParameterGrp::ObserverType
     {
@@ -115,7 +144,25 @@ class SketcherGuiExport EditModeCoinManager
     };
 
 public:
+    /** @brief This struct defines the information provided to other classes about preselection.
+     *
+     * @details
+     *
+     * PointIndex: Only Positive values corresponding to VertexId (are positive for both normal and external geometry)
+     * GeoIndex: Same values as GeoId of GeoElementId, except for axes which are not included. -1 represents an invalid curve.
+     *
+     * In other words valid values are 0,1,2,... for normal geometry and -3,-4,-5,... for external geometry
+     *
+     * Cross: Axes and RootPoint values as defined in the enum class.
+     *
+     */
     struct PreselectionResult {
+        enum SpecialValues {
+            InvalidPoint = -1,
+            InvalidCurve = -1,
+            ExternalCurve = -3
+        };
+
         enum class Axes {
             None = -1,
             RootPoint = 0,
@@ -123,16 +170,16 @@ public:
             VerticalAxis = 2
         };
 
-        int ptIndex = -1;
-        int geoIndex = -1; // valid values are 0,1,2,... for normal geometry and -3,-4,-5,... for external geometry
-        Axes axes = Axes::None;
-        std::set<int> constrIndices;
+        int PointIndex = InvalidPoint;
+        int GeoIndex = InvalidCurve; // valid values are 0,1,2,... for normal geometry and -3,-4,-5,... for external geometry
+        Axes Cross = Axes::None;
+        std::set<int> ConstrIndices;
 
         inline void clear() {
-            ptIndex = -1;
-            geoIndex = -1;
-            axes = Axes::None;
-            constrIndices.clear();
+            PointIndex = InvalidPoint;
+            GeoIndex = InvalidCurve;
+            Cross = Axes::None;
+            ConstrIndices.clear();
         }
     };
 
@@ -216,7 +263,9 @@ private:
     //@}
 
 private:
+    /// Reference to ViewProviderSketch in order to access the public and the Attorney Interface
     ViewProviderSketch & viewProvider;
+    /// Observer to track all the needed parameters.
     std::unique_ptr<EditModeCoinManager::ParameterObserver> pObserver;
 
     DrawingParameters drawingParameters;
@@ -225,14 +274,15 @@ private:
     ConstraintParameters constraintParameters;
     GeometryLayerParameters geometryLayerParameters;
 
+    /// The pointers to Coin Scenegraph
     EditModeScenegraphNodes editModeScenegraphNodes;
 
+    /// Mapping between external and internal indices
     CoinMapping coinMapping;
 
     // Coin Helpers
     std::unique_ptr<EditModeConstraintCoinManager> pEditModeConstraintCoinManager;
     std::unique_ptr<EditModeGeometryCoinManager> pEditModeGeometryCoinManager;
-
 };
 
 

@@ -64,15 +64,14 @@ class ViewProviderSketch;
 using GeoList = Sketcher::GeoList;
 using GeoListFacade = Sketcher::GeoListFacade;
 
-
-/** @brief      Class for managing the Constraint Coin nodes of ViewProviderSketch.
+/** @brief      Class for managing the Edit mode coin nodes of ViewProviderSketch relating to constraints.
  *  @details    To be documented.
  *
  */
 class SketcherGuiExport EditModeConstraintCoinManager
 {
 private:
-    // TODO: This should probably go in ConstraintCoinConverter, but then updateColor should go there TODO
+    /// Coin Node indices for constraints
     enum class ConstraintNodePosition {
         MaterialIndex = 0,
         DatumLabelIndex = 0,
