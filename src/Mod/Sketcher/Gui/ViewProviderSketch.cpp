@@ -430,22 +430,22 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
                 }
                 return true;
             }
-            if (isInEditMode() && drag.DragCurve >= 0) {
+            if (isInEditMode() && drag.isDragCurveValid()) {
                 if (!pressed) {
                     getSketchObject()->movePoint(drag.DragCurve, Sketcher::PointPos::none, Base::Vector3d(0,0,0), true);
-                    drag.DragCurve = -1;
+                    drag.DragCurve = Drag::InvalidCurve;
                     resetPositionText();
                     Mode = STATUS_NONE;
                 }
                 return true;
             }
-            if (isInEditMode() && drag.DragPoint >= 0) {
+            if (isInEditMode() && drag.isDragPointValid()) {
                 if (!pressed) {
                     int GeoId;
                     Sketcher::PointPos PosId;
                     getSketchObject()->getGeoVertexIndex(drag.DragPoint, GeoId, PosId);
                     getSketchObject()->movePoint(GeoId, PosId, Base::Vector3d(0,0,0), true);
-                    drag.DragPoint = -1;
+                    drag.DragPoint = Drag::InvalidPoint;
                     resetPositionText();
                     Mode = STATUS_NONE;
                 }
@@ -608,15 +608,15 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
             switch (Mode) {
                 case STATUS_NONE:{
                     bool done=false;
-                    if (preselection.PreselectPoint != -1) {
+                    if (preselection.isPreselectPointValid()) {
                         //Base::Console().Log("start dragging, point:%d\n",this->DragPoint);
                         Mode = STATUS_SELECT_Point;
                         done = true;
-                    } else if (preselection.PreselectCurve != -1) {
+                    } else if (preselection.isPreselectCurveValid()) {
                         //Base::Console().Log("start dragging, point:%d\n",this->DragPoint);
                         Mode = STATUS_SELECT_Edge;
                         done = true;
-                    } else if (preselection.PreselectCross != -1) {
+                    } else if (preselection.isCrossPreselected()) {
                         //Base::Console().Log("start dragging, point:%d\n",this->DragPoint);
                         Mode = STATUS_SELECT_Cross;
                         done = true;
@@ -664,7 +664,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                         //Base::Console().Log("Select Point:%d\n",this->DragPoint);
                         // Do selection
                         std::stringstream ss;
-                        ss << "Vertex" << preselection.PreselectPoint + 1;
+                        ss << "Vertex" << preselection.getPreselectionVertexIndex();
 
                         if (isSelected(ss.str())) {
                              rmvSelection(ss.str());
@@ -679,10 +679,10 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     if (pp) {
                         //Base::Console().Log("Select Point:%d\n",this->DragPoint);
                         std::stringstream ss;
-                        if (preselection.PreselectCurve >= 0)
-                            ss << "Edge" << preselection.PreselectCurve + 1;
+                        if (preselection.isEdge())
+                            ss << "Edge" << preselection.getPreselectionEdgeIndex();
                         else // external geometry
-                            ss << "ExternalEdge" << -preselection.PreselectCurve - 2;
+                            ss << "ExternalEdge" << preselection.getPreselectionExternalEdgeIndex();
 
                         // If edge already selected move from selection
                         if (isSelected(ss.str()) ) {
@@ -700,9 +700,10 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                         //Base::Console().Log("Select Point:%d\n",this->DragPoint);
                         std::stringstream ss;
                         switch(preselection.PreselectCross){
-                            case 0: ss << "RootPoint" ; break;
-                            case 1: ss << "H_Axis"    ; break;
-                            case 2: ss << "V_Axis"    ; break;
+                            case Preselection::Axes::RootPoint:         ss << "RootPoint" ; break;
+                            case Preselection::Axes::HorizontalAxis:    ss << "H_Axis"    ; break;
+                            case Preselection::Axes::VerticalAxis:      ss << "V_Axis"    ; break;
+                            default: break;
                         }
 
                         // If cross already selected move from selection
@@ -736,7 +737,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     Mode = STATUS_NONE;
                     return true;
                 case STATUS_SKETCH_DragPoint:
-                    if (drag.DragPoint != -1) {
+                    if (drag.isDragPointValid()) {
                         int GeoId;
                         Sketcher::PointPos PosId;
                         getSketchObject()->getGeoVertexIndex(drag.DragPoint, GeoId, PosId);
@@ -755,14 +756,14 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                             }
                         }
                         setPreselectPoint(drag.DragPoint);
-                        drag.DragPoint = -1;
+                        drag.DragPoint = Drag::InvalidPoint;
                         //updateColor();
                     }
                     resetPositionText();
                     Mode = STATUS_NONE;
                     return true;
                 case STATUS_SKETCH_DragCurve:
-                    if (drag.DragCurve != -1) {
+                    if (drag.isDragCurveValid()) {
                         const Part::Geometry *geo = getSketchObject()->getGeometry(drag.DragCurve);
                         if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId() ||
                             geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId() ||
@@ -815,7 +816,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                             }
                         }
                         preselection.PreselectCurve = drag.DragCurve;
-                        drag.DragCurve = -1;
+                        drag.DragCurve = Drag::InvalidCurve;
                         //updateColor();
                     }
                     resetPositionText();
@@ -868,9 +869,9 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                 case STATUS_NONE:
                     {
                         // A right click shouldn't change the Edit Mode
-                        if (preselection.PreselectPoint != -1) {
+                        if (preselection.isPreselectPointValid()) {
                             return true;
-                        } else if (preselection.PreselectCurve != -1) {
+                        } else if (preselection.isPreselectCurveValid()) {
                             return true;
                         } else if (preselection.PreselectConstraintSet.empty() != true) {
                             return true;
@@ -977,13 +978,13 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
 
 void ViewProviderSketch::editDoubleClicked(void)
 {
-    if (preselection.PreselectPoint != -1) {
+    if (preselection.isPreselectPointValid()) {
         Base::Console().Log("double click point:%d\n",preselection.PreselectPoint);
     }
-    else if (preselection.PreselectCurve != -1) {
+    else if (preselection.isPreselectCurveValid()) {
         Base::Console().Log("double click edge:%d\n",preselection.PreselectCurve);
     }
-    else if (preselection.PreselectCross != -1) {
+    else if (preselection.isCrossPreselected()) {
         Base::Console().Log("double click cross:%d\n",preselection.PreselectCross);
     }
     else if (preselection.PreselectConstraintSet.empty() != true) {
@@ -1064,7 +1065,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
             return false;
         case STATUS_SELECT_Point:
             if (!getSolvedSketch().hasConflicts() &&
-                preselection.PreselectPoint != -1 && drag.DragPoint != preselection.PreselectPoint) {
+                preselection.isPreselectPointValid() && drag.DragPoint != preselection.PreselectPoint) {
                 Mode = STATUS_SKETCH_DragPoint;
                 drag.DragPoint = preselection.PreselectPoint;
                 int GeoId;
@@ -1081,7 +1082,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
             return true;
         case STATUS_SELECT_Edge:
             if (!getSolvedSketch().hasConflicts() &&
-                preselection.PreselectCurve != -1 && drag.DragCurve != preselection.PreselectCurve) {
+                preselection.isPreselectCurveValid() && drag.DragCurve != preselection.PreselectCurve) {
                 Mode = STATUS_SKETCH_DragCurve;
                 drag.DragCurve = preselection.PreselectCurve;
                 const Part::Geometry *geo = getSketchObject()->getGeometry(drag.DragCurve);
@@ -1177,7 +1178,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
             resetPreselectPoint();
             return true;
         case STATUS_SKETCH_DragPoint:
-            if (drag.DragPoint != -1) {
+            if (drag.isDragPointValid()) {
                 //Base::Console().Log("Drag Point:%d\n",edit->DragPoint);
                 int GeoId;
                 Sketcher::PointPos PosId;
@@ -1192,7 +1193,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
             }
             return true;
         case STATUS_SKETCH_DragCurve:
-            if (drag.DragCurve != -1) {
+            if (drag.isDragCurveValid()) {
                 auto geo = getSketchObject()->getGeometry(drag.DragCurve);
                 auto gf = GeometryFacade::getFacade(geo);
 
@@ -1498,7 +1499,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
         std::string temp;
         if (msg.Type == Gui::SelectionChanges::ClrSelection) {
             // if something selected in this object?
-            if (selection.SelPointSet.size() > 0 || selection.SelCurvSet.size() > 0 || selection.SelConstraintSet.size() > 0) {
+            if (!selection.SelPointSet.empty() || !selection.SelCurvSet.empty() || !selection.SelConstraintSet.empty()) {
                 // clear our selection and update the color of the viewed edges and points
                 clearSelectPoints();
                 selection.SelCurvSet.clear();
@@ -1530,15 +1531,15 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                         this->updateColor();
                     }
                     else if (shapetype == "RootPoint") {
-                        addSelectPoint(Sketcher::GeoEnum::RtPnt);
+                        addSelectPoint(Selection::RootPoint);
                         this->updateColor();
                     }
                     else if (shapetype == "H_Axis") {
-                        selection.SelCurvSet.insert(Sketcher::GeoEnum::HAxis);
+                        selection.SelCurvSet.insert(Selection::HorizontalAxis);
                         this->updateColor();
                     }
                     else if (shapetype == "V_Axis") {
-                        selection.SelCurvSet.insert(Sketcher::GeoEnum::VAxis);
+                        selection.SelCurvSet.insert(Selection::VerticalAxis);
                         this->updateColor();
                     }
                     else if (shapetype.size() > 10 && shapetype.substr(0,10) == "Constraint") {
@@ -1552,7 +1553,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
         }
         else if (msg.Type == Gui::SelectionChanges::RmvSelection) {
             // Are there any objects selected
-            if (selection.SelPointSet.size() > 0 || selection.SelCurvSet.size() > 0 || selection.SelConstraintSet.size() > 0) {
+            if (!selection.SelPointSet.empty() || !selection.SelCurvSet.empty() || !selection.SelConstraintSet.empty()) {
                 // is it this object??
                 if (strcmp(msg.pDocName,getSketchObject()->getDocument()->getName())==0
                     && strcmp(msg.pObjectName,getSketchObject()->getNameInDocument())== 0) {
@@ -1682,7 +1683,7 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
                     sketchHandler->applyCursor();
                 return true;
             }
-        } else if (result.axes != EditModeCoinManager::PreselectionResult::Axes::None  && static_cast<int>(result.axes) != preselection.PreselectCross) {  // if a cross line is hit
+        } else if (result.axes != EditModeCoinManager::PreselectionResult::Axes::None  && static_cast<int>(result.axes) != static_cast<int>(preselection.PreselectCross)) {  // if a cross line is hit
             std::stringstream ss;
             switch(result.axes){
                 case EditModeCoinManager::PreselectionResult::Axes::RootPoint:      ss << "RootPoint" ; break;
@@ -1697,7 +1698,7 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
                     setPreselectRootPoint();
                 else
                     resetPreselectPoint();
-                preselection.PreselectCross = static_cast<int>(result.axes);
+                preselection.PreselectCross = static_cast<Preselection::Axes>(static_cast<int>(result.axes));
 
                 if (sketchHandler)
                     sketchHandler->applyCursor();
@@ -1724,7 +1725,7 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
             }
         } else if ((result.ptIndex == -1 && result.geoIndex == -1 &&
                     result.axes == EditModeCoinManager::PreselectionResult::Axes::None && result.constrIndices.empty()) &&
-                   (preselection.PreselectPoint != -1 || preselection.PreselectCurve != -1 || preselection.PreselectCross != -1
+                   (preselection.isPreselectPointValid() || preselection.isPreselectCurveValid() || preselection.isCrossPreselected()
                     || preselection.PreselectConstraintSet.empty() != true || preselection.blockedPreselection)) {
             // we have just left a preselection
             resetPreselectPoint();
@@ -1735,8 +1736,8 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint * Point, const 
         }
         Gui::Selection().setPreselectCoord(Point->getPoint()[0], Point->getPoint()[1], Point->getPoint()[2]);
 
-    } else if (preselection.PreselectCurve != -1 || preselection.PreselectPoint != -1 ||
-               preselection.PreselectConstraintSet.empty() != true || preselection.PreselectCross != -1 || preselection.blockedPreselection) {
+    } else if (preselection.isPreselectCurveValid() || preselection.isPreselectPointValid() ||
+               preselection.PreselectConstraintSet.empty() != true || preselection.isCrossPreselected() || preselection.blockedPreselection) {
         resetPreselectPoint();
         preselection.blockedPreselection = false;
         if (sketchHandler)
@@ -3067,8 +3068,9 @@ int ViewProviderSketch::getPreselectCurve(void) const
 
 int ViewProviderSketch::getPreselectCross(void) const
 {
+    // TODO: This function spreads over several files. It should be refactored into something less "numeric" at a second stage.
     if (isInEditMode())
-        return preselection.PreselectCross;
+        return static_cast<int>(preselection.PreselectCross);
     return -1;
 }
 
@@ -3308,47 +3310,41 @@ void ViewProviderSketch::resetPositionText(void)
 
 void ViewProviderSketch::setPreselectPoint(int PreselectPoint)
 {
-    editCoinManager->drawPreselectPoint(PreselectPoint);
     preselection.PreselectPoint = PreselectPoint;
-    preselection.PreselectCurve = -1;
-    preselection.PreselectCross = -1;
+    preselection.PreselectCurve = Preselection::InvalidCurve;
+    preselection.PreselectCross = Preselection::Axes::None;;
     preselection.PreselectConstraintSet.clear();
 }
 
 void ViewProviderSketch::setPreselectRootPoint()
 {
-    editCoinManager->drawPreselectRootPoint();
-    preselection.PreselectPoint = -1;
-    preselection.PreselectCurve = -1;
-    preselection.PreselectCross = -1;
+    preselection.PreselectPoint = Preselection::InvalidPoint;
+    preselection.PreselectCurve = Preselection::InvalidCurve;
+    preselection.PreselectCross = Preselection::Axes::RootPoint;
     preselection.PreselectConstraintSet.clear();
 }
 
 
 void ViewProviderSketch::resetPreselectPoint(void)
 {
-    editCoinManager->clearPointPreselection();
-    preselection.PreselectPoint = -1;
-    preselection.PreselectCurve = -1;
-    preselection.PreselectCross = -1;
+    preselection.PreselectPoint = Preselection::InvalidPoint;
+    preselection.PreselectCurve = Preselection::InvalidCurve;
+    preselection.PreselectCross = Preselection::Axes::None;;
     preselection.PreselectConstraintSet.clear();
 }
 
 void ViewProviderSketch::addSelectPoint(int SelectPoint)
 {
-    editCoinManager->drawPointAsSelected(SelectPoint);
-    selection.SelPointSet.insert(SelectPoint + 1); // TODO: Yet another hack? PreselectPoint is stored without + 1, SelectPoint with it ???
+    selection.SelPointSet.insert(SelectPoint);
 }
 
 void ViewProviderSketch::removeSelectPoint(int SelectPoint)
 {
-    editCoinManager->clearPointSelection(SelectPoint);
     selection.SelPointSet.erase(SelectPoint);
 }
 
 void ViewProviderSketch::clearSelectPoints(void)
 {
-    editCoinManager->clearPointSelection();
     selection.SelPointSet.clear();
 }
 

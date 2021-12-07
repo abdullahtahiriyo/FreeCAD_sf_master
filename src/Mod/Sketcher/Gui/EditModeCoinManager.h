@@ -61,6 +61,7 @@ namespace SketcherGui {
 
 class ViewProviderSketch;
 class EditModeConstraintCoinManager;
+class EditModeGeometryCoinManager;
 
 using GeoList = Sketcher::GeoList;
 using GeoListFacade = Sketcher::GeoListFacade;
@@ -113,17 +114,6 @@ class SketcherGuiExport EditModeCoinManager
         EditModeCoinManager &Client;
     };
 
-    /** @brief     Struct to hold the results of analysis
-    *  @details    To be documented.
-    *
-    */
-    struct AnalysisResults { // TODO: This needs to be refactored
-        double combRepresentationScale = 0;
-        float boundingBoxMagnitudeOrder = 0;
-        std::vector<int> bsplineGeoIds;
-
-    };
-
 public:
     struct PreselectionResult {
         enum class Axes {
@@ -163,12 +153,6 @@ public:
     /** @name handle preselection and selection of points */
     //@{
     PreselectionResult detectPreselection(SoPickedPoint * Point, const SbVec2s &cursorPos);
-    void drawPreselectPoint(int PreselectPoint);
-    void drawPreselectRootPoint();
-    void clearPointPreselection(void);
-    void drawPointAsSelected(int selectpointId);
-    void clearPointSelection(int selectpointId);
-    void clearPointSelection(void);
     /// The client is responsible for unref-ing the SoGroup to release the memory.
     SoGroup* getSelectedConstraints();
     //@}
@@ -239,6 +223,7 @@ private:
     AnalysisResults analysisResults;
     OverlayParameters overlayParameters;
     ConstraintParameters constraintParameters;
+    GeometryLayerParameters geometryLayerParameters;
 
     EditModeScenegraphNodes editModeScenegraphNodes;
 
@@ -246,6 +231,7 @@ private:
 
     // Coin Helpers
     std::unique_ptr<EditModeConstraintCoinManager> pEditModeConstraintCoinManager;
+    std::unique_ptr<EditModeGeometryCoinManager> pEditModeGeometryCoinManager;
 
 };
 
