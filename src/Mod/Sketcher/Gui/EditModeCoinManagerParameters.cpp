@@ -75,3 +75,5 @@ QColor DrawingParameters::constrIconPreselColor (   (int)(DrawingParameters::Pre
 QColor DrawingParameters::constrIconDisabledColor ( (int)(DrawingParameters::DeactivatedConstrDimColor[0] * 255.0f),
                                                     (int)(DrawingParameters::DeactivatedConstrDimColor[1] * 255.0f),
                                                     (int)(DrawingParameters::DeactivatedConstrDimColor[2] * 255.0f));
+
+const MultiFieldId MultiFieldId::Invalid = MultiFieldId();
