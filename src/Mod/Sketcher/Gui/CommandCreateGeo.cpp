@@ -289,7 +289,7 @@ public:
             setPositionText(onSketchPos, text);
 
             EditCurve[1] = onSketchPos;
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr2, onSketchPos, onSketchPos - EditCurve[0])) {
                 renderSuggestConstraintsCursor(sugConstr2);
                 return;
@@ -306,7 +306,7 @@ public:
         }
         else {
             EditCurve[1] = onSketchPos;
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             Mode = STATUS_End;
         }
         return true;
@@ -353,7 +353,7 @@ public:
             tryAutoRecomputeIfNotSolve(static_cast<Sketcher::SketchObject *>(sketchgui->getObject()));
 
             EditCurve.clear();
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
 
             bool continuousMode = hGrp->GetBool("ContinuousCreationMode",true);
             if(continuousMode){
@@ -484,7 +484,7 @@ public:
                 EditCurve[4] = EditCurve[0];
             }
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr2, onSketchPos, Base::Vector2d(0.0,0.0))) {
                 renderSuggestConstraintsCursor(sugConstr2);
                 return;
@@ -512,7 +512,7 @@ public:
                 EditCurve[2] = onSketchPos;
                 EditCurve[1] = Base::Vector2d(onSketchPos.x ,EditCurve[0].y);
                 EditCurve[3] = Base::Vector2d(EditCurve[0].x,onSketchPos.y);
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 Mode = STATUS_End;
             }
             else if (constructionMethod == CenterAndCorner) {
@@ -521,7 +521,7 @@ public:
                 EditCurve[2] = onSketchPos;
                 EditCurve[3] = Base::Vector2d(onSketchPos.x,EditCurve[0].y);
                 EditCurve[4] = EditCurve[0];
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 Mode = STATUS_End;
             }
         }
@@ -659,7 +659,7 @@ public:
             // This code enables the continuous creation mode.
                 Mode=STATUS_SEEK_First;
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 EditCurve.resize(5);
                 applyCursor();
                 /* this is ok not to call to purgeHandler
@@ -855,7 +855,7 @@ public:
             text.sprintf(" (%.1fR %.1fX %.1fY)", radius, lengthX, lengthY);
             setPositionText(onSketchPos, text);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr2, onSketchPos, Base::Vector2d(0.f, 0.f))) {
                 renderSuggestConstraintsCursor(sugConstr2);
                 return;
@@ -1027,7 +1027,7 @@ public:
                 // This code enables the continuous creation mode.
                 Mode = STATUS_SEEK_First;
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 EditCurve.resize(37);
                 applyCursor();
                 /* this is ok not to call to purgeHandler
@@ -1366,7 +1366,7 @@ public:
                     EditCurve[1] = EditCurve[0] + EditCurve[1];
                 }
 
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
 
                 float length = (EditCurve[1] - EditCurve[0]).Length();
                 float angle = (EditCurve[1] - EditCurve[0]).GetAngle(Base::Vector2d(1.f,0.f));
@@ -1447,7 +1447,7 @@ public:
                 EditCurve[30] = CenterPoint;
                 EditCurve[31] = EditCurve[0];
 
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
 
                 SbString text;
                 text.sprintf(" (%.1fR,%.1fdeg)", std::abs(arcRadius), arcAngle * 180 / M_PI);
@@ -1508,7 +1508,7 @@ public:
                 unsetCursor();
                 resetPositionText();
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
 
                 ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
                 bool continuousMode = hGrp->GetBool("ContinuousCreationMode",true);
@@ -1525,7 +1525,7 @@ public:
                     firstPosId=Sketcher::none;
                     previousPosId=Sketcher::none;
                     EditCurve.clear();
-                    sketchgui->drawEdit(EditCurve);
+                    drawEdit(EditCurve);
                     EditCurve.resize(2);
                     applyCursor();
                     /* this is ok not to call to purgeHandler
@@ -1541,14 +1541,14 @@ public:
             }
 
             Mode = STATUS_Do;
-            if (sketchgui->getPreselectPoint() != -1 && firstPosId != Sketcher::none) {
+            if (getPreselectPoint() != -1 && firstPosId != Sketcher::none) {
                 int GeoId;
                 Sketcher::PointPos PosId;
-                sketchgui->getSketchObject()->getGeoVertexIndex(sketchgui->getPreselectPoint(),GeoId,PosId);
+                sketchgui->getSketchObject()->getGeoVertexIndex(getPreselectPoint(),GeoId,PosId);
                 if (sketchgui->getSketchObject()->arePointsCoincident(GeoId,PosId,firstCurve,firstPosId))
                     Mode = STATUS_Close;
             }
-            else if (sketchgui->getPreselectCross() == 0 && firstPosId != Sketcher::none) {
+            else if (getPreselectCross() == 0 && firstPosId != Sketcher::none) {
                 // close line started at root point
                 if (sketchgui->getSketchObject()->arePointsCoincident(-1,Sketcher::start,firstCurve,firstPosId))
                     Mode = STATUS_Close;
@@ -1671,7 +1671,7 @@ public:
 
                 resetPositionText();
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
 
                 ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
                 bool continuousMode = hGrp->GetBool("ContinuousCreationMode",true);
@@ -1688,7 +1688,7 @@ public:
                     firstPosId=Sketcher::none;
                     previousPosId=Sketcher::none;
                     EditCurve.clear();
-                    sketchgui->drawEdit(EditCurve);
+                    drawEdit(EditCurve);
                     EditCurve.resize(2);
                     applyCursor();
                     /* this is ok not to call to purgeHandler
@@ -1789,7 +1789,7 @@ public:
                 previousPosId=Sketcher::none;
                 firstsegment=true;
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 EditCurve.resize(2);
                 applyCursor();
             }
@@ -1947,7 +1947,7 @@ public:
             text.sprintf(" (%.1fR,%.1fdeg)", radius, angle * 180 / M_PI);
             setPositionText(onSketchPos, text);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr2, onSketchPos, Base::Vector2d(0.f,0.f))) {
                 renderSuggestConstraintsCursor(sugConstr2);
                 return;
@@ -1972,7 +1972,7 @@ public:
             text.sprintf(" (%.1fR,%.1fdeg)", radius, arcAngle * 180 / M_PI);
             setPositionText(onSketchPos, text);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr3, onSketchPos, Base::Vector2d(0.0,0.0))) {
                 renderSuggestConstraintsCursor(sugConstr3);
                 return;
@@ -2013,7 +2013,7 @@ public:
                 startAngle += arcAngle;
             }
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             applyCursor();
             Mode = STATUS_End;
         }
@@ -2070,7 +2070,7 @@ public:
                 // This code enables the continuous creation mode.
                 Mode=STATUS_SEEK_First;
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 EditCurve.resize(2);
                 applyCursor();
                 /* this is ok not to call to purgeHandler
@@ -2178,7 +2178,7 @@ public:
             text.sprintf(" (%.1fR,%.1fdeg)", (float) radius, (float) lineAngle * 180 / M_PI);
             setPositionText(onSketchPos, text);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr2, onSketchPos, Base::Vector2d(0.f,0.f))) {
                 renderSuggestConstraintsCursor(sugConstr2);
                 return;
@@ -2248,7 +2248,7 @@ public:
                 text.sprintf(" (%.1fR,%.1fdeg)", (float) radius, (float) arcAngle * 180 / M_PI);
                 setPositionText(onSketchPos, text);
 
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 if (seekAutoConstraint(sugConstr3, onSketchPos, Base::Vector2d(0.0,0.0),
                                     AutoConstraint::CURVE)) {
                     renderSuggestConstraintsCursor(sugConstr3);
@@ -2282,7 +2282,7 @@ public:
         else {
             EditCurve.resize(30);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             applyCursor();
             Mode = STATUS_End;
         }
@@ -2339,7 +2339,7 @@ public:
                 // This code enables the continuous creation mode.
                 Mode=STATUS_SEEK_First;
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 EditCurve.resize(2);
                 applyCursor();
                 /* this is ok not to call to purgeHandler
@@ -2537,7 +2537,7 @@ public:
             text.sprintf(" (%.1fR)", radius);
             setPositionText(onSketchPos, text);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr2, onSketchPos, onSketchPos - EditCurve[0],
                                    AutoConstraint::CURVE)) {
                 renderSuggestConstraintsCursor(sugConstr2);
@@ -2603,7 +2603,7 @@ public:
                 // This code enables the continuous creation mode.
                 Mode=STATUS_SEEK_First;
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 EditCurve.resize(34);
                 applyCursor();
                 /* this is ok not to call to purgeHandler
@@ -2760,7 +2760,7 @@ public:
                 text.sprintf(" (%.1fR,%.1fR)", semiMajorRadius,semiMajorRadius);
                 setPositionText(onSketchPos, text);
 
-                sketchgui->drawEdit(editCurve);
+                drawEdit(editCurve);
                 // Suggestions for ellipse and curves are disabled because many tangent constraints
                 // need an intermediate point or line.
                 if (seekAutoConstraint(sugConstr2, onSketchPos, Base::Vector2d(0.f,0.f),
@@ -2777,7 +2777,7 @@ public:
                 text.sprintf(" (%.1fR,%.1fR)", a, b);
                 setPositionText(onSketchPos, text);
 
-                sketchgui->drawEdit(editCurve);
+                drawEdit(editCurve);
                 if (seekAutoConstraint(sugConstr3, onSketchPos, Base::Vector2d(0.f,0.f),
                     AutoConstraint::CURVE)) {
                     renderSuggestConstraintsCursor(sugConstr3);
@@ -2801,7 +2801,7 @@ public:
                 text.sprintf(" (%.1fR,%.1fR)", semiMajorRadius,semiMajorRadius);
                 setPositionText(onSketchPos, text);
 
-                sketchgui->drawEdit(editCurve);
+                drawEdit(editCurve);
                 if (seekAutoConstraint(sugConstr2, onSketchPos, onSketchPos - centroid,
                     AutoConstraint::CURVE)) {
                     renderSuggestConstraintsCursor(sugConstr2);
@@ -2816,7 +2816,7 @@ public:
                 text.sprintf(" (%.1fR,%.1fR)", a, b);
                 setPositionText(onSketchPos, text);
 
-                sketchgui->drawEdit(editCurve);
+                drawEdit(editCurve);
                 if (seekAutoConstraint(sugConstr3, onSketchPos, onSketchPos - centroid,
                     AutoConstraint::CURVE)) {
                     renderSuggestConstraintsCursor(sugConstr3);
@@ -3394,7 +3394,7 @@ private:
             mode = STATUS_SEEK_PERIAPSIS;
         }
         editCurve.clear();
-        sketchgui->drawEdit(editCurve);
+        drawEdit(editCurve);
 
         ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
         bool continuousMode = hGrp->GetBool("ContinuousCreationMode",true);
@@ -3530,7 +3530,7 @@ public:
             text.sprintf(" (%.1fR,%.1fR)", radius,radius);
             setPositionText(onSketchPos, text);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr2, onSketchPos, onSketchPos - centerPoint,
                                    AutoConstraint::CURVE)) {
                 renderSuggestConstraintsCursor(sugConstr2);
@@ -3561,7 +3561,7 @@ public:
             text.sprintf(" (%.1fR,%.1fR)", a, b);
             setPositionText(onSketchPos, text);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr3, onSketchPos, Base::Vector2d(0.f,0.f))) {
                 renderSuggestConstraintsCursor(sugConstr3);
                 return;
@@ -3600,7 +3600,7 @@ public:
             text.sprintf(" (%.1fR,%.1fR,%.1fdeg)", a, b, arcAngle * 180 / M_PI);
             setPositionText(onSketchPos, text);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr4, onSketchPos, Base::Vector2d(0.f,0.f))) {
                 renderSuggestConstraintsCursor(sugConstr4);
                 return;
@@ -3757,7 +3757,7 @@ public:
                 // This code enables the continuous creation mode.
                 Mode=STATUS_SEEK_First;
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 EditCurve.resize(34);
                 applyCursor();
                 /* this is ok not to call to purgeHandler
@@ -3850,7 +3850,7 @@ public:
             text.sprintf(" (%.1fR,%.1fR)", radius,radius);
             setPositionText(onSketchPos, text);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr2, onSketchPos, Base::Vector2d(0.f,0.f),
                                    AutoConstraint::CURVE)) {
                 renderSuggestConstraintsCursor(sugConstr2);
@@ -3882,7 +3882,7 @@ public:
                 setPositionText(onSketchPos, text);
             }
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr3, onSketchPos, Base::Vector2d(0.f,0.f))) {
                 renderSuggestConstraintsCursor(sugConstr3);
                 return;
@@ -3932,7 +3932,7 @@ public:
                 arcAngle=0.;
             }
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr4, onSketchPos, Base::Vector2d(0.f,0.f))) {
                 renderSuggestConstraintsCursor(sugConstr4);
                 return;
@@ -4100,7 +4100,7 @@ public:
                 // This code enables the continuous creation mode.
                 Mode = STATUS_SEEK_First;
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 EditCurve.resize(34);
                 applyCursor();
                 /* It is ok not to call to purgeHandler
@@ -4195,7 +4195,7 @@ public:
             text.sprintf(" (F%.1f)", radius);
             setPositionText(onSketchPos, text);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr2, onSketchPos, Base::Vector2d(0.f,0.f))) {
                 renderSuggestConstraintsCursor(sugConstr2);
                 return;
@@ -4227,7 +4227,7 @@ public:
             text.sprintf(" (F%.1f)", focal);
             setPositionText(onSketchPos, text);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
 
             if (seekAutoConstraint(sugConstr3, onSketchPos, Base::Vector2d(0.f,0.f))) {
                 renderSuggestConstraintsCursor(sugConstr3);
@@ -4273,7 +4273,7 @@ public:
                 arcAngle=0.;
             }
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr4, onSketchPos, Base::Vector2d(0.f,0.f))) {
                 renderSuggestConstraintsCursor(sugConstr4);
                 return;
@@ -4399,7 +4399,7 @@ public:
                 // This code enables the continuous creation mode.
                 Mode = STATUS_SEEK_First;
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 EditCurve.resize(34);
                 applyCursor();
                 /* It is ok not to call to purgeHandler
@@ -4637,7 +4637,7 @@ public:
 
             EditCurve[EditCurve.size()-1] = onSketchPos;
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
 
             float length = (EditCurve[EditCurve.size()-1] - EditCurve[EditCurve.size()-2]).Length();
             float angle = (EditCurve[EditCurve.size()-1] - EditCurve[EditCurve.size()-2]).GetAngle(Base::Vector2d(1.f,0.f));
@@ -4874,7 +4874,7 @@ public:
                 // This code enables the continuous creation mode.
                 Mode = STATUS_SEEK_FIRST_CONTROLPOINT;
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 EditCurve.resize(2);
                 applyCursor();
 
@@ -4927,7 +4927,7 @@ public:
                 // This code disregards existing data and enables the continuous creation mode.
                 Mode = STATUS_SEEK_FIRST_CONTROLPOINT;
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 EditCurve.resize(2);
                 applyCursor();
 
@@ -5199,7 +5199,7 @@ public:
                 text.sprintf(" (%.1fR,%.1fdeg)", (float) radius, (float) lineAngle * 180 / M_PI);
                 setPositionText(onSketchPos, text);
 
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 if (Mode == STATUS_SEEK_Second) {
                     if (seekAutoConstraint(sugConstr2, onSketchPos, Base::Vector2d(0.f,0.f),
                                         AutoConstraint::CURVE)) {
@@ -5239,7 +5239,7 @@ public:
         else {
             EditCurve.resize(N);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             applyCursor();
             Mode = STATUS_End;
         }
@@ -5296,7 +5296,7 @@ public:
                 // This code enables the continuous creation mode.
                 Mode=STATUS_SEEK_First;
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 EditCurve.resize(2);
                 applyCursor();
                 /* this is ok not to call to purgeHandler
@@ -5693,7 +5693,7 @@ public:
     virtual bool releaseButton(Base::Vector2d onSketchPos)
     {
         bool construction=false;
-        int VtId = sketchgui->getPreselectPoint();
+        int VtId = getPreselectPoint();
         if (Mode == STATUS_SEEK_First && VtId != -1) {
             int GeoId;
             Sketcher::PointPos PosId=Sketcher::none;
@@ -5754,7 +5754,7 @@ public:
             return true;
         }
 
-        int GeoId = sketchgui->getPreselectCurve();
+        int GeoId = getPreselectCurve();
         if (GeoId > -1) {
             const Part::Geometry *geom = sketchgui->getSketchObject()->getGeometry(GeoId);
             if (geom->getTypeId().isDerivedFrom(Part::GeomBoundedCurve::getClassTypeId())) {
@@ -6079,7 +6079,7 @@ public:
     {
         Q_UNUSED(onSketchPos);
 
-        int GeoId = sketchgui->getPreselectCurve();
+        int GeoId = getPreselectCurve();
 
         if (GeoId > -1) {
             auto sk = static_cast<Sketcher::SketchObject *>(sketchgui->getObject());
@@ -6105,12 +6105,12 @@ public:
                     EditMarkers.emplace_back( end.x, end.y);
                 }
 
-                sketchgui->drawEditMarkers(EditMarkers, 2); // maker augmented by two sizes (see supported marker sizes)
+                drawEditMarkers(EditMarkers, 2); // maker augmented by two sizes (see supported marker sizes)
             }
         }
         else {
             EditMarkers.resize(0);
-            sketchgui->drawEditMarkers(EditMarkers, 2);
+            drawEditMarkers(EditMarkers, 2);
         }
     }
 
@@ -6122,7 +6122,7 @@ public:
 
     virtual bool releaseButton(Base::Vector2d onSketchPos)
     {
-        int GeoId = sketchgui->getPreselectCurve();
+        int GeoId = getPreselectCurve();
         if (GeoId > -1) {
             const Part::Geometry *geom = sketchgui->getSketchObject()->getGeometry(GeoId);
             if (geom->getTypeId().isDerivedFrom(Part::GeomTrimmedCurve::getClassTypeId())   ||
@@ -6143,7 +6143,7 @@ public:
             }
 
             EditMarkers.resize(0);
-            sketchgui->drawEditMarkers(EditMarkers);
+            drawEditMarkers(EditMarkers);
         }
         else // exit the trimming tool if the user clicked on empty space
             sketchgui->purgeHandler(); // no code after this line, Handler get deleted in ViewProvider
@@ -6294,7 +6294,7 @@ public:
                     ExtendFromStart = onSketchPos.Distance(startPoint) < onSketchPos.Distance(endPoint);
                     Increment = ExtendFromStart ? projection.Length() : projection.Length() - recenteredLine.Length();
                 }
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
 
             } else if (geom->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
                 const Part::GeomArcOfCircle *arc = static_cast<const Part::GeomArcOfCircle *>(geom);
@@ -6357,9 +6357,9 @@ public:
                     double angle = modStartAngle + i * modArcAngle/30.0;
                     EditCurve[i] = Base::Vector2d(center.x + radius * cos(angle), center.y + radius * sin(angle));
                 }
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
             }
-            int curveId = sketchgui->getPreselectCurve();
+            int curveId = getPreselectCurve();
             if (BaseGeoId != curveId && seekAutoConstraint(SugConstr, onSketchPos, Base::Vector2d(0.f,0.f))) {
                 renderSuggestConstraintsCursor(SugConstr);
                 return;
@@ -6377,7 +6377,7 @@ public:
     {
         Q_UNUSED(onSketchPos);
         if (Mode == STATUS_SEEK_First) {
-            BaseGeoId = sketchgui->getPreselectCurve();
+            BaseGeoId = getPreselectCurve();
             if (BaseGeoId > -1) {
                 const Part::Geometry *geom = sketchgui->getSketchObject()->getGeometry(BaseGeoId);
                 if (geom->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
@@ -6428,7 +6428,7 @@ public:
                     Mode=STATUS_SEEK_First;
                     filterGate->setDisabled(false);
                     EditCurve.clear();
-                    sketchgui->drawEdit(EditCurve);
+                    drawEdit(EditCurve);
                     EditCurve.resize(2);
                     applyCursor();
                     /* this is ok not to call to purgeHandler
@@ -6559,7 +6559,7 @@ public:
 
     virtual bool releaseButton(Base::Vector2d onSketchPos)
     {
-        int GeoId = sketchgui->getPreselectCurve();
+        int GeoId = getPreselectCurve();
         if (GeoId >= 0) {
             const Part::Geometry *geom = sketchgui->getSketchObject()->getGeometry(GeoId);
             if (geom->getTypeId() == Part::GeomLineSegment::getClassTypeId()
@@ -6686,7 +6686,7 @@ public:
 
     virtual void activated(ViewProviderSketch *sketchgui)
     {
-        sketchgui->setAxisPickStyle(false);
+        setAxisPickStyle(false);
         Gui::MDIView *mdi = Gui::Application::Instance->activeDocument()->getActiveView();
         Gui::View3DInventorViewer *viewer;
         viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
@@ -6702,7 +6702,8 @@ public:
 
     virtual void deactivated(ViewProviderSketch *sketchgui)
     {
-        sketchgui->setAxisPickStyle(true);
+        Q_UNUSED(sketchgui);
+        setAxisPickStyle(true);
     }
 
     virtual void mouseMove(Base::Vector2d onSketchPos)
@@ -6870,7 +6871,7 @@ namespace SketcherGui {
 
         virtual void activated(ViewProviderSketch *sketchgui)
         {
-            sketchgui->setAxisPickStyle(false);
+            setAxisPickStyle(false);
             Gui::MDIView *mdi = Gui::Application::Instance->activeDocument()->getActiveView();
             Gui::View3DInventorViewer *viewer;
             viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
@@ -6886,7 +6887,8 @@ namespace SketcherGui {
 
         virtual void deactivated(ViewProviderSketch *sketchgui)
         {
-            sketchgui->setAxisPickStyle(true);
+            Q_UNUSED(sketchgui);
+            setAxisPickStyle(true);
         }
 
         virtual void mouseMove(Base::Vector2d onSketchPos)
@@ -7089,7 +7091,7 @@ public:
             text.sprintf(" (%.1fR %.1fL)", r, sqrt(dx * dx + dy * dy));
             setPositionText(onSketchPos, text);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr2, onSketchPos, Base::Vector2d(dx, dy), AutoConstraint::VERTEX_NO_TANGENCY)) {
                 renderSuggestConstraintsCursor(sugConstr2);
                 return;
@@ -7232,7 +7234,7 @@ public:
                 // This code enables the continuous creation mode.
                 Mode = STATUS_SEEK_First;
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 EditCurve.resize(35);
                 applyCursor();
                 /* this is ok not to call to purgeHandler
@@ -7357,7 +7359,7 @@ public:
             text.sprintf(" (%.1fR %.1fdeg)", radius, angle );
             setPositionText(onSketchPos, text);
 
-            sketchgui->drawEdit(EditCurve);
+            drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr2, onSketchPos, Base::Vector2d(0.f,0.f))) {
                 renderSuggestConstraintsCursor(sugConstr2);
                 return;
@@ -7425,7 +7427,7 @@ public:
                 // This code enables the continuous creation mode.
                 Mode=STATUS_SEEK_First;
                 EditCurve.clear();
-                sketchgui->drawEdit(EditCurve);
+                drawEdit(EditCurve);
                 EditCurve.resize(Corners+1);
                 applyCursor();
                 /* this is ok not to call to purgeHandler

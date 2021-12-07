@@ -103,6 +103,16 @@ SET(SketcherGui_SRCS
     TaskSketcherValidation.h
     ShortcutListener.cpp
     ShortcutListener.h
+    ConstraintCoinConverter.cpp
+    ConstraintCoinConverter.h
+    InformationOverlayCoinConverter.cpp
+    InformationOverlayCoinConverter.h
+    GeometryCoinConverter.cpp
+    GeometryCoinConverter.h
+    EditModeCoinManagerParameters.h
+    EditModeCoinManagerParameters.cpp
+    EditModeCoinManager.cpp
+    EditModeCoinManager.h
     ViewProviderSketch.cpp
     ViewProviderSketch.h
     DrawSketchHandler.cpp

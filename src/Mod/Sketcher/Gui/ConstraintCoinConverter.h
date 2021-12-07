@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (c) 2018 Abdullah Tahiri <abdullah.tahiri.yo@gmail.com>     *
+ *   Copyright (c) 2021 Abdullah Tahiri <abdullah.tahiri.yo@gmail.com>     *
  *                                                                         *
  *   This file is part of the FreeCAD CAx development system.              *
  *                                                                         *
@@ -21,40 +21,30 @@
  ***************************************************************************/
 
 
-#ifndef SKETCHERGUI_SHORTCUTLISTENER_H
-#define SKETCHERGUI_SHORTCUTLISTENER_H
+#ifndef SKETCHERGUI_ConstraintCoinConverter_H
+#define SKETCHERGUI_ConstraintCoinConverter_H
 
-#include <QObject>
+#include <vector>
 
 
 namespace SketcherGui {
 
-class ViewProviderSketch;
-
-class ViewProviderSketchShortcutListenerAttorney {
-private:
-    static inline void deleteSelected(ViewProviderSketch &vp);
-
-
-    friend class ShortcutListener;
-};
-
-class ShortcutListener: public QObject
-{
-    //Q_OBJECT
+class ConstraintCoinConverter {
 
 public:
-    ShortcutListener(ViewProviderSketch * vp);
-    ~ShortcutListener();
+    ConstraintCoinConverter(  );
 
-protected:
-    bool eventFilter(QObject *obj, QEvent *event);
+    void convert();
 
-    ViewProviderSketch * pViewProvider;
+
+private:
+    // Parameters
+
 };
+
 
 } // namespace SketcherGui
 
 
-#endif // SKETCHERGUI_SHORTCUTLISTENER_H
+#endif // SKETCHERGUI_ConstraintCoinConverter_H
 
