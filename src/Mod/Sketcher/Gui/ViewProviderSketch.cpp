@@ -232,6 +232,7 @@ struct EditData {
     int DragCurve;
     // dragged constraints
     std::set<int> DragConstraintSet;
+    std::set<int> DragCurvSet;
 
     SbColor PreselectOldColor;
     int PreselectPoint;
@@ -933,6 +934,45 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     resetPositionText();
                     Mode = STATUS_NONE;
                     return true;
+                case STATUS_SKETCH_DragGroup:
+                    if (edit->DragCurvSet.empty() == false) {
+                        Base::Vector3d vec(x - xInit, y - yInit, 0);
+                        //With 'for' all but the first geometry make a double jump.
+                        int geoId = *edit->DragCurvSet.begin();
+                        //for (auto geoId : edit->DragCurvSet) {
+                            Base::Console().Warning("Release button geoId:%d , vec.x = %d, vec.y %d= \n", geoId, vec.x, vec.y);
+                            const Part::Geometry* geo = getSketchObject()->getGeometry(geoId);
+                            if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId() ||
+                                geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId() ||
+                                geo->getTypeId() == Part::GeomCircle::getClassTypeId() ||
+                                geo->getTypeId() == Part::GeomEllipse::getClassTypeId() ||
+                                geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId() ||
+                                geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId() ||
+                                geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId() ||
+                                geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                                getDocument()->openCommand(QT_TRANSLATE_NOOP("Command", "Drag Curve"));
+
+                                auto geo = getSketchObject()->getGeometry(geoId);
+
+                                try {
+                                    Gui::cmdAppObjectArgs(getObject(), "movePoint(%i,%i,App.Vector(%f,%f,0),%i)"
+                                        ,geoId, Sketcher::none, vec.x, vec.y, relative ? 1 : 0);
+                                    getDocument()->commitCommand();
+
+                                    tryAutoRecomputeIfNotSolve(getSketchObject());
+                                }
+                                catch (const Base::Exception& e) {
+                                    getDocument()->abortCommand();
+                                    Base::Console().Error("Drag curve: %s\n", e.what());
+                                }
+                            }
+                        //}
+                        edit->DragCurvSet.clear();
+                        //updateColor();
+                    }
+                    resetPositionText();
+                    Mode = STATUS_NONE;
+                    return true;
                 case STATUS_SKETCH_DragConstraint:
                     if (edit->DragConstraintSet.empty() == false) {
                         getDocument()->openCommand(QT_TRANSLATE_NOOP("Command", "Drag Constraint"));
@@ -1158,6 +1198,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
         Mode != STATUS_SELECT_Constraint &&
         Mode != STATUS_SKETCH_DragPoint &&
         Mode != STATUS_SKETCH_DragCurve &&
+        Mode != STATUS_SKETCH_DragGroup &&
         Mode != STATUS_SKETCH_DragConstraint &&
         Mode != STATUS_SKETCH_UseRubberBand) {
 
@@ -1198,92 +1239,109 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
         case STATUS_SELECT_Edge:
             if (!getSolvedSketch().hasConflicts() &&
                 edit->PreselectCurve != -1 && edit->DragCurve != edit->PreselectCurve) {
-                Mode = STATUS_SKETCH_DragCurve;
-                edit->DragCurve = edit->PreselectCurve;
-                const Part::Geometry *geo = getSketchObject()->getGeometry(edit->DragCurve);
+                //Case of a group dragging
+                if (edit->SelCurvSet.size() > 1) {
+                    Mode = STATUS_SKETCH_DragGroup;
+                    edit->DragCurvSet = edit->SelCurvSet;
+                    Base::Console().Warning("DragCurvSet size:%d\n", edit->DragCurvSet.size());
+                    relative = true;
+                    SbLine line2;
+                    getProjectingLine(prvCursorPos, viewer, line2);
+                    getCoordsOnSketchPlane(xInit, yInit, line2.getPosition(), line2.getDirection());
+                    snapToGrid(xInit, yInit);
 
-                // BSpline Control points are edge draggable only if their radius is movable
-                // This is because dragging gives unwanted cosmetic results due to the scale ratio.
-                // This is an heuristic as it does not check all indirect routes.
-                if(GeometryFacade::isInternalType(geo, InternalType::BSplineControlPoint)) {
-                    if(geo->hasExtension(Sketcher::SolverGeometryExtension::getClassTypeId())) {
-                        auto solvext = std::static_pointer_cast<const Sketcher::SolverGeometryExtension>(
-                                        geo->getExtension(Sketcher::SolverGeometryExtension::getClassTypeId()).lock());
+                    getSketchObject()->initTemporaryGroupMove(edit->DragCurvSet, false);
+                }
+                //Case of single curve dragging
+                else {
+                    Mode = STATUS_SKETCH_DragCurve;
+                    edit->DragCurve = edit->PreselectCurve;
+                    const Part::Geometry *geo = getSketchObject()->getGeometry(edit->DragCurve);
 
-                        // Edge parameters are Independent, so weight won't move
-                        if(solvext->getEdge()==Sketcher::SolverGeometryExtension::Independent) {
-                            Mode = STATUS_NONE;
-                            return false;
-                        }
+                    // BSpline Control points are edge draggable only if their radius is movable
+                    // This is because dragging gives unwanted cosmetic results due to the scale ratio.
+                    // This is an heuristic as it does not check all indirect routes.
+                    if(GeometryFacade::isInternalType(geo, InternalType::BSplineControlPoint)) {
+                        if(geo->hasExtension(Sketcher::SolverGeometryExtension::getClassTypeId())) {
+                            auto solvext = std::static_pointer_cast<const Sketcher::SolverGeometryExtension>(
+                                            geo->getExtension(Sketcher::SolverGeometryExtension::getClassTypeId()).lock());
 
-                        // The B-Spline is constrained to be non-rational (equal weights), moving produces a bad effect
-                        // because OCCT will normalize the values of the weights.
-                        auto grp = getSolvedSketch().getDependencyGroup(edit->DragCurve, Sketcher::none);
-
-                        int bsplinegeoid = -1;
-
-                        std::vector<int> polegeoids;
-
-                        for( auto c : getSketchObject()->Constraints.getValues()) {
-                            if( c->Type == Sketcher::InternalAlignment &&
-                                c->AlignmentType == BSplineControlPoint &&
-                                c->First == edit->DragCurve ) {
-
-                                bsplinegeoid = c->Second;
-                                break;
+                            // Edge parameters are Independent, so weight won't move
+                            if(solvext->getEdge()==Sketcher::SolverGeometryExtension::Independent) {
+                                Mode = STATUS_NONE;
+                                return false;
                             }
-                        }
 
-                        if(bsplinegeoid == -1) {
-                            Mode = STATUS_NONE;
-                            return false;
-                        }
+                            // The B-Spline is constrained to be non-rational (equal weights), moving produces a bad effect
+                            // because OCCT will normalize the values of the weights.
+                            auto grp = getSolvedSketch().getDependencyGroup(edit->DragCurve, Sketcher::none);
 
-                        for( auto c : getSketchObject()->Constraints.getValues()) {
-                            if( c->Type == Sketcher::InternalAlignment &&
-                                c->AlignmentType == BSplineControlPoint &&
-                                c->Second == bsplinegeoid ) {
+                            int bsplinegeoid = -1;
 
-                                polegeoids.push_back(c->First);
+                            std::vector<int> polegeoids;
+
+                            for( auto c : getSketchObject()->Constraints.getValues()) {
+                                if( c->Type == Sketcher::InternalAlignment &&
+                                    c->AlignmentType == BSplineControlPoint &&
+                                    c->First == edit->DragCurve ) {
+
+                                    bsplinegeoid = c->Second;
+                                    break;
+                                }
                             }
-                        }
 
-                        bool allingroup = true;
+                            if(bsplinegeoid == -1) {
+                                Mode = STATUS_NONE;
+                                return false;
+                            }
 
-                        for( auto polegeoid : polegeoids ) {
-                            std::pair< int, Sketcher::PointPos > thispole = std::make_pair(polegeoid,Sketcher::none);
+                            for( auto c : getSketchObject()->Constraints.getValues()) {
+                                if( c->Type == Sketcher::InternalAlignment &&
+                                    c->AlignmentType == BSplineControlPoint &&
+                                    c->Second == bsplinegeoid ) {
 
-                            if(grp.find(thispole) == grp.end()) // not found
-                                allingroup  = false;
-                        }
+                                    polegeoids.push_back(c->First);
+                                }
+                            }
 
-                        if(allingroup) { // it is constrained to be non-rational
-                            Mode = STATUS_NONE;
-                            return false;
+                            bool allingroup = true;
+
+                            for( auto polegeoid : polegeoids ) {
+                                std::pair< int, Sketcher::PointPos > thispole = std::make_pair(polegeoid,Sketcher::none);
+
+                                if(grp.find(thispole) == grp.end()) // not found
+                                    allingroup  = false;
+                            }
+
+                            if(allingroup) { // it is constrained to be non-rational
+                                Mode = STATUS_NONE;
+                                return false;
+                            }
+
                         }
 
                     }
 
-                }
+                    if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId() ||
+                        geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                        relative = true;
+                        //xInit = x;
+                        //yInit = y;
+                        // Since the cursor moved from where it was clicked, and this is a relative move,
+                        // calculate the click position and use it as initial point.
+                        SbLine line2;
+                        getProjectingLine(prvCursorPos, viewer, line2);
+                        getCoordsOnSketchPlane(xInit,yInit,line2.getPosition(),line2.getDirection());
+                        snapToGrid(xInit, yInit);
+                    } 
+                    else {
+                        relative = false;
+                        xInit = 0;
+                        yInit = 0;
+                    }
 
-                if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId() ||
-                    geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
-                    relative = true;
-                    //xInit = x;
-                    //yInit = y;
-                    // Since the cursor moved from where it was clicked, and this is a relative move,
-                    // calculate the click position and use it as initial point.
-                    SbLine line2;
-                    getProjectingLine(prvCursorPos, viewer, line2);
-                    getCoordsOnSketchPlane(xInit,yInit,line2.getPosition(),line2.getDirection());
-                    snapToGrid(xInit, yInit);
-                } else {
-                    relative = false;
-                    xInit = 0;
-                    yInit = 0;
+                    getSketchObject()->initTemporaryMove(edit->DragCurve, Sketcher::none, false);
                 }
-
-                getSketchObject()->initTemporaryMove(edit->DragCurve, Sketcher::none, false);
 
             } else {
                 Mode = STATUS_NONE;
@@ -1349,6 +1407,15 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
                 if (getSketchObject()->moveTemporaryPoint(edit->DragCurve, Sketcher::none, vec, relative) == 0) {
                     setPositionText(Base::Vector2d(x,y));
                     draw(true,false);
+                }
+            }
+            return true;
+        case STATUS_SKETCH_DragGroup:
+            if (edit->DragCurvSet.empty() == false) {
+                Base::Vector3d vec(x - xInit, y - yInit, 0);
+                if (getSketchObject()->moveTemporaryGroupPoint(edit->DragCurvSet, vec) == 0) {
+                    setPositionText(Base::Vector2d(x, y));
+                    draw(true, false);
                 }
             }
             return true;
