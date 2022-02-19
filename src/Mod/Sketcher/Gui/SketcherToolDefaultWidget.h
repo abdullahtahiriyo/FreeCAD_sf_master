@@ -1,0 +1,94 @@
+/***************************************************************************
+ *   Copyright (c) 2022 Pierre-Louis Boyer <pierrelouis.boyer@gmail.com>   *
+ *                                                                         *
+ *   This file is part of the FreeCAD CAx development system.              *
+ *                                                                         *
+ *   This library is free software; you can redistribute it and/or         *
+ *   modify it under the terms of the GNU Library General Public           *
+ *   License as published by the Free Software Foundation; either          *
+ *   version 2 of the License, or (at your option) any later version.      *
+ *                                                                         *
+ *   This library  is distributed in the hope that it will be useful,      *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   GNU Library General Public License for more details.                  *
+ *                                                                         *
+ *   You should have received a copy of the GNU Library General Public     *
+ *   License along with this library; see the file COPYING.LIB. If not,    *
+ *   write to the Free Software Foundation, Inc., 59 Temple Place,         *
+ *   Suite 330, Boston, MA  02111-1307, USA                                *
+ *                                                                         *
+ ***************************************************************************/
+
+
+#ifndef SketcherGui_SketcherToolDefaultWidgetTaskSketcherTool_H
+#define SketcherGui_SketcherToolDefaultWidgetTaskSketcherTool_H
+
+#include <Gui/TaskView/TaskView.h>
+#include <Gui/TaskView/TaskDialog.h>
+#include <Gui/Selection.h>
+#include <boost_signals2.hpp>
+
+namespace App {
+class Property;
+}
+
+namespace Gui {
+class ViewProvider;
+class PrefQuantitySpinBox;
+}
+
+namespace SketcherGui {
+
+class Ui_TaskSketcherTool;
+class ViewProviderSketch;
+
+class SketcherToolDefaultWidget : public QWidget
+{
+    Q_OBJECT
+
+public:
+    SketcherToolDefaultWidget (QWidget *parent=0, ViewProviderSketch* sketchView=0);
+    ~SketcherToolDefaultWidget();
+
+    bool eventFilter(QObject* object, QEvent* event);
+    //void keyPressEvent(QKeyEvent* event);
+
+    void setParameter(int parameterindex, double val);
+    void setParameterEnabled(int parameterindex, bool active = true);
+    void setParameterFocus(int parameterindex);
+
+    void setParameterVisible(int parameterindex, bool visible = true);
+
+    void reset();
+
+    void initNParameters(int nparameters);
+
+    void setParameterLabel(int parameterindex, const QString & string);
+
+//Q_SIGNALS:
+protected Q_SLOTS:
+    void parameterOne_valueChanged(double val);
+    void parameterTwo_valueChanged(double val);
+    void parameterThree_valueChanged(double val);
+    void parameterFour_valueChanged(double val);
+    void parameterFive_valueChanged(double val);
+
+protected:
+    void changeEvent(QEvent *e);
+
+private:
+    QLabel * getParameterLabel(int parameterindex);
+    Gui::PrefQuantitySpinBox * getParameterSpinBox(int parameterindex);
+
+private:
+    std::unique_ptr<Ui_TaskSketcherTool> ui;
+    ViewProviderSketch* sketchView;
+
+    const int nParameters = 5;
+};
+
+
+} //namespace SketcherGui
+
+#endif // SketcherGui_SketcherToolDefaultWidgetTaskSketcherTool_H
