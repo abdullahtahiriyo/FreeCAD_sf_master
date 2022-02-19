@@ -88,6 +88,8 @@ private:
     static inline int getPreselectCurve(const ViewProviderSketch &vp);
     static inline int getPreselectCross(const ViewProviderSketch &vp);
 
+    static inline void signalToolChanged(const ViewProviderSketch &vp, const std::string &toolname);
+
     friend class DrawSketchHandler;
 };
 
@@ -157,13 +159,17 @@ public:
     void resetPositionText(void);
     void renderSuggestConstraintsCursor(std::vector<AutoConstraint> &suggestedConstraints);
 
+    void toolWidgetChanged(QWidget * newwidget);
+
 private: // NVI
     virtual void preActivated();
     virtual void activated(){}
     virtual void deactivated(){}
     virtual void postDeactivated(){}
+    virtual void onWidgetChanged(){}
 
 protected: // NVI requiring base implementation
+    virtual std::string getToolName() const;
     virtual QString getCrosshairCursorSVGName() const;
 
 protected:
@@ -212,6 +218,8 @@ protected:
     int getPreselectCurve(void) const;
     int getPreselectCross(void) const;
 
+    void signalToolChanged() const;
+
     Sketcher::SketchObject * getSketchObject();
 
 private:
@@ -236,6 +244,8 @@ protected:
     QCursor oldCursor;
     QCursor actCursor;
     QPixmap actCursorPixmap;
+
+    QWidget * toolwidget;
 };
 
 
