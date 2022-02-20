@@ -68,6 +68,8 @@
 
 #include "SketcherRegularPolygonDialog.h"
 
+#include "SketcherToolDefaultWidget.h"
+
 using namespace std;
 using namespace SketcherGui;
 
@@ -213,6 +215,39 @@ unsigned long DrawSketchHandler::getCrosshairColor()
 
 class DrawSketchHandlerLine: public DrawSketchHandler
 {
+private:
+    class ToolWidgetManager {
+        const int nParameter = 4;
+
+        enum Parameters {
+            x1 = 0,
+            y1 = 1,
+            x2 = 2,
+            y2 = 3
+        };
+
+        SketcherToolDefaultWidget * toolWidget;
+
+    public:
+        void initWidget(QWidget * widget) {
+            toolWidget = static_cast<SketcherToolDefaultWidget *>(widget);
+
+            toolWidget->initNParameters(nParameter);
+
+            toolWidget->setParameterLabel(x1, QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 1st point"));
+            toolWidget->setParameterLabel(y1, QApplication::translate("TaskSketcherTool_p2_rectangle", "y of 1st point"));
+            toolWidget->setParameterLabel(x2, QApplication::translate("TaskSketcherTool_p3_rectangle", "x of 2nd point"));
+            toolWidget->setParameterLabel(y2, QApplication::translate("TaskSketcherTool_p4_rectangle", "y of 2nd point"));
+
+            toolWidget->setParameterEnabled(x1);
+            toolWidget->setParameterEnabled(y1);
+            toolWidget->setParameterEnabled(x2, false);
+            toolWidget->setParameterEnabled(y2, false);
+
+            toolWidget->setParameterFocus(x1);
+        }
+    }
+
 public:
     DrawSketchHandlerLine():Mode(STATUS_SEEK_First),EditCurve(2){}
     virtual ~DrawSketchHandlerLine(){}
@@ -222,6 +257,11 @@ public:
         STATUS_SEEK_Second,     /**< enum value ----. */
         STATUS_End
     };
+
+    virtual void onWidgetChanged() override
+    {
+        toolWidgetManager.initWidget(toolwidget);
+    }
 
     virtual void mouseMove(Base::Vector2d onSketchPos) override
     {
@@ -332,9 +372,14 @@ private:
     }
 
 protected:
+    virtual std::string getToolName() const override { return "DSH_Line";}
+
+protected:
     SelectMode Mode;
     std::vector<Base::Vector2d> EditCurve;
     std::vector<AutoConstraint> sugConstr1, sugConstr2;
+
+    ToolWidgetManager toolWidgetManager;
 };
 
 DEF_STD_CMD_AU(CmdSketcherCreateLine)
