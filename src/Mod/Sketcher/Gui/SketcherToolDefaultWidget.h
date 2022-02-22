@@ -55,6 +55,9 @@ public:
     //void keyPressEvent(QKeyEvent* event);
 
     void setParameter(int parameterindex, double val);
+    double getParameter(int parameterindex);
+    bool isParameterSet(int parameterindex);
+    std::vector<bool> isSet;
     void setParameterEnabled(int parameterindex, bool active = true);
     void setParameterFocus(int parameterindex);
 

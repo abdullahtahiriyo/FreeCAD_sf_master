@@ -190,6 +190,30 @@ void removeRedundantHorizontalVertical(Sketcher::SketchObject* psketch,
     }
 }
 
+bool distanceXYorPointOnObject(bool distanceXZeroYOne, int geoId, Sketcher::PointPos posId, double distance, App::DocumentObject* obj) {
+    if (distance == 0) {
+        if (distanceXZeroYOne) {
+            Gui::cmdAppObjectArgs(obj, "addConstraint(Sketcher.Constraint('PointOnObject',%d,%d,%d)) ",
+                geoId, static_cast<int>(posId), Sketcher::GeoEnum::HAxis);
+        }
+        else {
+            Gui::cmdAppObjectArgs(obj, "addConstraint(Sketcher.Constraint('PointOnObject',%d,%d,%d)) ",
+                geoId, static_cast<int>(posId), Sketcher::GeoEnum::VAxis);
+        }
+        return 0;
+    }
+    else {
+        if (!distanceXZeroYOne) {
+            Gui::cmdAppObjectArgs(obj, "addConstraint(Sketcher.Constraint('DistanceX',%d,%d,%f)) ",
+                geoId, static_cast<int>(posId), distance);
+        }
+        else {
+            Gui::cmdAppObjectArgs(obj, "addConstraint(Sketcher.Constraint('DistanceY',%d,%d,%f)) ",
+                geoId, static_cast<int>(posId), distance);
+        }
+        return 1;
+    }
+}
 
 /* Sketch commands =======================================================*/
 
@@ -226,12 +250,11 @@ private:
             y2 = 3
         };
 
-        SketcherToolDefaultWidget * toolWidget;
+        SketcherToolDefaultWidget* toolWidget;
 
     public:
-        void initWidget(QWidget * widget) {
-            toolWidget = static_cast<SketcherToolDefaultWidget *>(widget);
-
+        void initWidget(QWidget* widget) {
+            toolWidget = static_cast<SketcherToolDefaultWidget*>(widget);
             toolWidget->initNParameters(nParameter);
 
             toolWidget->setParameterLabel(x1, QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 1st point"));
@@ -241,12 +264,23 @@ private:
 
             toolWidget->setParameterEnabled(x1);
             toolWidget->setParameterEnabled(y1);
-            toolWidget->setParameterEnabled(x2, false);
-            toolWidget->setParameterEnabled(y2, false);
+            toolWidget->setParameterEnabled(x2);
+            toolWidget->setParameterEnabled(y2);
 
             toolWidget->setParameterFocus(x1);
+            toolWidget->isSet.clear();
+            toolWidget->isSet.resize(4, 0);
         }
-    }
+        bool isParameterSet(int parameterindex) {
+            return toolWidget->isParameterSet(parameterindex);
+        }
+        double getParameter(int parameterindex) {
+            return toolWidget->getParameter(parameterindex);
+        }
+        void setParameterFocus(int parameterindex) {
+            toolWidget->setParameterFocus(parameterindex);
+        }
+    };
 
 public:
     DrawSketchHandlerLine():Mode(STATUS_SEEK_First),EditCurve(2){}
@@ -267,12 +301,34 @@ public:
     {
         if (Mode==STATUS_SEEK_First) {
             setPositionText(onSketchPos);
+
             if (seekAutoConstraint(sugConstr1, onSketchPos, Base::Vector2d(0.f,0.f))) {
                 renderSuggestConstraintsCursor(sugConstr1);
                 return;
             }
+            if (toolWidgetManager.isParameterSet(0) + toolWidgetManager.isParameterSet(1) == 2) {
+                pressButton(onSketchPos);
+                releaseButton(onSketchPos);
+                mouseMove(onSketchPos);
+            }
         }
         else if (Mode==STATUS_SEEK_Second){
+            //Check if user changed first parameters, if so go back to SEEK_first. This way we don't have to disable parameters after they are set.
+            if (toolWidgetManager.isParameterSet(0) == 1) {
+                if (EditCurve[0].x != toolWidgetManager.getParameter(0)) {
+                    Mode = STATUS_SEEK_First;
+                    mouseMove(onSketchPos);
+                    return;
+                }
+            }
+            if (toolWidgetManager.isParameterSet(1) == 1) {
+                if (EditCurve[0].y != toolWidgetManager.getParameter(1)) {
+                    Mode = STATUS_SEEK_First;
+                    mouseMove(onSketchPos);
+                    return;
+                }
+            }
+
             float length = (onSketchPos - EditCurve[0]).Length();
             float angle = (onSketchPos - EditCurve[0]).GetAngle(Base::Vector2d(1.f,0.f));
             SbString text;
@@ -280,10 +336,21 @@ public:
             setPositionText(onSketchPos, text);
 
             EditCurve[1] = onSketchPos;
+            if (toolWidgetManager.isParameterSet(2) == 1) {
+                EditCurve[1].x = toolWidgetManager.getParameter(2);
+            }
+            if (toolWidgetManager.isParameterSet(3) == 1) {
+                EditCurve[1].y = toolWidgetManager.getParameter(3);
+            }
+
             drawEdit(EditCurve);
             if (seekAutoConstraint(sugConstr2, onSketchPos, onSketchPos - EditCurve[0])) {
                 renderSuggestConstraintsCursor(sugConstr2);
                 return;
+            }
+            if (toolWidgetManager.isParameterSet(2) + toolWidgetManager.isParameterSet(3) == 2) {
+                pressButton(onSketchPos);
+                releaseButton(onSketchPos);
             }
         }
         applyCursor();
@@ -293,10 +360,24 @@ public:
     {
         if (Mode==STATUS_SEEK_First){
             EditCurve[0] = onSketchPos;
+            if (toolWidgetManager.isParameterSet(0) == 1) {
+                EditCurve[0].x = toolWidgetManager.getParameter(0);
+            }
+            if (toolWidgetManager.isParameterSet(1) == 1) {
+                EditCurve[0].y = toolWidgetManager.getParameter(1);
+            }
+
+            toolWidgetManager.setParameterFocus(2);
             Mode = STATUS_SEEK_Second;
         }
         else {
             EditCurve[1] = onSketchPos;
+            if (toolWidgetManager.isParameterSet(2) == 1) {
+                EditCurve[1].x = toolWidgetManager.getParameter(2);
+            }
+            if (toolWidgetManager.isParameterSet(3) == 1) {
+                EditCurve[1].y = toolWidgetManager.getParameter(3);
+            }
             drawEdit(EditCurve);
             Mode = STATUS_End;
         }
@@ -309,12 +390,28 @@ public:
         if (Mode==STATUS_End){
             unsetCursor();
             resetPositionText();
-
+            int firstCurve = getHighestCurveIndex()+1;
             try {
                 Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add sketch line"));
                 Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.LineSegment(App.Vector(%f,%f,0),App.Vector(%f,%f,0)),%s)",
                           EditCurve[0].x,EditCurve[0].y,EditCurve[1].x,EditCurve[1].y,
                           geometryCreationMode==Construction?"True":"False");
+
+                //add constraint if user typed in some dimensions in tool widget
+                if (toolWidgetManager.isParameterSet(0) + toolWidgetManager.isParameterSet(1) + toolWidgetManager.isParameterSet(2) + toolWidgetManager.isParameterSet(3) != 0) {
+                    if (toolWidgetManager.isParameterSet(0) == 1) {
+                        distanceXYorPointOnObject(0, firstCurve, Sketcher::PointPos::start, toolWidgetManager.getParameter(0), sketchgui->getObject());
+                    }
+                    if (toolWidgetManager.isParameterSet(1) == 1) {
+                        distanceXYorPointOnObject(1, firstCurve, Sketcher::PointPos::start, toolWidgetManager.getParameter(1), sketchgui->getObject());
+                    }
+                    if (toolWidgetManager.isParameterSet(2) == 1) {
+                        distanceXYorPointOnObject(0, firstCurve, Sketcher::PointPos::end, toolWidgetManager.getParameter(2), sketchgui->getObject());
+                    }
+                    if (toolWidgetManager.isParameterSet(3) == 1) {
+                        distanceXYorPointOnObject(1, firstCurve, Sketcher::PointPos::end, toolWidgetManager.getParameter(3), sketchgui->getObject());
+                    }
+                }
 
                 Gui::Command::commitCommand();
             }
@@ -349,6 +446,7 @@ public:
             bool continuousMode = hGrp->GetBool("ContinuousCreationMode",true);
             if(continuousMode){
                 // This code enables the continuous creation mode.
+                onWidgetChanged();
                 Mode=STATUS_SEEK_First;
                 EditCurve.resize(2);
                 applyCursor();

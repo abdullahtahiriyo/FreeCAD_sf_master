@@ -94,27 +94,32 @@ bool SketcherToolDefaultWidget::eventFilter(QObject* object, QEvent* event)
 void SketcherToolDefaultWidget::parameterOne_valueChanged(double val)
 {
     Q_UNUSED(val);
-    QMetaObject::invokeMethod(ui->parameterTwo, "setFocus", Qt::QueuedConnection);
+    isSet[0] = 1;
+    setParameterFocus(1);
 }
 void SketcherToolDefaultWidget::parameterTwo_valueChanged(double val)
 {
     Q_UNUSED(val);
-    QMetaObject::invokeMethod(ui->parameterThree, "setFocus", Qt::QueuedConnection);
+    isSet[1] = 1;
+    setParameterFocus(2);
 }
 void SketcherToolDefaultWidget::parameterThree_valueChanged(double val)
 {
     Q_UNUSED(val);
-    QMetaObject::invokeMethod(ui->parameterFour, "setFocus", Qt::QueuedConnection);
+    isSet[2] = 1;
+    setParameterFocus(3);
 }
 void SketcherToolDefaultWidget::parameterFour_valueChanged(double val)
 {
     Q_UNUSED(val);
-    QMetaObject::invokeMethod(ui->parameterFive, "setFocus", Qt::QueuedConnection);
+    isSet[3] = 1;
+    setParameterFocus(4);
 }
 
 void SketcherToolDefaultWidget::parameterFive_valueChanged(double val)
 {
     Q_UNUSED(val);
+    isSet[4] = 1;
 }
 
 void SketcherToolDefaultWidget::setParameterVisible(int parameterindex, bool visible)
@@ -395,6 +400,22 @@ void SketcherToolDefaultWidget::setSettings(int toolSelected)
     }
 }
 */
+
+double SketcherToolDefaultWidget::getParameter(int parameterindex)
+{
+    if (parameterindex < nParameters) {
+        return getParameterSpinBox(parameterindex)->value().getValue();
+    }
+    return 0;
+}
+
+bool SketcherToolDefaultWidget::isParameterSet(int parameterindex)
+{
+    if (parameterindex < nParameters) {
+        return isSet[parameterindex];
+    }
+    return 0;
+}
 
 void SketcherToolDefaultWidget::setParameter(int parameterindex, double val)
 {
