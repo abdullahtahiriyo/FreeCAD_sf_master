@@ -67,9 +67,11 @@ public:
     void setParameter(int parameterindex, double val);
     double getParameter(int parameterindex);
     bool isParameterSet(int parameterindex);
+    void updateVisualValue(int parameterindex, double val);
 
     void setParameterEnabled(int parameterindex, bool active = true);
     void setParameterFocus(int parameterindex);
+    void setParameterFont(int parameterindex, std::string fontStyle);
 
     void setParameterVisible(int parameterindex, bool visible = true);
 

@@ -79,7 +79,7 @@ SketcherToolDefaultWidget::~SketcherToolDefaultWidget(){}
 bool SketcherToolDefaultWidget::eventFilter(QObject* object, QEvent* event)
 {
     if(event->type() == QEvent::FocusIn) {
-        for(int i; i < nParameters; i++) {
+        for (int i = 0; i < nParameters; i++) {
             auto parameterSpinBox = getParameterSpinBox(i);
 
             if(object == parameterSpinBox){
@@ -96,6 +96,7 @@ void SketcherToolDefaultWidget::parameterOne_valueChanged(double val)
 {
     if(!blockParameterSlots) {
         isSet[Parameter::First] = true;
+        setParameterFont(Parameter::First, "bold");
         setParameterFocus(Parameter::Second);
         signalParameterValueChanged(Parameter::First, val);
     }
@@ -104,6 +105,7 @@ void SketcherToolDefaultWidget::parameterTwo_valueChanged(double val)
 {
     if(!blockParameterSlots) {
         isSet[Parameter::Second] = true;
+        setParameterFont(Parameter::Second, "bold");
         setParameterFocus(Parameter::Third);
         signalParameterValueChanged(Parameter::Second, val);
     }
@@ -112,6 +114,7 @@ void SketcherToolDefaultWidget::parameterThree_valueChanged(double val)
 {
     if(!blockParameterSlots) {
         isSet[Parameter::Third] = true;
+        setParameterFont(Parameter::Third, "bold");
         setParameterFocus(Parameter::Fourth);
         signalParameterValueChanged(Parameter::Third, val);
     }
@@ -120,15 +123,16 @@ void SketcherToolDefaultWidget::parameterFour_valueChanged(double val)
 {
     if(!blockParameterSlots) {
         isSet[Parameter::Fourth] = true;
+        setParameterFont(Parameter::Fourth, "bold");
         setParameterFocus(Parameter::Fifth);
         signalParameterValueChanged(Parameter::Fourth, val);
     }
 }
-
 void SketcherToolDefaultWidget::parameterFive_valueChanged(double val)
 {
     if(!blockParameterSlots) {
         isSet[Parameter::Fifth] = true;
+        setParameterFont(Parameter::Fifth, "bold");
         signalParameterValueChanged(Parameter::Fifth, val);
     }
 }
@@ -216,6 +220,7 @@ void SketcherToolDefaultWidget::initNParameters(int nparameters)
     for(int i=0; i<nParameters; i++) {
         setParameterVisible(i, (i<nparameters)?true:false);
         setParameter(i, 0.f);
+        setParameterFont(i, "italic");
     }
 }
 
@@ -235,6 +240,24 @@ bool SketcherToolDefaultWidget::isParameterSet(int parameterindex)
     }
 
     THROWM(Base::IndexError, "ToolWidget parameter index out of range");
+}
+
+void SketcherToolDefaultWidget::updateVisualValue(int parameterindex, double val) {
+    if (parameterindex < nParameters) {
+        Base::StateLocker lock(blockParameterSlots, true);
+
+        auto parameterSpinBox = getParameterSpinBox(parameterindex);
+
+        parameterSpinBox->setValue(Base::Quantity(val, Base::Unit::Length));
+
+        if (parameterSpinBox->hasFocus()) {
+            parameterSpinBox->selectNumber();
+        }
+
+        return;
+    }
+
+    THROWM(Base::IndexError, QT_TRANSLATE_NOOP("Exceptions", "ToolWidget parameter index out of range"));
 }
 
 void SketcherToolDefaultWidget::setParameter(int parameterindex, double val)
@@ -270,6 +293,27 @@ void SketcherToolDefaultWidget::setParameterFocus(int parameterindex)
     }
 
     THROWM(Base::IndexError, QT_TRANSLATE_NOOP("Exceptions","ToolWidget parameter index out of range"));
+}
+
+void SketcherToolDefaultWidget::setParameterFont(int parameterindex, std::string fontStyle)
+{
+    if (parameterindex < nParameters) {
+        auto parameterSpinBox = getParameterSpinBox(parameterindex);
+
+        if (fontStyle == "italic") {
+            //parameterSpinBox->setStyleSheet(QString::fromStdString("color: gray;"));
+            parameterSpinBox->setStyleSheet(QStringLiteral("font-weight: normal;"));
+            parameterSpinBox->setStyleSheet(QStringLiteral("font-style: italic;"));
+        }
+        else {
+            parameterSpinBox->setStyleSheet(QStringLiteral("font-style: normal;"));
+            parameterSpinBox->setStyleSheet(QStringLiteral("font-weight: bold;"));
+        }
+
+        return;
+    }
+
+    THROWM(Base::IndexError, QT_TRANSLATE_NOOP("Exceptions", "ToolWidget parameter index out of range"));
 }
 
 void SketcherToolDefaultWidget::changeEvent(QEvent *e)
