@@ -198,14 +198,13 @@ void ConstraintToAttachment(Sketcher::GeoElementId element, Sketcher::GeoElement
     if (distance == 0.) {
 
         if(attachment.isCurve()) {
-
             Gui::cmdAppObjectArgs(obj, "addConstraint(Sketcher.Constraint('PointOnObject',%d,%d,%d)) ",
                 element.GeoId, element.posIdAsInt(), attachment.GeoId);
 
         }
         else {
             Gui::cmdAppObjectArgs(obj, "addConstraint(Sketcher.Constraint('Coincident',%d,%d,%d,%d)) ",
-                element.GeoId, element.posIdAsInt(), attachment.GeoId, element.posIdAsInt());
+                element.GeoId, element.posIdAsInt(), attachment.GeoId, attachment.posIdAsInt());
         }
     }
     else {
@@ -351,22 +350,46 @@ private:
 
         }
 
-        void updateParameterValues() {
+        void updateVisualValues(Base::Vector2d onSketchPos) {
 
-            switch(handler->Mode) {
-                case STATUS_SEEK_First:
-                break;
-                case STATUS_SEEK_Second:
-                {
-                    // Avoid being notified by itself
-                    boost::signals2::shared_connection_block block(connectionParameterValueChanged);
+            switch (handler->Mode) {
+            case STATUS_SEEK_First:
+            {
+                if (!toolWidget->isParameterSet(WParameter::First))
+                    toolWidget->updateVisualValue(WParameter::First, onSketchPos.x);
 
-                    toolWidget->setParameter(WParameter::First,handler->EditCurve[0].x);
-                    toolWidget->setParameter(WParameter::Second,handler->EditCurve[0].y);
-                }
+                if (!toolWidget->isParameterSet(WParameter::Second))
+                    toolWidget->updateVisualValue(WParameter::Second, onSketchPos.y);
+            }
+            break;
+            case STATUS_SEEK_Second:
+            {
+                if (!toolWidget->isParameterSet(WParameter::Third))
+                    toolWidget->updateVisualValue(WParameter::Third, onSketchPos.x);
+
+                if (!toolWidget->isParameterSet(WParameter::Fourth))
+                    toolWidget->updateVisualValue(WParameter::Fourth, onSketchPos.y);
+            }
+            break;
+            default:
                 break;
-                default:
-                    break;
+            }
+        }
+
+        void updateFocus() {
+            switch (handler->Mode) {
+            case STATUS_SEEK_First:
+            {
+                toolWidget->setParameterFocus(x1);
+            }
+            break;
+            case STATUS_SEEK_Second:
+            {
+                toolWidget->setParameterFocus(x2);
+            }
+            break;
+            default:
+                break;
             }
         }
 
@@ -402,50 +425,43 @@ private:
 
             int firstCurve = handler->getHighestCurveIndex();
 
-            if (toolWidget->isParameterSet(WParameter::First) &&
-                toolWidget->isParameterSet(WParameter::Second) &&
-                toolWidget->isParameterSet(WParameter::Third) &&
-                toolWidget->isParameterSet(WParameter::Fourth)) {
+            auto x0 = toolWidget->getParameter(WParameter::First);
+            auto y0 = toolWidget->getParameter(WParameter::Second);
+            auto x1 = toolWidget->getParameter(WParameter::Third);
+            auto y1 = toolWidget->getParameter(WParameter::Fourth);
 
-                auto x0 = toolWidget->getParameter(WParameter::First);
-                auto y0 = toolWidget->getParameter(WParameter::Second);
-                auto x1 = toolWidget->getParameter(WParameter::Third);
-                auto y1 = toolWidget->getParameter(WParameter::Fourth);
+            auto x0set = toolWidget->isParameterSet(WParameter::First);
+            auto y0set = toolWidget->isParameterSet(WParameter::Second);
+            auto x1set = toolWidget->isParameterSet(WParameter::Third);
+            auto y1set = toolWidget->isParameterSet(WParameter::Fourth);
 
-                auto x0set = toolWidget->isParameterSet(WParameter::First);
-                auto y0set = toolWidget->isParameterSet(WParameter::Second);
-                auto x1set = toolWidget->isParameterSet(WParameter::Third);
-                auto y1set = toolWidget->isParameterSet(WParameter::Fourth);
+            using namespace Sketcher;
 
-                using namespace Sketcher;
+            if(x0set && y0set && x0 == 0. && y0 == 0.) {
+                ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::RtPnt,
+                                            x0, handler->sketchgui->getObject());
+            } else {
+                if (x0set)
+                    ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::VAxis,
+                                            x0, handler->sketchgui->getObject());
 
-                if(x0set && y0set && x0 == 0. && y0 == 0.) {
-                    ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::RtPnt,
-                                                x0, handler->sketchgui->getObject());
-                } else {
-                    if (x0set)
-                        ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::VAxis,
-                                                x0, handler->sketchgui->getObject());
-
-                    if (y0set)
-                        ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::HAxis,
-                                                y0,  handler->sketchgui->getObject());
-                }
-
-                if(x1set && y1set && x1 == 0. && y1 == 0.) {
-                    ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::RtPnt,
-                                                x1, handler->sketchgui->getObject());
-                } else {
-                    if (x1set)
-                        ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::VAxis,
-                                                x1,  handler->sketchgui->getObject());
-
-                    if (y1set)
-                        ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::HAxis,
-                                                y1,  handler->sketchgui->getObject());
-                }
+                if (y0set)
+                    ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::HAxis,
+                                            y0,  handler->sketchgui->getObject());
             }
 
+            if(x1set && y1set && x1 == 0. && y1 == 0.) {
+                ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::RtPnt,
+                                            x1, handler->sketchgui->getObject());
+            } else {
+                if (x1set)
+                    ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::VAxis,
+                                            x1,  handler->sketchgui->getObject());
+
+                if (y1set)
+                    ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::HAxis,
+                                            y1,  handler->sketchgui->getObject());
+            }
         }
     };
 
@@ -470,6 +486,7 @@ public:
     void drawToPosition(Base::Vector2d onSketchPos)
     {
         toolWidgetManager.overrideSketchPosition(onSketchPos);
+        toolWidgetManager.updateVisualValues(onSketchPos);
 
         if (Mode==STATUS_SEEK_First) {
             setPositionText(onSketchPos);
@@ -506,12 +523,13 @@ public:
 
     virtual bool pressButton(Base::Vector2d onSketchPos) override
     {
+        toolWidgetManager.overrideSketchPosition(onSketchPos);
+
         if (Mode==STATUS_SEEK_First){
             EditCurve[0] = onSketchPos;
 
-            Mode = STATUS_SEEK_Second;
-
-            toolWidgetManager.updateParameterValues(); // let the widget know updated values
+            Mode = STATUS_SEEK_Second; 
+            toolWidgetManager.updateFocus();
         }
         else {
             EditCurve[1] = onSketchPos;
