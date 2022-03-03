@@ -47,6 +47,13 @@ class SketcherToolDefaultWidget : public QWidget
 {
     Q_OBJECT
 
+    enum class FontStyle
+    {
+        Normal,
+        Bold,
+        Italic,
+    };
+
 public:
 
     enum Parameter {
@@ -71,7 +78,6 @@ public:
 
     void setParameterEnabled(int parameterindex, bool active = true);
     void setParameterFocus(int parameterindex);
-    void setParameterFont(int parameterindex, std::string fontStyle);
 
     void setParameterVisible(int parameterindex, bool visible = true);
 
@@ -100,6 +106,8 @@ protected:
 private:
     QLabel * getParameterLabel(int parameterindex);
     Gui::PrefQuantitySpinBox * getParameterSpinBox(int parameterindex);
+
+    void setParameterFontStyle(int parameterindex, FontStyle fontStyle);
 
 private:
     std::unique_ptr<Ui_SketcherToolDefaultWidget> ui;
