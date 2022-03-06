@@ -131,10 +131,20 @@ std::string DrawSketchHandler::getToolName() const
     return "DSH_None";
 }
 
+QString DrawSketchHandler::getCrosshairCursorString() const
+{
+    return QString::fromLatin1("None");
+}
+
 
 void DrawSketchHandler::activate(ViewProviderSketch * vp)
 {
     sketchgui = vp;
+
+    auto cursorstring = getCrosshairCursorString();
+
+    if(cursorstring != QString::fromLatin1("None"))
+        setCrosshairCursor(cursorstring);
 
     this->signalToolChanged();
 
@@ -177,11 +187,6 @@ void DrawSketchHandler::toolWidgetChanged(QWidget * newwidget)
     onWidgetChanged();
 }
 
-void DrawSketchHandler::onWidgetChanged()
-{
-
-}
-
 //**************************************************************************
 // Helpers
 
@@ -206,7 +211,7 @@ unsigned long DrawSketchHandler::getCrosshairColor()
     return color;
 }
 
-void DrawSketchHandler::setCrosshairCursor(QString svgName) {
+void DrawSketchHandler::setCrosshairCursor(const QString & svgName) {
     const unsigned long defaultCrosshairColor = 0xFFFFFF;
     unsigned long color = getCrosshairColor();
     auto colorMapping = std::map<unsigned long, unsigned long>();
