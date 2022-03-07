@@ -160,6 +160,7 @@ private:
     virtual void activated(){}
     virtual void deactivated(){}
     virtual void postDeactivated(){}
+    virtual void onWidgetChanged(){}
 
 protected:
     // helpers
@@ -178,6 +179,7 @@ protected:
     void applyCursor(QCursor &newCursor);
     unsigned long getCrosshairColor();
     qreal devicePixelRatio();
+    void setCrosshairCursor(const QString & svgName);
     void setCrosshairCursor(const char* svgName);
 
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
@@ -190,6 +192,7 @@ protected:
     int getPreselectCurve(void) const;
     int getPreselectCross(void) const;
 
+    virtual QString getCrosshairCursorString() const;
 
     /**
      * Returns constraints icons scaled to width.
