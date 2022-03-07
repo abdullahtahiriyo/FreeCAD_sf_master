@@ -219,6 +219,34 @@ void ConstraintToAttachment(Sketcher::GeoElementId element, Sketcher::GeoElement
     }
 }
 
+
+class DSHandlerStateMachine: public DrawSketchHandler
+{
+protected:
+
+    enum class SelectMode {
+        End
+    };
+
+public:
+    DSHandlerStateMachine():Mode(SelectMode::End) {}
+    virtual ~DSHandlerStateMachine(){}
+
+protected:
+    void setState(SelectMode mode) {
+        Mode = mode;
+        onModeChanged();
+    }
+
+    virtual void onModeChanged();
+
+
+private:
+    SelectMode Mode;
+
+};
+
+
 /* Sketch commands =======================================================*/
 
 class DrawSketchHandlerLine: public DrawSketchHandler
