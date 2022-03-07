@@ -219,23 +219,213 @@ void ConstraintToAttachment(Sketcher::GeoElementId element, Sketcher::GeoElement
     }
 }
 
-/* Sketch commands =======================================================*/
+/************************ List of Handlers/Commands ************************************/
 
-class DrawSketchHandlerLine: public DrawSketchHandler
+enum class GeometryTools {
+    Line
+};
+
+/************************ Hierarchy of DrawSketchHandlers for Geometry *****************/
+
+/** @brief A DrawSketchHandler encapsulating a state machine.
+ *
+ * @details
+ * A state machine defining possible states for derived DrawSketchHandlers (DHs).
+ *
+ * Generates a call to onModeChanged() after every change.
+ *
+ */
+class DSHandlerStateMachine: public DrawSketchHandler
+{
+protected:
+    enum class SelectMode {
+        SeekFirst,
+        SeekSecond,
+        SeekThird,
+        SeekFourth,
+        SeekFifth, // Seek enums MUST be the first modes, if you need more modes, insert between this line and End
+        Do,
+        End // MUST be the last one
+    };
+
+public:
+    DSHandlerStateMachine():Mode(SelectMode::SeekFirst) {}
+    virtual ~DSHandlerStateMachine(){}
+
+protected:
+    void setState(SelectMode mode) {
+        Mode = mode;
+        onModeChanged();
+    }
+
+    SelectMode state() {
+        return Mode;
+    }
+
+    bool isState(SelectMode state) { return Mode == state;}
+
+    virtual void onModeChanged() {};
+
+private:
+    SelectMode Mode;
+
+};
+
+/** @brief A state machine DrawSketchHandler for geometry.
+ *
+ * @details
+ * A state machine DrawSketchHandler defining a EditCurve and AutoConstraints, providing:
+ * - generic initialisation
+ * - structured command finalisation
+ * - handling of continuous creation mode
+ */
+class DrawSketchGeometryHandler: public DSHandlerStateMachine
+{
+public:
+    DrawSketchGeometryHandler(int editcurvesize = 0, int autoconstraintsize = 0):   initCurveSize(editcurvesize)
+                                                                                    ,EditCurve(editcurvesize)
+                                                                                    ,sugConstraints(autoconstraintsize)
+    {
+        applyCursor();
+    }
+
+    virtual ~DrawSketchGeometryHandler() = default;
+
+
+protected:
+
+    // This function has the right structure for finalising a command, while taking care of
+    // all details.
+    // 1 - Call it from your handle.
+    // 2 - DO NOT HIDE IT (redefine it) IN YOUR HANDLER UNLESS YOU HAVE A REALLY GOOD REASON TO.
+    // 3 - Use the NVI virtual functions to provide the behaviour you need.
+    void finish() {
+
+        if(isState(SelectMode::End)) {
+            unsetCursor();
+            resetPositionText();
+
+            executeCommands();
+
+            beforeCreateAutoConstraints();
+
+            createAutoConstraints();
+
+            tryAutoRecomputeIfNotSolve(static_cast<Sketcher::SketchObject *>(sketchgui->getObject()));
+
+            handleContinuousMode();
+        }
+
+    }
+
+    void reset() {
+        EditCurve.clear();
+        drawEdit(EditCurve);
+
+        setState(SelectMode::SeekFirst);
+        EditCurve.resize(initCurveSize);
+        for(auto & ac : sugConstraints)
+            ac.clear();
+
+        onReset();
+        applyCursor();
+    }
+
+    void handleContinuousMode() {
+        ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+
+        bool continuousMode = hGrp->GetBool("ContinuousCreationMode",true);
+        if(continuousMode){
+            // This code enables the continuous creation mode.
+            reset();
+            // It is ok not to call to purgeHandler in continuous creation mode because the
+            // handler is destroyed by the quit() method on pressing the right button of the mouse
+        }
+        else{
+            sketchgui->purgeHandler(); // no code after this line, Handler get deleted in ViewProvider
+        }
+    }
+
+private:
+    virtual void onReset() { }
+    virtual void executeCommands() {}
+    virtual void beforeCreateAutoConstraints() {}
+    virtual void createAutoConstraints() {}
+
+    virtual void activated() override {
+        ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+
+        avoidRedundants = sketchgui->AvoidRedundant.getValue()  && sketchgui->Autoconstraints.getValue();
+    }
+
+
+private:
+    int initCurveSize;
+
+protected:
+    std::vector<Base::Vector2d> EditCurve;
+    std::vector<std::vector<AutoConstraint>> sugConstraints;
+
+    bool avoidRedundants;
+
+};
+
+/** @brief Template class intended for handlers that interact with SketcherToolDefaultWidget.
+ *
+ * @details
+ * The template encapsulates a DSH and a nested class ToolWidgetManager which is responsible for
+ * handling the interaction between the DSH and SketcherToolDefaultWidget.
+ *
+ * This class is not intended to be derived from. Changes of behaviour require either specialisation or
+ * compile-time if (if constexpr, if consteval,...).
+ *
+ * The template has the following parameters:
+ * - GeometryTools: enabling differentiated instantiation/behaviour per supported geometry tool.
+ * - PNumToolwidgetparameters: Number of parameters of the default widget that are to be used.
+ * - PEditCurveSize: Initial size of the EditData structure.
+ * - PAutoConstraintSize: Initial number of AutoConstraints.
+ * - PNumSeeks: Number of Seek operations necessary for the command (see enum SelectMode).
+ *
+ * Widget:
+ * - Automatically initialises the parameters necessary
+ * - Automatically connects boost signals of the widget to slots.
+ * - Modify point coordinates based on widget state.
+ * - Update Widget with value.
+ *
+ * Widget MUST specialise:
+ * - configureToolWidget() for example to initialise widget labels.
+ * - doUpdateDrawSketchHandlerValues() to update EditData when Widget values are changed.
+ * - addConstraints() to add any constraint mandated by Widget.
+ *
+ * Widget MAY need to specialise, if default behaviour is not appropriate:
+ * - doChangeDrawSketchHandlerMode
+ * - onHandlerModeChanged
+ * - updateVisualValues
+ * - doOverrideSketchPosition
+ *
+ * Handler provides:
+ * - generic initialisation
+ * - structured command finalisation
+ * - handling of continuous creation mode
+ * - interaction with widget
+ *
+ * Handler MUST specialise:
+ * - getToolName                            => provide the string name of the tool
+ * - getCrosshairCursorString               => provide the string for the svg icon of the cursor
+ * - updateEditDataAndDrawToPositionImpl    => function to update the EditData structure and draw a temporal curve
+ * - executeCommands                        => execution of commands to create the geometry
+ * - createAutoConstraints                  => execution of commands to create autoconstraints (widget mandated constraints are called BEFORE this)
+ *
+ */
+template< GeometryTools tool, int PNumToolwidgetparameters, int PEditCurveSize, int PAutoConstraintSize, int PNumSeeks >
+class DSHandlerDefaultWidget final: public DrawSketchGeometryHandler
 {
 private:
     class ToolWidgetManager {
-        const int nParameter = 4;
-
-        enum Parameters {
-            x1 = 0,
-            y1 = 1,
-            x2 = 2,
-            y2 = 3
-        };
+        const int nParameter = PNumToolwidgetparameters;
 
         SketcherToolDefaultWidget* toolWidget;
-        DrawSketchHandlerLine * handler;
+        DSHandlerDefaultWidget * handler;
 
         using Connection = boost::signals2::connection;
 
@@ -246,10 +436,12 @@ private:
         using WParameter = SketcherToolDefaultWidget::Parameter;
 
     public:
-        ToolWidgetManager(DrawSketchHandlerLine * dshandler):handler(dshandler){}
+        ToolWidgetManager(DSHandlerDefaultWidget * dshandler):handler(dshandler){}
 
         ~ToolWidgetManager(){ connectionParameterValueChanged.disconnect();}
 
+        /** @name functions NOT intended for specialisation */
+        //@{
         void initWidget(QWidget* widget) {
             toolWidget = static_cast<SketcherToolDefaultWidget*>(widget);
 
@@ -264,76 +456,106 @@ private:
 
             toolWidget->initNParameters(nParameter);
 
-            toolWidget->setParameterLabel(x1, QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 1st point"));
-            toolWidget->setParameterLabel(y1, QApplication::translate("TaskSketcherTool_p2_rectangle", "y of 1st point"));
-            toolWidget->setParameterLabel(x2, QApplication::translate("TaskSketcherTool_p3_rectangle", "x of 2nd point"));
-            toolWidget->setParameterLabel(y2, QApplication::translate("TaskSketcherTool_p4_rectangle", "y of 2nd point"));
-
-            toolWidget->setParameterEnabled(x1);
-            toolWidget->setParameterEnabled(y1);
-            toolWidget->setParameterEnabled(x2);
-            toolWidget->setParameterEnabled(y2);
-
-            toolWidget->setParameterFocus(x1);
+            configureToolWidget();
         }
 
-        void parameterValueChanged(int parameterindex, double value) {
+        void overrideSketchPosition(Base::Vector2d &onSketchPos)
+        {
+            prevCursorPosition = onSketchPos;
 
-            // update new entered value
-            switch(parameterindex) {
-                case WParameter::First:
-                    handler->EditCurve[0].x = value;
-                    break;
-                case WParameter::Second:
-                    handler->EditCurve[0].y = value;
-                    break;
-                case WParameter::Third:
-                    handler->EditCurve[1].x = value;
-                    break;
-                case WParameter::Fourth:
-                    handler->EditCurve[1].y = value;
-                    break;
-            }
+            doOverrideSketchPosition(onSketchPos);
+        }
 
-            // check if handler mode shall change
-            switch(handler->Mode) {
-                case STATUS_SEEK_First:
+        // boost slot triggering when a parameter has changed in the widget
+        // It is intended to remote control the DSHandlerDefaultWidget
+        void parameterValueChanged(int parameterindex, double value)
+        {
+            doUpdateDrawSketchHandlerValues (parameterindex, value);
+
+            doChangeDrawSketchHandlerMode();
+
+        }
+        //@}
+
+        /** @name functions which MUST be specialised */
+        //@{
+        // Function to specialise to set the correct widget strings and commands
+        void configureToolWidget() {}
+
+        // Change DSH to reflect a value entered in the widget
+        void doUpdateDrawSketchHandlerValues(int parameterindex, double value) {Q_UNUSED(parameterindex);Q_UNUSED(value);}
+
+        // function to create constraints based on widget information.
+        void addConstraints() {}
+        //@}
+
+        /** @name functions which MAY need to be specialised */
+        //@{
+        // Change DSH to reflect the SelectMode it should be in based on values entered in the widget
+        //
+        // The default implementation is for two seek states and four parameters, being a common case
+        // It MUST be specialised for a different amount of seek states
+        //TODO: Consider a template with a parameter pack and folding and add an extra template argument here.
+        void doChangeDrawSketchHandlerMode() {
+            switch(handler->state()) {
+                case SelectMode::SeekFirst:
                 {
                     if (toolWidget->isParameterSet(WParameter::First) &&
                         toolWidget->isParameterSet(WParameter::Second)) {
 
-                        handler->Mode = STATUS_SEEK_Second;
+                        handler->setState(SelectMode::SeekSecond);
 
-                        handler->drawToPosition(prevCursorPosition); // draw curve to cursor with suggested constraints
+                        handler->updateEditDataAndDrawToPosition(prevCursorPosition); // draw curve to cursor with suggested constraints
                     }
                 }
                 break;
-                case STATUS_SEEK_Second:
+                case SelectMode::SeekSecond:
                 {
                     if (toolWidget->isParameterSet(WParameter::Third) ||
                         toolWidget->isParameterSet(WParameter::Fourth)) {
 
-                        handler->drawToPosition(prevCursorPosition); // draw curve to cursor with suggested constraints
+                        handler->updateEditDataAndDrawToPosition(prevCursorPosition); // draw curve to cursor with suggested constraints
 
                         if(toolWidget->isParameterSet(WParameter::Third) &&
-                           toolWidget->isParameterSet(WParameter::Fourth)) {
+                            toolWidget->isParameterSet(WParameter::Fourth)) {
 
-                               handler->Mode = STATUS_End;
-                               handler->finishCommand();
-                           }
+                                handler->setState(SelectMode::End);
+                                handler->finish();
+                            }
                     }
                 }
                 break;
                 default:
                     break;
             }
-
         }
 
-        void updateVisualValues(Base::Vector2d onSketchPos) {
+        // function that is called by the handler when the selection mode changed
+        //
+        // This is just a default implementation
+        // It MUST be specialised if the states correspond to different parameters
+        void onHandlerModeChanged() {
+            switch (handler->state()) {
+            case SelectMode::SeekFirst:
+                toolWidget->setParameterFocus(WParameter::First);
+                break;
+            case SelectMode::SeekSecond:
+                toolWidget->setParameterFocus(WParameter::Third);
+                break;
+            case SelectMode::SeekThird:
+                toolWidget->setParameterFocus(WParameter::Fifth);
+                break;
+            default:
+                break;
+            }
+        }
 
-            switch (handler->Mode) {
-            case STATUS_SEEK_First:
+        // function that is called by the handler with a Vector2d position to update the widget
+        // This is just a default implementation
+        // It MUST be specialised if the states correspond to different parameters
+        void updateVisualValues(Base::Vector2d onSketchPos) {
+            switch (handler->state()) {
+            case SelectMode::SeekFirst:
             {
                 if (!toolWidget->isParameterSet(WParameter::First))
                     toolWidget->updateVisualValue(WParameter::First, onSketchPos.x);
@@ -342,7 +564,7 @@ private:
                     toolWidget->updateVisualValue(WParameter::Second, onSketchPos.y);
             }
             break;
-            case STATUS_SEEK_Second:
+            case SelectMode::SeekSecond:
             {
                 if (!toolWidget->isParameterSet(WParameter::Third))
                     toolWidget->updateVisualValue(WParameter::Third, onSketchPos.x);
@@ -356,29 +578,13 @@ private:
             }
         }
 
-        void updateFocus() {
-            switch (handler->Mode) {
-            case STATUS_SEEK_First:
-            {
-                toolWidget->setParameterFocus(x1);
-            }
-            break;
-            case STATUS_SEEK_Second:
-            {
-                toolWidget->setParameterFocus(x2);
-            }
-            break;
-            default:
-                break;
-            }
-        }
-
-        void overrideSketchPosition(Base::Vector2d &onSketchPos)
-        {
+        // function that is called by the handler with a mouse position, enabling the
+        // widget to override it having regard to the widget information.
+        void doOverrideSketchPosition(Base::Vector2d &onSketchPos) {
             prevCursorPosition = onSketchPos;
 
-            switch(handler->Mode) {
-                case STATUS_SEEK_First:
+            switch(handler->state()) {
+                case SelectMode::SeekFirst:
                 {
                     if (toolWidget->isParameterSet(WParameter::First))
                         onSketchPos.x = toolWidget->getParameter(WParameter::First);
@@ -387,7 +593,7 @@ private:
                         onSketchPos.y = toolWidget->getParameter(WParameter::Second);
                 }
                 break;
-                case STATUS_SEEK_Second:
+                case SelectMode::SeekSecond:
                 {
                     if (toolWidget->isParameterSet(WParameter::Third))
                         onSketchPos.x = toolWidget->getParameter(WParameter::Third);
@@ -400,83 +606,149 @@ private:
                     break;
             }
         }
+        //@}
 
-        void addConstraints() {
+     };
 
-            int firstCurve = handler->getHighestCurveIndex();
-
-            auto x0 = toolWidget->getParameter(WParameter::First);
-            auto y0 = toolWidget->getParameter(WParameter::Second);
-            auto x1 = toolWidget->getParameter(WParameter::Third);
-            auto y1 = toolWidget->getParameter(WParameter::Fourth);
-
-            auto x0set = toolWidget->isParameterSet(WParameter::First);
-            auto y0set = toolWidget->isParameterSet(WParameter::Second);
-            auto x1set = toolWidget->isParameterSet(WParameter::Third);
-            auto y1set = toolWidget->isParameterSet(WParameter::Fourth);
-
-            using namespace Sketcher;
-
-            if(x0set && y0set && x0 == 0. && y0 == 0.) {
-                ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::RtPnt,
-                                            x0, handler->sketchgui->getObject());
-            } else {
-                if (x0set)
-                    ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::VAxis,
-                                            x0, handler->sketchgui->getObject());
-
-                if (y0set)
-                    ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::HAxis,
-                                            y0,  handler->sketchgui->getObject());
-            }
-
-            if(x1set && y1set && x1 == 0. && y1 == 0.) {
-                ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::RtPnt,
-                                            x1, handler->sketchgui->getObject());
-            } else {
-                if (x1set)
-                    ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::VAxis,
-                                            x1,  handler->sketchgui->getObject());
-
-                if (y1set)
-                    ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::HAxis,
-                                            y1,  handler->sketchgui->getObject());
-            }
-        }
-    };
 
 public:
-    DrawSketchHandlerLine():Mode(STATUS_SEEK_First),EditCurve(2),toolWidgetManager(this)
-    {
-        applyCursor();
-    }
-    virtual ~DrawSketchHandlerLine(){}
-    /// mode table
-    enum SelectMode {
-        STATUS_SEEK_First,      /**< enum value ----. */
-        STATUS_SEEK_Second,     /**< enum value ----. */
-        STATUS_End
-    };
+    DSHandlerDefaultWidget():DrawSketchGeometryHandler(PEditCurveSize, PAutoConstraintSize),toolWidgetManager(this) {}
+    virtual ~DSHandlerDefaultWidget() = default;
 
-    virtual void onWidgetChanged() override
+    /** @name functions NOT intended for specialisation */
+    //@{
+    virtual void mouseMove(Base::Vector2d onSketchPos) final
     {
+        updateEditDataAndDrawToPosition(onSketchPos);
+    }
+
+    virtual bool pressButton(Base::Vector2d onSketchPos) final
+    {
+        toolWidgetManager.overrideSketchPosition(onSketchPos);
+
+        onButtonPressed(onSketchPos);
+        return true;
+    }
+
+    virtual bool releaseButton(Base::Vector2d onSketchPos) final {
+        Q_UNUSED(onSketchPos);
+        finish();
+        return true;
+    }
+
+    //@}
+
+
+protected:
+
+    /** @name functions NOT intended for specialisation */
+    //@{
+    void updateEditDataAndDrawToPosition (Base::Vector2d onSketchPos) {
+        toolWidgetManager.overrideSketchPosition(onSketchPos);
+        toolWidgetManager.updateVisualValues(onSketchPos);
+        updateEditDataAndDrawToPositionImpl(onSketchPos);
+    }
+    //@}
+
+    /** @name functions requiring specialisation */
+    //@{
+    virtual std::string getToolName() const final;
+    virtual QString getCrosshairCursorString() const final;
+    //@}
+
+private:
+    /** @name functions requiring specialisation */
+    //@{
+    // For every machine state, it updates the EditData temporary
+    // curve, and draws the temporary curve during edit mode.
+    void updateEditDataAndDrawToPositionImpl(Base::Vector2d onSketchPos);
+
+    virtual void executeCommands() final;
+    virtual void createAutoConstraints() final;
+    //@}
+
+    /** @name functions which MAY require specialisation*/
+    //@{
+    // Default implementation is that on every mouse click the mode is changed to the next seek
+    // On the last seek, it changes to SelectMode::End
+    // If this behaviour is not acceptable, then the function must be specialised.
+    void onButtonPressed(Base::Vector2d onSketchPos) {
+        Q_UNUSED(onSketchPos)
+
+        setState(getNextMode());
+    }
+
+    virtual void beforeCreateAutoConstraints() final
+    {
+        toolWidgetManager.addConstraints();
+    }
+
+    virtual void onWidgetChanged() final {
         toolWidgetManager.initWidget(toolwidget);
     }
 
-    void drawToPosition(Base::Vector2d onSketchPos)
-    {
-        toolWidgetManager.overrideSketchPosition(onSketchPos);
-        toolWidgetManager.updateVisualValues(onSketchPos);
+    virtual void onReset() final {
+        toolWidgetManager.reset();
+    }
 
-        if (Mode==STATUS_SEEK_First) {
+    virtual void onModeChanged() final {
+        toolWidgetManager.onHandlerModeChanged();
+    };
+    //@}
+
+    // Determination of the nextMode for a command.
+    //
+    // Default implementation assumes that the Command
+    // executes all Seek states and then jumps to End.
+    // Must be specialised if another behavior is expected.
+    SelectMode getNextMode() {
+        auto modeint = static_cast<int>(state());
+
+        if(modeint < (PNumSeeks - 1)) {
+            auto newmode = static_cast<SelectMode>(modeint+1);
+            return newmode;
+        }
+        else {
+            return SelectMode::End;
+        }
+    }
+
+private:
+    ToolWidgetManager toolWidgetManager;
+};
+
+
+
+
+
+/* Sketch commands =======================================================*/
+
+using DrawSketchHandlerLine = DSHandlerDefaultWidget< GeometryTools::Line,
+                                                      /*PNumToolwidgetparameters =*/ 4,
+                                                      /*PEditCurveSize =*/ 2,
+                                                      /*PAutoConstraintSize =*/ 2,
+                                                      /*PNumSeeks =*/ 2>;
+
+template <> std::string DrawSketchHandlerLine::getToolName() const { return "DSH_Line";}
+template <> QString DrawSketchHandlerLine::getCrosshairCursorString() const { return QString::fromLatin1("Sketcher_Pointer_Create_Line"); }
+
+
+template <> void DrawSketchHandlerLine::updateEditDataAndDrawToPositionImpl(Base::Vector2d onSketchPos) {
+    switch(state()) {
+        case SelectMode::SeekFirst:
+        {
             setPositionText(onSketchPos);
 
-            if (seekAutoConstraint(sugConstr1, onSketchPos, Base::Vector2d(0.f,0.f))) {
-                renderSuggestConstraintsCursor(sugConstr1);
+            EditCurve[0] = onSketchPos;
+
+            if (seekAutoConstraint(sugConstraints[0], onSketchPos, Base::Vector2d(0.f,0.f))) {
+                renderSuggestConstraintsCursor(sugConstraints[0]);
                 return;
             }
         }
-        else if (Mode==STATUS_SEEK_Second){
+        break;
+        case SelectMode::SeekSecond:
+        {
             //Check if user changed first parameters, if so go back to SEEK_first. This way we don't have to disable parameters after they are set.
 
             float length = (onSketchPos - EditCurve[0]).Length();
@@ -489,124 +761,120 @@ public:
 
             drawEdit(EditCurve);
 
-            if (seekAutoConstraint(sugConstr2, onSketchPos, onSketchPos - EditCurve[0])) {
-                renderSuggestConstraintsCursor(sugConstr2);
+            if (seekAutoConstraint(sugConstraints[1], onSketchPos, onSketchPos - EditCurve[0])) {
+                renderSuggestConstraintsCursor(sugConstraints[1]);
                 return;
             }
         }
+        break;
+        default:
+            break;
+    }
+}
+
+template <> void DrawSketchHandlerLine::executeCommands() {
+    try {
+        Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add sketch line"));
+        Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.LineSegment(App.Vector(%f,%f,0),App.Vector(%f,%f,0)),%s)",
+                    EditCurve[0].x,EditCurve[0].y,EditCurve[1].x,EditCurve[1].y,
+                    geometryCreationMode==Construction?"True":"False");
+
+        Gui::Command::commitCommand();
+    }
+    catch (const Base::Exception& e) {
+        Base::Console().Error("Failed to add line: %s\n", e.what());
+        Gui::Command::abortCommand();
     }
 
-    virtual void mouseMove(Base::Vector2d onSketchPos) override
-    {
-        drawToPosition(onSketchPos);
+}
+
+template <> void DrawSketchHandlerLine::createAutoConstraints() {
+    if(avoidRedundants)
+        removeRedundantHorizontalVertical(static_cast<Sketcher::SketchObject *>(sketchgui->getObject()),sugConstraints[0],sugConstraints[1]);
+
+    // add auto constraints for the line segment start
+    if (!sugConstraints[0].empty()) {
+        DrawSketchHandler::createAutoConstraints(sugConstraints[0], getHighestCurveIndex(), Sketcher::PointPos::start);
+        sugConstraints[0].clear();
     }
 
-    virtual bool pressButton(Base::Vector2d onSketchPos) override
-    {
-        toolWidgetManager.overrideSketchPosition(onSketchPos);
+    // add auto constraints for the line segment end
+    if (!sugConstraints[1].empty()) {
+        DrawSketchHandler::createAutoConstraints(sugConstraints[1], getHighestCurveIndex(), Sketcher::PointPos::end);
+        sugConstraints[1].clear();
+    }
+}
 
-        if (Mode==STATUS_SEEK_First){
-            EditCurve[0] = onSketchPos;
+// Widget
+template <> void DrawSketchHandlerLine::ToolWidgetManager::configureToolWidget() {
 
-            Mode = STATUS_SEEK_Second; 
-            toolWidgetManager.updateFocus();
-        }
-        else {
-            EditCurve[1] = onSketchPos;
+    toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 1st point"));
+    toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_rectangle", "y of 1st point"));
+    toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("TaskSketcherTool_p3_rectangle", "x of 2nd point"));
+    toolWidget->setParameterLabel(WParameter::Fourth, QApplication::translate("TaskSketcherTool_p4_rectangle", "y of 2nd point"));
 
-            drawEdit(EditCurve);
-            Mode = STATUS_End;
-        }
-        return true;
+    toolWidget->setParameterFocus(WParameter::First);
+}
+
+template <> void DrawSketchHandlerLine::ToolWidgetManager::doUpdateDrawSketchHandlerValues(int parameterindex, double value) {
+    switch(parameterindex) {
+        case WParameter::First:
+            handler->EditCurve[0].x = value;
+            break;
+        case WParameter::Second:
+            handler->EditCurve[0].y = value;
+            break;
+        case WParameter::Third:
+            handler->EditCurve[1].x = value;
+            break;
+        case WParameter::Fourth:
+            handler->EditCurve[1].y = value;
+            break;
+    }
+}
+
+template <> void DrawSketchHandlerLine::ToolWidgetManager::addConstraints() {
+    int firstCurve = handler->getHighestCurveIndex();
+
+    auto x0 = toolWidget->getParameter(WParameter::First);
+    auto y0 = toolWidget->getParameter(WParameter::Second);
+    auto x1 = toolWidget->getParameter(WParameter::Third);
+    auto y1 = toolWidget->getParameter(WParameter::Fourth);
+
+    auto x0set = toolWidget->isParameterSet(WParameter::First);
+    auto y0set = toolWidget->isParameterSet(WParameter::Second);
+    auto x1set = toolWidget->isParameterSet(WParameter::Third);
+    auto y1set = toolWidget->isParameterSet(WParameter::Fourth);
+
+    using namespace Sketcher;
+
+    if(x0set && y0set && x0 == 0. && y0 == 0.) {
+        ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::RtPnt,
+                                    x0, handler->sketchgui->getObject());
+    } else {
+        if (x0set)
+            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::VAxis,
+                                    x0, handler->sketchgui->getObject());
+
+        if (y0set)
+            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::HAxis,
+                                    y0,  handler->sketchgui->getObject());
     }
 
-    void finishCommand()
-    {
-        if (Mode==STATUS_End){
-            unsetCursor();
-            resetPositionText();
+    if(x1set && y1set && x1 == 0. && y1 == 0.) {
+        ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::RtPnt,
+                                    x1, handler->sketchgui->getObject());
+    } else {
+        if (x1set)
+            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::VAxis,
+                                    x1,  handler->sketchgui->getObject());
 
-            try {
-                Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add sketch line"));
-                Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.LineSegment(App.Vector(%f,%f,0),App.Vector(%f,%f,0)),%s)",
-                          EditCurve[0].x,EditCurve[0].y,EditCurve[1].x,EditCurve[1].y,
-                          geometryCreationMode==Construction?"True":"False");
-
-                //add constraint if user typed in some dimensions in tool widget
-                toolWidgetManager.addConstraints();
-
-                Gui::Command::commitCommand();
-            }
-            catch (const Base::Exception& e) {
-                Base::Console().Error("Failed to add line: %s\n", e.what());
-                Gui::Command::abortCommand();
-            }
-
-            ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
-            bool avoidredundant = sketchgui->AvoidRedundant.getValue()  && sketchgui->Autoconstraints.getValue();
-
-            if(avoidredundant)
-                removeRedundantHorizontalVertical(static_cast<Sketcher::SketchObject *>(sketchgui->getObject()),sugConstr1,sugConstr2);
-
-            // add auto constraints for the line segment start
-            if (!sugConstr1.empty()) {
-                createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::PointPos::start);
-                sugConstr1.clear();
-            }
-
-            // add auto constraints for the line segment end
-            if (!sugConstr2.empty()) {
-                createAutoConstraints(sugConstr2, getHighestCurveIndex(), Sketcher::PointPos::end);
-                sugConstr2.clear();
-            }
-
-            tryAutoRecomputeIfNotSolve(static_cast<Sketcher::SketchObject *>(sketchgui->getObject()));
-
-            EditCurve.clear();
-            drawEdit(EditCurve);
-
-            bool continuousMode = hGrp->GetBool("ContinuousCreationMode",true);
-            if(continuousMode){
-                // This code enables the continuous creation mode.
-                Mode=STATUS_SEEK_First;
-                EditCurve.resize(2);
-                toolWidgetManager.reset();
-                applyCursor();
-                /* It is ok not to call to purgeHandler
-                * in continuous creation mode because the
-                * handler is destroyed by the quit() method on pressing the
-                * right button of the mouse */
-            }
-            else{
-                sketchgui->purgeHandler(); // no code after this line, Handler get deleted in ViewProvider
-            }
-        }
+        if (y1set)
+            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::HAxis,
+                                    y1,  handler->sketchgui->getObject());
     }
+}
 
-    virtual bool releaseButton(Base::Vector2d onSketchPos) override
-    {
-        Q_UNUSED(onSketchPos);
-        finishCommand();
-        return true;
-    }
-
-private:
-
-    virtual void activated() override
-    {
-        setCrosshairCursor("Sketcher_Pointer_Create_Line");
-    }
-
-protected:
-    virtual std::string getToolName() const override { return "DSH_Line";}
-
-protected:
-    SelectMode Mode;
-    std::vector<Base::Vector2d> EditCurve;
-    std::vector<AutoConstraint> sugConstr1, sugConstr2;
-
-    ToolWidgetManager toolWidgetManager;
-};
 
 DEF_STD_CMD_AU(CmdSketcherCreateLine)
 
