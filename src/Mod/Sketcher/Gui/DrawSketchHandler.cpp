@@ -206,8 +206,7 @@ unsigned long DrawSketchHandler::getCrosshairColor()
     return color;
 }
 
-void DrawSketchHandler::setCrosshairCursor(const char* svgName) {
-    QString cursorName = QString::fromLatin1(svgName);
+void DrawSketchHandler::setCrosshairCursor(QString svgName) {
     const unsigned long defaultCrosshairColor = 0xFFFFFF;
     unsigned long color = getCrosshairColor();
     auto colorMapping = std::map<unsigned long, unsigned long>();
@@ -215,7 +214,12 @@ void DrawSketchHandler::setCrosshairCursor(const char* svgName) {
     // hot spot of all SVG icons should be 8,8 for 32x32 size (16x16 for 64x64)
     int hotX = 8;
     int hotY = 8;
-    setSvgCursor(cursorName, hotX, hotY, colorMapping);
+    setSvgCursor(svgName, hotX, hotY, colorMapping);
+}
+
+void DrawSketchHandler::setCrosshairCursor(const char* svgName) {
+    QString cursorName = QString::fromLatin1(svgName);
+    setCrosshairCursor(cursorName);
 }
 
 void DrawSketchHandler::setSvgCursor(const QString & cursorName, int x, int y, const std::map<unsigned long, unsigned long>& colorMapping)

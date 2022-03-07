@@ -155,6 +155,7 @@ protected:
     void applyCursor(QCursor &newCursor);
     unsigned long getCrosshairColor();
     qreal devicePixelRatio();
+    void setCrosshairCursor(QString svgName);
     void setCrosshairCursor(const char* svgName);
 
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
