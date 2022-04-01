@@ -381,23 +381,6 @@ template <> void DrawSketchHandlerLineBase::ToolWidgetManager::addConstraints() 
     }
 }
 
-// Function responsible for setting the right SelectMode upon changes in widget (both parameters and checkboxes)
-// NOTE: Uses the default implementation for TwoSeekEnd, so no need to specialise it.
-//template <> void DrawSketchHandlerLine::ToolWidgetManager::doChangeDrawSketchHandlerMode()
-
-// Function that is triggered by DSH when the SelectMode is changed (to update the widget accordingly)
-// NOTE: Uses the default implementation for TwoSeekEnd, so no need to specialise it.
-//template <> void DrawSketchHandlerLine::ToolWidgetManager::onHandlerModeChanged()
-
-// function that is called by the handler with a Vector2d position to update the widget
-// NOTE: Uses the default implementation for TwoSeekEnd, so no need to specialise it.
-//template <> void DrawSketchHandlerLine::ToolWidgetManager::updateVisualValues(Base::Vector2d onSketchPos)
-
-// function that is called by the handler with a mouse position, enabling the
-// widget to override it having regard to the widget information.
-// NOTE: Uses the default implementation for TwoSeekEnd, so no need to specialise it.
-//template <> void DrawSketchHandlerLine::ToolWidgetManager::doOverrideSketchPosition(Base::Vector2d &onSketchPos)
-
 DEF_STD_CMD_AU(CmdSketcherCreateLine)
 
 CmdSketcherCreateLine::CmdSketcherCreateLine()
@@ -456,6 +439,7 @@ using DrawSketchHandlerRectangleBase = DrawSketchDefaultWidgetHandler<  DrawSket
 
 class DrawSketchHandlerRectangle: public DrawSketchHandlerRectangleBase
 {
+    friend DrawSketchHandlerRectangleBase; // allow DrawSketchHandlerRectangleBase specialisations access DrawSketchHandlerRectangle private members
 public:
     enum class ConstructionMethod {
         Diagonal,
@@ -465,7 +449,8 @@ public:
     DrawSketchHandlerRectangle(ConstructionMethod constrMethod = ConstructionMethod::Diagonal) :
         constructionMethod(constrMethod),
         roundCorners(false) {}
-    virtual ~DrawSketchHandlerRectangle(){}
+
+    virtual ~DrawSketchHandlerRectangle() = default;
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
@@ -774,7 +759,7 @@ private:
         }
     }
 
-public:
+private:
     ConstructionMethod constructionMethod;
     Base::Vector2d center, firstCorner, secondCorner, thirdCorner, FourthCorner;
     bool roundCorners;
@@ -853,7 +838,7 @@ public:
 };
 
 template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::configureToolWidget() {
-    if(static_cast<DrawSketchHandlerRectangle *>(handler)->constructionMethod == DrawSketchHandlerRectangle::ConstructionMethod::Diagonal){
+    if(dHandler->constructionMethod == DrawSketchHandlerRectangle::ConstructionMethod::Diagonal){
         toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 1st point"));
         toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_rectangle", "y of 1st point"));
         toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("TaskSketcherTool_p3_rectangle", "Length (X axis)"));
@@ -1213,10 +1198,11 @@ using DrawSketchHandlerFrameBase = DrawSketchDefaultWidgetHandler<  DrawSketchHa
 
 class DrawSketchHandlerFrame : public DrawSketchHandlerFrameBase
 {
+    friend DrawSketchHandlerFrameBase;
 public:
 
-    DrawSketchHandlerFrame() {}
-    virtual ~DrawSketchHandlerFrame() {}
+    DrawSketchHandlerFrame() = default;
+    virtual ~DrawSketchHandlerFrame() = default;
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
@@ -1444,7 +1430,7 @@ private:
         return QString::fromLatin1("Sketcher_CreateFrame");
     }
 
-public:
+private:
     int firstCurve;
     Base::Vector2d firstPoint, secondPoint, thirdPoint, fourthPoint;
     double thickness;
@@ -1702,6 +1688,7 @@ using DrawSketchHandlerPolygonBase = DrawSketchDefaultWidgetHandler<  DrawSketch
 
 class DrawSketchHandlerPolygon : public DrawSketchHandlerPolygonBase
 {
+    friend DrawSketchHandlerPolygonBase;
 public:
 
     DrawSketchHandlerPolygon() :
@@ -1709,7 +1696,7 @@ public:
         AngleOfSeparation(2.0 * M_PI / static_cast<double>(Corners)),
         cos_v(cos(AngleOfSeparation)),
         sin_v(sin(AngleOfSeparation)){}
-    virtual ~DrawSketchHandlerPolygon() {}
+    virtual ~DrawSketchHandlerPolygon() = default;
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
@@ -1809,7 +1796,7 @@ private:
         return QString::fromLatin1("Sketcher_Pointer_Regular_Polygon");
     }
 
-public:
+private:
     unsigned int Corners;
     Base::Vector2d centerPoint, firstPoint, secondPoint;
     double AngleOfSeparation, cos_v, sin_v;
@@ -2131,10 +2118,10 @@ public:
       , startAngle(0)
       , endAngle(0)
       , arcRadius(0)
-      , firstsegment(true)
-    {
-    }
-    virtual ~DrawSketchHandlerLineSet() {}
+      , firstsegment(true) {}
+
+    virtual ~DrawSketchHandlerLineSet() = default;
+
     /// mode table
     enum SELECT_MODE {
         STATUS_SEEK_First,      /**< enum value ----. */
@@ -2816,15 +2803,16 @@ using DrawSketchHandlerCircleBase = DrawSketchDefaultWidgetHandler<  DrawSketchH
 
 class DrawSketchHandlerCircle : public DrawSketchHandlerCircleBase
 {
-public:
+    friend DrawSketchHandlerCircleBase;
 
+public:
     enum class ConstructionMethod {
         Center,
         ThreeRim
     };
 
     DrawSketchHandlerCircle(ConstructionMethod constrMethod = ConstructionMethod::Center) : constructionMethod(constrMethod) {}
-    virtual ~DrawSketchHandlerCircle() {}
+    virtual ~DrawSketchHandlerCircle() = default;
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
@@ -2992,7 +2980,7 @@ private:
         }
     }
 
-public:
+private:
     ConstructionMethod constructionMethod;
     Base::Vector2d centerPoint, firstPoint, secondPoint;
     double radius;
@@ -3290,6 +3278,8 @@ using DrawSketchHandlerEllipseBase = DrawSketchDefaultWidgetHandler<  DrawSketch
 
 class DrawSketchHandlerEllipse : public DrawSketchHandlerEllipseBase
 {
+    friend DrawSketchHandlerEllipseBase;
+
 public:
 
     enum class ConstructionMethod {
@@ -3299,7 +3289,7 @@ public:
 
     DrawSketchHandlerEllipse(ConstructionMethod constrMethod = ConstructionMethod::Center) :
         constructionMethod(constrMethod) {}
-    virtual ~DrawSketchHandlerEllipse() {}
+    virtual ~DrawSketchHandlerEllipse() = default;
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
@@ -3495,7 +3485,7 @@ private:
         return QString::fromLatin1("Sketcher_Pointer_Create_Ellipse");
     }
 
-public:
+private:
     ConstructionMethod constructionMethod;
     Base::Vector2d centerPoint, periapsis, apoapsis, firstAxis, secondAxis;
     double firstRadius, secondRadius;
@@ -3961,6 +3951,7 @@ using DrawSketchHandlerArcBase = DrawSketchDefaultWidgetHandler<  DrawSketchHand
 
 class DrawSketchHandlerArc : public DrawSketchHandlerArcBase
 {
+    friend DrawSketchHandlerArcBase;
 public:
 
     enum class ConstructionMethod {
@@ -3978,7 +3969,8 @@ public:
         , startAngle(0)
         , endAngle(0)
         , arcAngle(0) {}
-    virtual ~DrawSketchHandlerArc() {}
+
+    virtual ~DrawSketchHandlerArc() = default;
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
@@ -4229,7 +4221,7 @@ private:
         return QString::fromLatin1("Sketcher_Pointer_Create_Arc");
     }
 
-public:
+private:
     ConstructionMethod constructionMethod;
     SnapMode snapMode;
     Base::Vector2d centerPoint, firstPoint, secondPoint;
@@ -4614,10 +4606,10 @@ public:
     DrawSketchHandlerArcOfEllipse()
         : Mode(STATUS_SEEK_First), EditCurve(34)
         , rx(0), ry(0), startAngle(0), endAngle(0)
-        , arcAngle(0), arcAngle_t(0)
-    {
-    }
-    virtual ~DrawSketchHandlerArcOfEllipse(){}
+        , arcAngle(0), arcAngle_t(0) {}
+
+    virtual ~DrawSketchHandlerArcOfEllipse() = default;
+
     /// mode table
     enum SelectMode {
         STATUS_SEEK_First,      /**< enum value ----. */
@@ -4945,10 +4937,9 @@ public:
       : Mode(STATUS_SEEK_First)
       , EditCurve(34)
       , arcAngle(0)
-      , arcAngle_t(0)
-    {
-    }
-    virtual ~DrawSketchHandlerArcOfHyperbola(){}
+      , arcAngle_t(0) {}
+
+    virtual ~DrawSketchHandlerArcOfHyperbola() = default;
     /// mode table
     enum SelectMode {
         STATUS_SEEK_First,      /**< enum value ----. */
@@ -5292,10 +5283,10 @@ public:
         , startAngle(0)
         , endAngle(0)
         , arcAngle(0)
-        , arcAngle_t(0)
-    {
-    }
-    virtual ~DrawSketchHandlerArcOfParabola(){}
+        , arcAngle_t(0) {}
+
+    virtual ~DrawSketchHandlerArcOfParabola() = default;
+
     /// mode table
     enum SelectMode {
         STATUS_SEEK_First,      /**< enum value ----. */
@@ -5723,7 +5714,8 @@ public:
         applyCursor();
     }
 
-    virtual ~DrawSketchHandlerBSpline() {}
+    virtual ~DrawSketchHandlerBSpline() = default;
+
     /// modes
     enum SELECT_MODE {
         STATUS_SEEK_FIRST_CONTROLPOINT,
@@ -6376,10 +6368,12 @@ using DrawSketchHandlerPointBase = DrawSketchDefaultWidgetHandler<  DrawSketchHa
 
 class DrawSketchHandlerPoint : public DrawSketchHandlerPointBase
 {
+    friend DrawSketchHandlerPointBase;
+
 public:
 
-    DrawSketchHandlerPoint() {}
-    virtual ~DrawSketchHandlerPoint() {}
+    DrawSketchHandlerPoint() = default;
+    virtual ~DrawSketchHandlerPoint() = default;
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
@@ -6438,7 +6432,7 @@ private:
         setState(SelectMode::End);
     }
 
-public:
+private:
     Base::Vector2d editPoint;
 };
 
@@ -6621,6 +6615,8 @@ using DrawSketchHandlerFilletBase = DrawSketchDefaultWidgetHandler<  DrawSketchH
 
 class DrawSketchHandlerFillet : public DrawSketchHandlerFilletBase
 {
+    friend DrawSketchHandlerFilletBase;
+
 public:
 
     enum class ConstructionMethod {
@@ -6634,7 +6630,8 @@ public:
         firstCurve(0),
         nofAngles(1),
         preservePoint(false) {}
-    virtual ~DrawSketchHandlerFillet() {}
+
+    virtual ~DrawSketchHandlerFillet() = default;
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
@@ -6850,7 +6847,7 @@ private:
         //toolWidgetManager.reset();
     }
 
-public:
+private:
     ConstructionMethod constructionMethod;
     double radius;
     int firstCurveCreated, firstCurve, nofAngles;
@@ -7042,7 +7039,7 @@ namespace SketcherGui {
 class DrawSketchHandlerTrimming: public DrawSketchHandler
 {
 public:
-    DrawSketchHandlerTrimming() {}
+    DrawSketchHandlerTrimming() = default;
     virtual ~DrawSketchHandlerTrimming()
     {
         Gui::Selection().rmvSelectionGate();
@@ -7215,9 +7212,8 @@ public:
         , BaseGeoId(-1)
         , ExtendFromStart(false)
         , SavedExtendFromStart(false)
-        , Increment(0)
-    {
-    }
+        , Increment(0) {}
+
     virtual ~DrawSketchHandlerExtend()
     {
         Gui::Selection().rmvSelectionGate();
@@ -7516,7 +7512,7 @@ namespace SketcherGui {
 class DrawSketchHandlerSplitting: public DrawSketchHandler
 {
 public:
-    DrawSketchHandlerSplitting() {}
+    DrawSketchHandlerSplitting() = default;
     virtual ~DrawSketchHandlerSplitting()
     {
         Gui::Selection().rmvSelectionGate();
@@ -7612,6 +7608,7 @@ using DrawSketchHandlerInsertBase = DrawSketchDefaultWidgetHandler<  DrawSketchH
 
 class DrawSketchHandlerInsert : public DrawSketchHandlerInsertBase
 {
+    friend DrawSketchHandlerInsertBase;
 public:
 
     enum class ConstructionMethod {
@@ -7624,7 +7621,7 @@ public:
         reverseArc(false),
         geoId(geoI) {}
 
-    virtual ~DrawSketchHandlerInsert() {}
+    virtual ~DrawSketchHandlerInsert() = default;
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
@@ -7862,7 +7859,7 @@ private:
         }
     }
 
-public:
+private:
     ConstructionMethod constructionMethod;
     bool reverseArc;
     int geoId, firstCurve;
@@ -8423,7 +8420,7 @@ namespace SketcherGui {
 class DrawSketchHandlerExternal: public DrawSketchHandler
 {
 public:
-    DrawSketchHandlerExternal() {}
+    DrawSketchHandlerExternal() = default;
     virtual ~DrawSketchHandlerExternal()
     {
         Gui::Selection().rmvSelectionGate();
@@ -8609,7 +8606,7 @@ namespace SketcherGui {
 class DrawSketchHandlerCarbonCopy: public DrawSketchHandler
 {
 public:
-    DrawSketchHandlerCarbonCopy() {}
+    DrawSketchHandlerCarbonCopy() = default;
     virtual ~DrawSketchHandlerCarbonCopy()
     {
         Gui::Selection().rmvSelectionGate();
@@ -8752,9 +8749,10 @@ using DrawSketchHandlerSlotBase = DrawSketchDefaultWidgetHandler<  DrawSketchHan
 
 class DrawSketchHandlerSlot : public DrawSketchHandlerSlotBase
 {
+    friend DrawSketchHandlerSlotBase;
 public:
 
-    enum SnapMode {
+    enum class SnapMode {
         Free,
         Snap5Degree
     };
@@ -8763,7 +8761,8 @@ public:
         radius(1)
         , angleIsSet(false), lengthIsSet(false)
         ,isHorizontal(false), isVertical(false) {}
-    virtual ~DrawSketchHandlerSlot() {}
+
+    virtual ~DrawSketchHandlerSlot() = default;
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
@@ -8913,7 +8912,7 @@ private:
         return QString::fromLatin1("Sketcher_Pointer_Slot");
     }
 
-public:
+private:
     SnapMode snapMode;
     Base::Vector2d startPoint, secondPoint;
     double radius, length, angle;
@@ -9194,6 +9193,8 @@ using DrawSketchHandlerArcSlotBase = DrawSketchDefaultWidgetHandler<  DrawSketch
 
 class DrawSketchHandlerArcSlot : public DrawSketchHandlerArcSlotBase
 {
+    friend DrawSketchHandlerArcSlotBase;
+
 public:
 
     enum class ConstructionMethod {
@@ -9201,7 +9202,7 @@ public:
         RectangleSlot
     };
 
-    enum SnapMode {
+    enum class SnapMode {
         Free,
         Snap5Degree
     };
@@ -9211,7 +9212,8 @@ public:
         , startAngle(0)
         , endAngle(0)
         , arcAngle(0) {}
-    virtual ~DrawSketchHandlerArcSlot() {}
+
+    virtual ~DrawSketchHandlerArcSlot() = default;
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
@@ -9582,7 +9584,7 @@ private:
             return QString::fromLatin1("Sketcher_CreateArcSlot");
     }
 
-public:
+private:
     ConstructionMethod constructionMethod;
     SnapMode snapMode;
     Base::Vector2d centerPoint, startPoint, endPoint;
