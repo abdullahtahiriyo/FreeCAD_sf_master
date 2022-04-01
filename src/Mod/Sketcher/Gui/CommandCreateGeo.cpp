@@ -72,7 +72,7 @@
 
 #include "SketcherToolDefaultWidget.h"
 
-#include "DrawSketchHandlerDefaultWidget.h"
+#include "DrawSketchDefaultWidgetHandler.h"
 
 using namespace std;
 using namespace SketcherGui;
@@ -6863,7 +6863,7 @@ private:
 
     virtual void activated() override
     {
-        DrawSketchGeometryHandler::activated();
+        DrawSketchDefaultHandler::activated();
         Gui::Selection().rmvSelectionGate();
         Gui::Selection().addSelectionGate(new FilletSelection(sketchgui->getObject()));
         setCrosshairCursor("Sketcher_Pointer_Create_Fillet");
@@ -7876,7 +7876,7 @@ private:
 
     virtual void activated() override
     {
-        DrawSketchGeometryHandler::activated();
+        DrawSketchDefaultHandler::activated();
         setLineGeo(geoId);
     }
 
@@ -7886,7 +7886,7 @@ private:
             setLineGeo(geoId);
         }
         else {
-            DrawSketchGeometryHandler::onButtonPressed(onSketchPos);
+            DrawSketchDefaultHandler::onButtonPressed(onSketchPos);
         }
     }
 
