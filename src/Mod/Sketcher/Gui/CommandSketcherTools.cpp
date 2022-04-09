@@ -2180,9 +2180,8 @@ class DrawSketchHandlerTranslate : public DrawSketchHandlerTranslateBase
     friend DrawSketchHandlerTranslateBase;
 
 public:
-    DrawSketchHandlerTranslate(std::vector<int> listOfGeoIds)
-        :
-        constructionMethod(ConstructionMethod::LinearArray)
+    DrawSketchHandlerTranslate(std::vector<int> listOfGeoIds, ConstructionMethod constrMethod = ConstructionMethod::LinearArray) :
+        DrawSketchHandlerTranslateBase(constrMethod)
         , snapMode(SnapMode::Free)
         , listOfGeoIds(listOfGeoIds)
         , firstTranslationVector(Base::Vector3d(0., 0., 0.))
@@ -2298,7 +2297,7 @@ private:
     //reimplement because linear array is 2 steps while rectangular array is 3 steps
     virtual void onButtonPressed(Base::Vector2d onSketchPos) override {
         this->updateDataAndDrawToPosition(onSketchPos);
-        if (state() == SelectMode::SeekSecond && constructionMethod == ConstructionMethod::LinearArray) {
+        if (state() == SelectMode::SeekSecond && constructionMethod() == ConstructionMethod::LinearArray) {
             setState(SelectMode::End);
         }
         else {
@@ -2313,7 +2312,6 @@ private:
     }
 
 private:
-    ConstructionMethod constructionMethod;
     SnapMode snapMode;
     std::vector<int> listOfGeoIds;
     Base::Vector2d referencePoint, firstTranslationPoint, secondTranslationPoint;
@@ -3109,7 +3107,7 @@ template <> void DrawSketchHandlerRotateBase::ToolWidgetManager::doEnforceWidget
     default:
         break;
     }
-    prevCursorPosition = onSketchPos;
+    lastWidgetEnforcedPosition = onSketchPos;
 }
 
 template <> void DrawSketchHandlerRotateBase::ToolWidgetManager::adaptWidgetParameters(Base::Vector2d onSketchPos) {
@@ -3679,7 +3677,7 @@ template <> void DrawSketchHandlerScaleBase::ToolWidgetManager::doEnforceWidgetP
     default:
         break;
     }
-    prevCursorPosition = onSketchPos;
+    lastWidgetEnforcedPosition = onSketchPos;
 }
 
 template <> void DrawSketchHandlerScaleBase::ToolWidgetManager::adaptWidgetParameters(Base::Vector2d onSketchPos) {
@@ -3760,7 +3758,7 @@ CmdSketcherScale::CmdSketcherScale()
     sWhatsThis = "Sketcher_Scale";
     sStatusTip = sToolTipText;
     sPixmap = "Sketcher_Scale";
-    sAccel = "S";
+    sAccel = "Z, P, S";
     eType = ForEdit;
 }
 
@@ -4734,7 +4732,7 @@ template <> void DrawSketchHandlerOffsetBase::ToolWidgetManager::adaptDrawingToC
 template <> void DrawSketchHandlerOffsetBase::ToolWidgetManager::doEnforceWidgetParameters(Base::Vector2d& onSketchPos) {
     //Too hard to override onsketchpos such that it is at offsetLength from the curve. So we use offsetLengthSet to prevent rewrite of offsetLength.
 
-    prevCursorPosition = onSketchPos;
+    lastWidgetEnforcedPosition = onSketchPos;
 }
 
 template <> void DrawSketchHandlerOffsetBase::ToolWidgetManager::adaptWidgetParameters(Base::Vector2d onSketchPos) {
@@ -4787,7 +4785,7 @@ CmdSketcherOffset::CmdSketcherOffset()
     sWhatsThis = "Sketcher_Offset";
     sStatusTip = sToolTipText;
     sPixmap = "Sketcher_Offset";
-    sAccel = "O";
+    sAccel = "Z, O";
     eType = ForEdit;
 }
 
@@ -5099,6 +5097,7 @@ void CreateSketcherCommandsConstraintAccel(void)
     rcCmdMgr.addCommand(new CmdSketcherRotate());
     rcCmdMgr.addCommand(new CmdSketcherScale());
     rcCmdMgr.addCommand(new CmdSketcherOffset());
+    rcCmdMgr.addCommand(new CmdSketcherTranslate());
     rcCmdMgr.addCommand(new CmdSketcherSymmetry());
     rcCmdMgr.addCommand(new CmdSketcherCopy());
     rcCmdMgr.addCommand(new CmdSketcherClone());
