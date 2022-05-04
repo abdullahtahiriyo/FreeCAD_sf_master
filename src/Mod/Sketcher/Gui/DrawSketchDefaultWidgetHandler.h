@@ -829,6 +829,11 @@ private:
 
             /// function to redraw before and after any eventual mode change in reaction to a widget change
             void finishWidgetChanged() {
+
+                //handler->moveCursorToSketchPoint(lastWidgetEnforcedPosition);
+
+                // ensure that object at point is preselected, so that autoconstraints are generated
+                handler->preselectAtPoint(lastWidgetEnforcedPosition);
                 // ensure drawing in the previous mode
                 handler->updateDataAndDrawToPosition(lastWidgetEnforcedPosition);
 
