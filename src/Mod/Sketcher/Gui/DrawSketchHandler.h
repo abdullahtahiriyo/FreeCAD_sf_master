@@ -81,6 +81,8 @@ private:
     static inline void drawEdit(ViewProviderSketch &vp, const std::list<std::vector<Base::Vector2d>> &list);
     static inline void drawEditMarkers(ViewProviderSketch &vp, const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
     static inline void setAxisPickStyle(ViewProviderSketch &vp, bool on);
+    static inline void moveCursorToSketchPoint(ViewProviderSketch &vp, Base::Vector2d point);
+    static inline void preselectAtPoint(ViewProviderSketch &vp, Base::Vector2d point);
 
     static inline int getPreselectPoint(const ViewProviderSketch &vp);
     static inline int getPreselectCurve(const ViewProviderSketch &vp);
@@ -206,6 +208,8 @@ protected:
     void drawEdit(const std::vector<Part::Geometry *> &geometries);
     void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
     void setAxisPickStyle(bool on);
+    void moveCursorToSketchPoint(Base::Vector2d point);
+    void preselectAtPoint(Base::Vector2d point);
 
     void drawPositionAtCursor(const Base::Vector2d & position);
     void drawDirectionAtCursor(const Base::Vector2d & position, const Base::Vector2d & origin);
