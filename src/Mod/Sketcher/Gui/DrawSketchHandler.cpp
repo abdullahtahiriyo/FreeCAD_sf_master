@@ -100,6 +100,16 @@ inline void ViewProviderSketchDrawSketchHandlerAttorney::setAxisPickStyle(ViewPr
     vp.setAxisPickStyle(on);
 }
 
+inline void ViewProviderSketchDrawSketchHandlerAttorney::moveCursorToSketchPoint(ViewProviderSketch &vp, Base::Vector2d point)
+{
+    vp.moveCursorToSketchPoint(point);
+}
+
+inline void ViewProviderSketchDrawSketchHandlerAttorney::preselectAtPoint(ViewProviderSketch &vp, Base::Vector2d point)
+{
+    vp.preselectAtPoint(point);
+}
+
 inline int ViewProviderSketchDrawSketchHandlerAttorney::getPreselectPoint(const ViewProviderSketch &vp)
 {
    return vp.getPreselectPoint();
@@ -981,6 +991,16 @@ void DrawSketchHandler::drawEditMarkers(const std::vector<Base::Vector2d> &EditM
 void DrawSketchHandler::setAxisPickStyle(bool on)
 {
     ViewProviderSketchDrawSketchHandlerAttorney::setAxisPickStyle(*sketchgui, on);
+}
+
+void DrawSketchHandler::moveCursorToSketchPoint(Base::Vector2d point)
+{
+    ViewProviderSketchDrawSketchHandlerAttorney::moveCursorToSketchPoint(*sketchgui, point);
+}
+
+void DrawSketchHandler::preselectAtPoint(Base::Vector2d point)
+{
+    ViewProviderSketchDrawSketchHandlerAttorney::preselectAtPoint(*sketchgui, point);
 }
 
 int DrawSketchHandler::getPreselectPoint(void) const
