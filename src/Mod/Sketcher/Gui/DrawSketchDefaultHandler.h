@@ -26,8 +26,10 @@
 
 #include <Inventor/events/SoKeyboardEvent.h>
 
-#include "DrawSketchHandler.h"
+#include <Mod/Sketcher/App/GeoEnum.h>
+#include <Mod/Sketcher/App/PythonConverter.h>
 
+#include "DrawSketchHandler.h"
 
 #include "Utils.h"
 
@@ -259,7 +261,16 @@ public:
         applyCursor();
     }
 
-    virtual ~DrawSketchDefaultHandler() = default;
+    virtual ~DrawSketchDefaultHandler() {
+        for (auto p : ShapeGeometry) delete p;
+        ShapeGeometry.clear();
+
+        for (auto p : ShapeConstraints) delete p;
+        ShapeConstraints.clear();
+
+        for (auto p : AutoConstraints) delete p;
+        AutoConstraints.clear();
+    }
 
     /** @name public DrawSketchHandler interface
      * NOTE: Not intended to be specialised. It calls some functions intended to be
@@ -308,6 +319,7 @@ protected:
     * @details
     * The functionality need to be provided by extending these virtual private functions:
     * 1. executeCommands() : Must be provided with the Commands to create the geometry
+    * 2. generateAutoConstraints() : When using AutoConstraints vector, this function populates the AutoConstraints vector, ensuring no redundant autoconstraints
     * 2. beforeCreateAutoConstraints() : Enables derived clases to define specific actions before executeCommands and createAutoConstraints (optional).
     * 3. createAutoConstraints() : Must be provided with the commands to create autoconstraints
     *
@@ -320,6 +332,8 @@ protected:
             resetPositionText();
 
             executeCommands();
+
+            generateAutoConstraints();
 
             beforeCreateAutoConstraints();
 
@@ -348,6 +362,9 @@ protected:
         EditCurve.resize(initialEditCurveSize);
         for(auto & ac : sugConstraints)
             ac.clear();
+
+        for (auto p : AutoConstraints) delete p;
+        AutoConstraints.clear();
 
         onReset();
         applyCursor();
@@ -381,6 +398,7 @@ private:
     //@{
     virtual void onReset() { }
     virtual void executeCommands() {}
+    virtual void generateAutoConstraints() {}
     virtual void beforeCreateAutoConstraints() {}
     virtual void createAutoConstraints() {}
 
@@ -389,6 +407,9 @@ private:
     virtual void onConstructionMethodChanged() override {};
 
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) {Q_UNUSED(onSketchPos)};
+
+    // function intended to populate ShapeGeometry and ShapeConstraints
+    virtual void createShape(bool onlygeometry) {Q_UNUSED(onlygeometry)}
     //@}
 protected:
     /** @name functions are intended to be overridden/specialised to extend basic functionality
@@ -412,6 +433,228 @@ protected:
     }
     //@}
 
+    /** @name Helper functions
+        See documentation of the functions above*/
+    //@{
+    void generateAutoConstraintsOnElement(const std::vector<AutoConstraint> &autoConstrs,
+                                          int geoId1, Sketcher::PointPos posId1)
+    {
+        if (!sketchgui->Autoconstraints.getValue())
+            return;
+
+        if (autoConstrs.size() > 0) {
+            for (auto &ac : autoConstrs) {
+                int geoId2 = ac.GeoId;
+
+                switch (ac.Type)
+                {
+                case Sketcher::Coincident: {
+                    if (posId1 == Sketcher::PointPos::none)
+                        continue;
+
+                    // find if there is already a matching tangency
+                    auto result = std::find_if(AutoConstraints.begin(),AutoConstraints.end(),[&](const auto ace){
+                         return ace->Type == Sketcher::Tangent &&
+                                ace->First == geoId1 &&
+                                ace->Second == ac.GeoId;
+                    });
+
+
+                    if(result != AutoConstraints.end()) { // modify tangency to endpoint-to-endpoint
+                        (*result)->FirstPos = posId1;
+                        (*result)->SecondPos = ac.PosId;
+                    }
+                    else {
+                        auto c = new Sketcher::Constraint;
+                        c->Type = Sketcher::Coincident;
+                        c->First = geoId1; c->FirstPos = posId1;
+                        c->Second = ac.GeoId; c->SecondPos = ac.PosId;
+                        AutoConstraints.push_back(c);
+                    }
+
+                    } break;
+                case Sketcher::PointOnObject: {
+                    Sketcher::PointPos posId2 = ac.PosId;
+                    if (posId1 == Sketcher::PointPos::none) {
+                        // Auto constraining an edge so swap parameters
+                        std::swap(geoId1,geoId2);
+                        std::swap(posId1,posId2);
+                    }
+
+                    auto result = std::find_if(AutoConstraints.begin(),AutoConstraints.end(),[&](const auto ace){
+                         return ace->Type == Sketcher::Tangent &&
+                                ace->First == geoId1 &&
+                                ace->Second == ac.GeoId;
+                    });
+
+                    // if tangency, convert to point-to-edge tangency
+                    if(result != AutoConstraints.end()) {
+                        (*result)->FirstPos = posId1;
+
+                        if( (*result)->First != geoId1 ) {
+                            std::swap((*result)->Second, (*result)->First);
+                        }
+                    }
+                    else {
+                        auto c = new Sketcher::Constraint;
+                        c->Type = Sketcher::PointOnObject;
+                        c->First = geoId1; c->FirstPos = posId1;
+                        c->Second = geoId2;
+                        AutoConstraints.push_back(c);
+                    }
+                    } break;
+                // In special case of Horizontal/Vertical constraint, geoId2 is normally unused and should be 'Constraint::GeoUndef'
+                // However it can be used as a way to require the function to apply these constraints on another geometry
+                // In this case the caller as to set geoId2, then it will be used as target instead of geoId2
+                case Sketcher::Horizontal: {
+                    auto c = new Sketcher::Constraint;
+                    c->Type = Sketcher::Horizontal;
+                    c->First = (geoId2 != Sketcher::GeoEnum::GeoUndef ? geoId2 : geoId1);
+                    AutoConstraints.push_back(c);
+                    } break;
+                case Sketcher::Vertical: {
+                    auto c = new Sketcher::Constraint;
+                    c->Type = Sketcher::Vertical;
+                    c->First = (geoId2 != Sketcher::GeoEnum::GeoUndef ? geoId2 : geoId1);
+                    AutoConstraints.push_back(c);
+                    } break;
+                case Sketcher::Tangent: {
+                    Sketcher::SketchObject* Obj = static_cast<Sketcher::SketchObject*>(sketchgui->getObject());
+
+                    const Part::Geometry *geom1 = Obj->getGeometry(geoId1);
+                    const Part::Geometry *geom2 = Obj->getGeometry(ac.GeoId);
+
+                    // ellipse tangency support using construction elements (lines)
+                    if( geom1 && geom2 &&
+                        ( geom1->getTypeId() == Part::GeomEllipse::getClassTypeId() ||
+                        geom2->getTypeId() == Part::GeomEllipse::getClassTypeId() )){
+
+                        if(geom1->getTypeId() != Part::GeomEllipse::getClassTypeId())
+                            std::swap(geoId1,geoId2);
+
+                        // geoId1 is the ellipse
+                        geom1 = Obj->getGeometry(geoId1);
+                        geom2 = Obj->getGeometry(geoId2);
+
+                        if( geom2->getTypeId() == Part::GeomEllipse::getClassTypeId() ||
+                            geom2->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId() ||
+                            geom2->getTypeId() == Part::GeomCircle::getClassTypeId() ||
+                            geom2->getTypeId() == Part::GeomArcOfCircle::getClassTypeId() ) {
+                            // in all these cases an intermediate element is needed
+                            /*makeTangentToEllipseviaNewPoint(Obj,
+                                                            static_cast<const Part::GeomEllipse *>(geom1),
+                                                            geom2, geoId1, geoId2);*/
+                            // NOTE: Temporarily deactivated
+                            return;
+                        }
+                    }
+
+                    // arc of ellipse tangency support using external elements
+                    if( geom1 && geom2 &&
+                        ( geom1->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId() ||
+                        geom2->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId() )){
+
+                        if(geom1->getTypeId() != Part::GeomArcOfEllipse::getClassTypeId())
+                            std::swap(geoId1,geoId2);
+
+                        // geoId1 is the arc of ellipse
+                        geom1 = Obj->getGeometry(geoId1);
+                        geom2 = Obj->getGeometry(geoId2);
+
+                        if( geom2->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId() ||
+                            geom2->getTypeId() == Part::GeomCircle::getClassTypeId() ||
+                            geom2->getTypeId() == Part::GeomArcOfCircle::getClassTypeId() ) {
+                            // in all these cases an intermediate element is needed
+                            //makeTangentToArcOfEllipseviaNewPoint(Obj,
+                            //                                    static_cast<const Part::GeomArcOfEllipse *>(geom1), geom2, geoId1, geoId2);
+                            // NOTE: Temporarily deactivated
+                            return;
+                        }
+                    }
+
+                    auto resultcoincident = std::find_if(AutoConstraints.begin(),AutoConstraints.end(), [&](const auto ace){
+                         return ace->Type == Sketcher::Coincident &&
+                                ace->First == geoId1 &&
+                                ace->Second == ac.GeoId;
+                    });
+
+                    auto resultpointonobject = std::find_if(AutoConstraints.begin(),AutoConstraints.end(), [&](const auto ace){
+                         return ace->Type == Sketcher::PointOnObject &&
+                                ((ace->First == geoId1 && ace->Second == ac.GeoId) ||
+                                 (ace->First == ac.GeoId && ace->Second == geoId1));
+                    });
+
+                    if(resultcoincident != AutoConstraints.end()) { // endpoint-to-endpoint tangency
+                        (*resultcoincident)->Type = Sketcher::Tangent;
+                    }
+                    else if(resultpointonobject != AutoConstraints.end()) { // endpoint-to-edge tangency
+                        (*resultpointonobject)->Type = Sketcher::Tangent;
+                    }
+                    else { // regular edge to edge tangency
+                        auto c = new Sketcher::Constraint;
+                        c->Type = Sketcher::Tangent;
+                        c->First = geoId1;
+                        c->Second = ac.GeoId;
+                        AutoConstraints.push_back(c);
+                    }
+                    } break;
+                default:
+                    break;
+                }
+            }
+        }
+    }
+
+    void createGeneratedAutoConstraints(bool owncommand)
+    {
+        // add auto-constraints
+        if(owncommand)
+            Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add auto constraints"));
+
+        Gui::Command::doCommand(Gui::Command::Doc,
+                            Sketcher::PythonConverter::convert(Gui::Command::getObjectCmd(sketchgui->getObject()), AutoConstraints).c_str());
+
+        if(owncommand)
+            Gui::Command::commitCommand();
+    }
+
+    void removeRedundantAutoConstraints() {
+
+        if(AutoConstraints.empty())
+            return;
+
+        auto sketchobject = getSketchObject();
+
+        sketchobject->diagnoseAdditionalConstraints(AutoConstraints);
+
+        if(sketchobject->getLastHasRedundancies()) {
+            Base::Console().Warning("Autoconstraints cause redundant: removing them\n");
+
+            auto lastsketchconstraintindex = sketchobject->Constraints.getSize() - 1;
+
+            auto redundants = sketchobject->getLastRedundant(); // redundants is always sorted
+
+            for(int index = redundants.size()-1; index >= 0; index--) {
+                int redundantconstraintindex = redundants[index] - 1;
+                if(redundantconstraintindex > lastsketchconstraintindex) {
+                    int removeindex = redundantconstraintindex - lastsketchconstraintindex - 1;
+                    delete (AutoConstraints[removeindex]);
+                    AutoConstraints.erase(std::next(AutoConstraints.begin(), removeindex));
+                }
+                else {
+                    Base::Console().Error("Redundant is not an Autoconstraint - Please report!\n");
+                    //TODO: Get us out of here, as the redundant to remove is not an autoconstraint - improve solver to report redundant groups?
+                }
+            }
+
+            // NOTE: If we removed all redundants in the list, then at this moment there are no redundants anymore
+        }
+
+        if(sketchobject->getLastHasConflicts())
+            Base::Console().Error("Autoconstraints cause conflicting constraints\n");
+    }
+    //@}
+
 protected:
     // The initial size may need to change in some tools due to the configuration of the tool, so resetting may lead to a
     // different number than the compiled time value
@@ -419,6 +662,10 @@ protected:
 
     std::vector<Base::Vector2d> EditCurve;
     std::vector<std::vector<AutoConstraint>> sugConstraints;
+
+    std::vector<Part::Geometry *> ShapeGeometry;
+    std::vector<Sketcher::Constraint *> ShapeConstraints;
+    std::vector<Sketcher::Constraint *> AutoConstraints;
 
     bool avoidRedundants;
     bool continuousMode;
