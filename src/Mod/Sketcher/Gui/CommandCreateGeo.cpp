@@ -55,6 +55,8 @@
 #include <Mod/Part/App/BodyBase.h>
 #include <Mod/Part/App/Geometry2d.h>
 #include <Mod/Sketcher/App/Constraint.h>
+#include <Mod/Sketcher/App/SolverGeometryExtension.h>
+#include <Mod/Sketcher/App/PythonConverter.h>
 
 #include "ViewProviderSketch.h"
 #include "DrawSketchHandler.h"
@@ -305,21 +307,30 @@ private:
         }
     }
 
-    virtual void createAutoConstraints() override {
+    virtual void generateAutoConstraints() override {
+        int LineGeoId = getHighestCurveIndex();
+
+        // Generate temporary autoconstraints (but do not actually add them to the sketch)
         if(avoidRedundants)
             removeRedundantHorizontalVertical(static_cast<Sketcher::SketchObject *>(sketchgui->getObject()),sugConstraints[0],sugConstraints[1]);
 
-        // add auto constraints for the line segment start
-        if (!sugConstraints[0].empty()) {
-            DrawSketchHandler::createAutoConstraints(sugConstraints[0], getHighestCurveIndex(), Sketcher::PointPos::start);
-            sugConstraints[0].clear();
-        }
+        auto & ac1 = sugConstraints[0];
+        auto & ac2 = sugConstraints[1];
 
-        // add auto constraints for the line segment end
-        if (!sugConstraints[1].empty()) {
-            DrawSketchHandler::createAutoConstraints(sugConstraints[1], getHighestCurveIndex(), Sketcher::PointPos::end);
-            sugConstraints[1].clear();
-        }
+        generateAutoConstraintsOnElement(ac1, LineGeoId, Sketcher::PointPos::start);
+        generateAutoConstraintsOnElement(ac2, LineGeoId, Sketcher::PointPos::end);
+
+        // Ensure temporary autoconstraints do not generate a redundancy and that the geometry parameters are accurate
+        // This is particularly important for adding widget mandated constraints.
+        removeRedundantAutoConstraints();
+    }
+
+    virtual void createAutoConstraints() override {
+        // execute python command to create autoconstraints
+        createGeneratedAutoConstraints(true);
+
+        sugConstraints[0].clear();
+        sugConstraints[1].clear();
     }
 
     virtual std::string getToolName() const override {
@@ -329,6 +340,9 @@ private:
     virtual QString getCrosshairCursorSVGName() const override {
         return QString::fromLatin1("Sketcher_Pointer_Create_Line");
     }
+
+private:
+    int LineGeoId;
 
 };
 
@@ -479,6 +493,7 @@ template <> void DrawSketchHandlerLineBase::ToolWidgetManager::adaptWidgetParame
 
 // Function responsible to add widget mandated constraints (it is executed before creating autoconstraints)
 template <> void DrawSketchHandlerLineBase::ToolWidgetManager::addConstraints() {
+
     int firstCurve = handler->getHighestCurveIndex();
 
     auto x0 = toolWidget->getParameter(WParameter::First);
@@ -493,26 +508,78 @@ template <> void DrawSketchHandlerLineBase::ToolWidgetManager::addConstraints() 
 
     using namespace Sketcher;
 
-    if(x0set && y0set && x0 == 0. && y0 == 0.) {
-        ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::RtPnt,
-                                    x0, handler->sketchgui->getObject());
-    } else {
-        if (x0set)
-            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::VAxis,
-                                    x0, handler->sketchgui->getObject());
+    auto sketchobject = handler->getSketchObject();
 
-        if (y0set)
-            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::HAxis,
-                                    y0,  handler->sketchgui->getObject());
+    auto getDoFs = [](const SolverGeometryExtension::PointParameterStatus & pointinfo) {
+        bool xfree = pointinfo.getStatusx() == Sketcher::SolverGeometryExtension::Independent;
+        bool yfree = pointinfo.getStatusy() == Sketcher::SolverGeometryExtension::Independent;
+
+        if(xfree && yfree)
+            return 2;
+        else if(xfree || yfree)
+            return 2;
+        else
+            return 0;
+    };
+
+    auto getPointInfo = [sketchobject](const GeoElementId & element) {
+        // it is important not to rely on Geometry attached extension from the solver, as geometry is not updated during
+        // temporary diagnose of additional constraints
+        const auto & solvedsketch = sketchobject->getSolvedSketch();
+
+        auto solvext = solvedsketch.getSolverExtension(element.GeoId);
+
+        if(solvext) {
+            auto pointinfo = solvext->getPoint(element.Pos);
+
+            return pointinfo;
+        }
+
+        THROWM(Base::ValueError, "Geometry does not have solver extension when trying to apply widget constraints!")
+    };
+
+    auto diagnoseAdditionalConstraintsAndReport = [&]() {
+        sketchobject->diagnoseAdditionalConstraints(handler->AutoConstraints); // ensure we have recalculated parameters after each constraint addition
+
+        if(sketchobject->getLastHasRedundancies())
+            Base::Console().Warning("Unexpected Redundancy while adding widget constraints\n");
+    };
+
+    auto startpointinfo = getPointInfo(GeoElementId(firstCurve, PointPos::start));
+
+    if(x0set && startpointinfo.isXDoF()) {
+        ConstraintToAttachment(GeoElementId(firstCurve,PointPos::start), GeoElementId::VAxis, x0, handler->sketchgui->getObject());
+
+        diagnoseAdditionalConstraintsAndReport(); // ensure we have recalculated parameters after each constraint addition
+
+        if(sketchobject->getLastHasRedundancies())
+            Base::Console().Warning("Unexpected Redundancy while adding widget constraints\n");
+
+        startpointinfo = getPointInfo(GeoElementId(firstCurve, PointPos::start)); // get updated point position
     }
+
+    if(y0set && startpointinfo.isYDoF()) {
+        ConstraintToAttachment(GeoElementId(firstCurve,PointPos::start), GeoElementId::HAxis, y0,  handler->sketchgui->getObject());
+
+        diagnoseAdditionalConstraintsAndReport(); // ensure we have recalculated parameters after each constraint addition
+
+        startpointinfo = getPointInfo(GeoElementId(firstCurve, PointPos::start)); // get updated point position
+    }
+
+    auto endpointinfo = getPointInfo(GeoElementId(firstCurve, PointPos::end));
 
     if (handler->constructionMethod() == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthAngle) {
 
-        if (p3set)
+        int DoFs = getDoFs(startpointinfo);
+        DoFs += getDoFs(endpointinfo);
+
+        if (p3set && DoFs > 0) {
             Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Distance',%d,%f)) ",
                 firstCurve, p3);
+            DoFs--;
+        }
 
-        if (p4set) {
+        if (p4set && DoFs > 0) {
             double angle = p4 / 180 * M_PI;
             if (fabs(angle - M_PI) < Precision::Confusion() || fabs(angle + M_PI) < Precision::Confusion() || fabs(angle) < Precision::Confusion()) {
                 Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Horizontal',%d)) ", firstCurve);
@@ -527,28 +594,19 @@ template <> void DrawSketchHandlerLineBase::ToolWidgetManager::addConstraints() 
         }
     }
     else {
-        if (p3set && p4set && p3 == 0. && p4 == 0.) {
-            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::RtPnt,
-                p3, handler->sketchgui->getObject());
-        }
-        else {
-            if (p3set) {
-                if (p3 - x0 < Precision::Confusion())
-                    Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Vertical',%d)) ", firstCurve);
-                else
-                    ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::VAxis,
-                        p3, handler->sketchgui->getObject());
-            }
+        if(p3set && endpointinfo.isXDoF()) {
+            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::VAxis, p3, handler->sketchgui->getObject());
 
-            if (p4set) {
-                if (p4 - y0 < Precision::Confusion())
-                    Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Horizontal',%d)) ", firstCurve);
-                else
-                    ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::HAxis,
-                        p4, handler->sketchgui->getObject());
-            }
+            diagnoseAdditionalConstraintsAndReport(); // ensure we have recalculated parameters after each constraint addition
+
+            startpointinfo = getPointInfo(GeoElementId(firstCurve, PointPos::start)); // get updated point position
+            endpointinfo = getPointInfo(GeoElementId(firstCurve, PointPos::end));
         }
+
+        if(p4set && endpointinfo.isYDoF())
+            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::HAxis, p4,  handler->sketchgui->getObject());
     }
+
 }
 
 DEF_STD_CMD_AU(CmdSketcherCreateLine)
