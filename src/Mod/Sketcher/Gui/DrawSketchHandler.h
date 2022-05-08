@@ -220,6 +220,8 @@ protected:
 
     void signalToolChanged() const;
 
+    Sketcher::SketchObject * getSketchObject();
+
 private:
     void setSvgCursor(const QString &svgName, int x, int y,
                       const std::map<unsigned long, unsigned long>& colorMapping = std::map<unsigned long, unsigned long>());
