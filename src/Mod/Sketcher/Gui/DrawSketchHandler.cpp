@@ -1023,3 +1023,8 @@ void DrawSketchHandler::signalToolChanged() const
     ViewProviderSketchDrawSketchHandlerAttorney::signalToolChanged(*sketchgui, this->getToolName());
 
 }
+
+Sketcher::SketchObject * DrawSketchHandler::getSketchObject()
+{
+    return sketchgui->getSketchObject();
+}
