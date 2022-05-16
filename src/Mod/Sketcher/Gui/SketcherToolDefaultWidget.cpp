@@ -24,7 +24,8 @@
 #include "PreCompiled.h"
 
 #ifndef _PreComp_
-#include <boost_bind_bind.hpp>
+# include <boost_bind_bind.hpp>
+# include <Inventor/events/SoKeyboardEvent.h>
 #endif
 
 #include "ui_SketcherToolDefaultWidget.h"
@@ -33,6 +34,8 @@
 #include <Gui/BitmapFactory.h>
 #include <Gui/ViewProvider.h>
 #include <Gui/WaitCursor.h>
+#include <Gui/View3DInventor.h>
+#include <Gui/View3DInventorViewer.h>
 #include <Base/Tools.h>
 #include <Base/UnitsApi.h>
 #include <Base/Exception.h>
@@ -46,6 +49,70 @@
 using namespace SketcherGui;
 using namespace Gui::TaskView;
 namespace bp = boost::placeholders;
+
+
+SketcherToolDefaultWidget::KeyboardManager::KeyboardManager(): keyMode(SketcherToolDefaultWidget::KeyboardManager::KeyboardEventHandlingMode::Widget) {
+    // get the active viewer, so that we can send it key events
+    auto doc = Gui::Application::Instance->activeDocument();
+
+    if (doc) {
+        auto temp = dynamic_cast<Gui::View3DInventor *>(doc->getActiveView());
+        if (temp) {
+            vpViewer = temp->getViewer();
+            keyMode = KeyboardEventHandlingMode::ViewProvider;
+        }
+    }
+
+    timer.setSingleShot(true);
+
+    QObject::connect(&timer, &QTimer::timeout, [this](){ onTimeOut();});
+}
+
+bool SketcherToolDefaultWidget::KeyboardManager::isMode(SketcherToolDefaultWidget::KeyboardManager::KeyboardEventHandlingMode mode)
+{
+    return mode == keyMode;
+}
+
+SketcherToolDefaultWidget::KeyboardManager::KeyboardEventHandlingMode SketcherToolDefaultWidget::KeyboardManager::getMode()
+{
+    return keyMode;
+}
+
+bool SketcherToolDefaultWidget::KeyboardManager::handleKeyEvent(QKeyEvent * keyEvent)
+{
+    detectKeyboardEventHandlingMode(keyEvent); // determine the handler
+
+    if(vpViewer && isMode(KeyboardEventHandlingMode::ViewProvider))
+        return QApplication::sendEvent(vpViewer, keyEvent);
+    else
+        return false; // do not intercept the event and feed it to the widget
+}
+
+void SketcherToolDefaultWidget::KeyboardManager::detectKeyboardEventHandlingMode(QKeyEvent * keyEvent)
+{
+    Q_UNUSED(keyEvent);
+
+    if (keyEvent->key() == Qt::Key_Enter ||
+        keyEvent->key() == Qt::Key_Return ||
+        keyEvent->key() == Qt::Key_Tab ||
+        keyEvent->key() == Qt::Key_Backtab ||
+        keyEvent->key() == Qt::Key_Backspace ||
+        keyEvent->key() == Qt::Key_Delete ||
+        keyEvent->key() == Qt::Key_Minus ||
+        keyEvent->key() == Qt::Key_Period ||
+        keyEvent->key() == Qt::Key_Comma ||
+        QRegExp(QStringLiteral("[0-9]")).exactMatch(keyEvent->text()))
+    {
+        keyMode = KeyboardEventHandlingMode::Widget;
+        timer.start(timeOut);
+    }
+
+}
+
+void SketcherToolDefaultWidget::KeyboardManager::onTimeOut()
+{
+    keyMode = KeyboardEventHandlingMode::ViewProvider;
+}
 
 SketcherToolDefaultWidget::SketcherToolDefaultWidget (QWidget *parent, ViewProviderSketch* sketchView)
   : QWidget(parent), ui(new Ui_SketcherToolDefaultWidget), sketchView(sketchView), blockParameterSlots(false)
@@ -73,6 +140,12 @@ SketcherToolDefaultWidget::SketcherToolDefaultWidget (QWidget *parent, ViewProvi
         this, SLOT(checkBoxTS3_toggled(bool)));
     connect(ui->checkBoxTS4, SIGNAL(toggled(bool)),
         this, SLOT(checkBoxTS4_toggled(bool)));
+    connect(ui->comboBox1, SIGNAL(currentIndexChanged(int)),
+        this, SLOT(comboBox1_currentIndexChanged(int)));
+    connect(ui->comboBox2, SIGNAL(currentIndexChanged(int)),
+        this, SLOT(comboBox2_currentIndexChanged(int)));
+    connect(ui->comboBox3, SIGNAL(currentIndexChanged(int)),
+        this, SLOT(comboBox3_currentIndexChanged(int)));
 
     ui->parameterOne->installEventFilter(this);
     ui->parameterTwo->installEventFilter(this);
@@ -99,6 +172,17 @@ bool SketcherToolDefaultWidget::eventFilter(QObject* object, QEvent* event)
             }
         }
     }
+    else
+    if (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease) {
+        /*If a key shortcut is required to work on sketcher when a tool using Tool Setting widget
+        is being used, then you have to add this key to the below section such that the spinbox
+        doesn't keep the keypress event for itself. Note if you want the event to be handled by
+        the spinbox too, you can return false.*/
+
+        QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+
+        return keymanager.handleKeyEvent(keyEvent);
+    }
 
     return false;
 }
@@ -118,6 +202,11 @@ void SketcherToolDefaultWidget::reset()
         setCheckboxVisible(i, false);
         setCheckboxChecked(i, false);
         setCheckboxPrefEntry(i, "");
+    }
+    for (int i = 0; i < nCombobox; i++) {
+        setComboboxVisible(i, false);
+        setComboboxIndex(i, 0);
+        getComboBox(i)->clear();
     }
 
     setNoticeVisible(false);
@@ -174,6 +263,7 @@ void SketcherToolDefaultWidget::parameterFive_valueChanged(double val)
     if(!blockParameterSlots) {
         isSet[Parameter::Fifth] = true;
         setParameterFontStyle(Parameter::Fifth, FontStyle::Bold);
+        setParameterFocus(Parameter::Sixth);
         signalParameterValueChanged(Parameter::Fifth, val);
     }
 }
@@ -221,6 +311,24 @@ void SketcherToolDefaultWidget::setParameter(int parameterindex, double val)
 {
     if (parameterindex < nParameters) {
         getParameterSpinBox(parameterindex)->setValue(Base::Quantity(val, Base::Unit::Length));
+
+        return;
+    }
+
+    THROWM(Base::IndexError, QT_TRANSLATE_NOOP("Exceptions", "ToolWidget parameter index out of range"));
+}
+
+void SketcherToolDefaultWidget::configureParameterInitialValue(int parameterindex, double val) {
+    Base::StateLocker lock(blockParameterSlots, true);
+    setParameter(parameterindex, val);
+}
+
+void SketcherToolDefaultWidget::configureParameterUnit(int parameterindex, Base::Unit unit) {
+    //For reference unit can be changed with :
+    //setUnit(Base::Unit::Length); Base::Unit::Angle
+    Base::StateLocker lock(blockParameterSlots, true);
+    if (parameterindex < nParameters) {
+        getParameterSpinBox(parameterindex)->setUnit(unit);
 
         return;
     }
@@ -300,7 +408,7 @@ QLabel * SketcherToolDefaultWidget::getParameterLabel(int parameterindex)
             return ui->label6;
             break;
         default:
-            return nullptr;
+            THROWM(Base::IndexError, "ToolWidget spinbox index out of range");
     }
 }
 
@@ -326,7 +434,7 @@ Gui::PrefQuantitySpinBox * SketcherToolDefaultWidget::getParameterSpinBox(int pa
             return ui->parameterSix;
             break;
         default:
-            return nullptr;
+            THROWM(Base::IndexError, "ToolWidget spinbox index out of range");
     }
 }
 
@@ -348,13 +456,13 @@ bool SketcherToolDefaultWidget::isParameterSet(int parameterindex)
     THROWM(Base::IndexError, "ToolWidget parameter index out of range");
 }
 
-void SketcherToolDefaultWidget::updateVisualValue(int parameterindex, double val) {
+void SketcherToolDefaultWidget::updateVisualValue(int parameterindex, double val, Base::Unit unit) {
     if (parameterindex < nParameters) {
         Base::StateLocker lock(blockParameterSlots, true);
 
         auto parameterSpinBox = getParameterSpinBox(parameterindex);
 
-        parameterSpinBox->setValue(Base::Quantity(val, Base::Unit::Length));
+        parameterSpinBox->setValue(Base::Quantity(val, unit));
 
         if (parameterSpinBox->hasFocus()) {
             parameterSpinBox->selectNumber();
@@ -446,7 +554,7 @@ Gui::PrefCheckBox* SketcherToolDefaultWidget::getCheckBox(int checkboxindex)
         return ui->checkBoxTS4;
         break;
     default:
-        return nullptr;
+        THROWM(Base::IndexError, "ToolWidget checkbox index out of range");
     }
 }
 
@@ -472,14 +580,110 @@ bool SketcherToolDefaultWidget::isCheckBoxPrefEntryEmpty(int checkboxindex)
     return getCheckBox(checkboxindex)->entryName().size() == 0;
 }
 
+//Combobox functions
+void SketcherToolDefaultWidget::comboBox1_currentIndexChanged(int val) {
+    if (!blockParameterSlots) {
+        signalComboboxSelectionChanged(Combobox::FirstCombo, val);
+    }
+}
+void SketcherToolDefaultWidget::comboBox2_currentIndexChanged(int val) {
+    if (!blockParameterSlots) {
+        signalComboboxSelectionChanged(Combobox::SecondCombo, val);
+    }
+}
+void SketcherToolDefaultWidget::comboBox3_currentIndexChanged(int val) {
+    if (!blockParameterSlots) {
+        signalComboboxSelectionChanged(Combobox::ThirdCombo, val);
+    }
+}
 
-void SketcherToolDefaultWidget::changeEvent(QEvent *e)
+void SketcherToolDefaultWidget::initNComboboxes(int ncombobox)
+{
+    Base::StateLocker lock(blockParameterSlots, true);
+
+    for (int i = 0; i < nCombobox; i++) {
+        setComboboxVisible(i, (i < ncombobox) ? true : false);
+    }
+}
+
+void SketcherToolDefaultWidget::setComboboxVisible(int comboboxindex, bool visible)
+{
+    if (comboboxindex < nCombobox) {
+        getComboBox(comboboxindex)->setVisible(visible);
+        getComboBoxLabel(comboboxindex)->setVisible(visible);
+    }
+}
+
+void SketcherToolDefaultWidget::setComboboxIndex(int comboboxindex, int value)
+{
+    if (comboboxindex < nCombobox) {
+        getComboBox(comboboxindex)->setCurrentIndex(value);
+    }
+}
+
+void SketcherToolDefaultWidget::setComboboxLabel(int comboboxindex, const QString& string)
+{
+    if (comboboxindex < nCombobox)
+        getComboBoxLabel(comboboxindex)->setText(string);
+}
+
+void SketcherToolDefaultWidget::setComboboxElements(int comboboxindex, const QStringList& names)
+{
+    if (comboboxindex < nCombobox) {
+        getComboBox(comboboxindex)->clear();
+        getComboBox(comboboxindex)->addItems(names);
+    }
+}
+
+QComboBox* SketcherToolDefaultWidget::getComboBox(int comboboxindex)
+{
+    switch (comboboxindex) {
+    case Combobox::FirstCombo:
+        return ui->comboBox1;
+        break;
+    case Combobox::SecondCombo:
+        return ui->comboBox2;
+        break;
+    case Combobox::ThirdCombo:
+        return ui->comboBox3;
+        break;
+    default:
+        THROWM(Base::IndexError, "ToolWidget combobox index out of range");
+    }
+}
+QLabel* SketcherToolDefaultWidget::getComboBoxLabel(int comboboxindex)
+{
+    switch (comboboxindex) {
+    case Combobox::FirstCombo:
+        return ui->comboLabel1;
+        break;
+    case Combobox::SecondCombo:
+        return ui->comboLabel2;
+        break;
+    case Combobox::ThirdCombo:
+        return ui->comboLabel3;
+        break;
+    default:
+        THROWM(Base::IndexError, "ToolWidget combobox index out of range");
+    }
+}
+
+int SketcherToolDefaultWidget::getComboboxIndex(int comboboxindex)
+{
+    if (comboboxindex < nCombobox) {
+        return getComboBox(comboboxindex)->currentIndex();
+    }
+
+    THROWM(Base::IndexError, "ToolWidget combobox index out of range");
+}
+
+
+void SketcherToolDefaultWidget::changeEvent(QEvent* e)
 {
     QWidget::changeEvent(e);
     if (e->type() == QEvent::LanguageChange) {
         ui->retranslateUi(this);
     }
 }
-
 
 #include "moc_SketcherToolDefaultWidget.cpp"
