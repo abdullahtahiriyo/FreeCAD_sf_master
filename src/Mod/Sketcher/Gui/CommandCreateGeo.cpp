@@ -137,7 +137,7 @@ void CmdSketcherCreateLine::updateAction(int mode)
 
 bool CmdSketcherCreateLine::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 
@@ -181,7 +181,7 @@ void CmdSketcherCreateRectangle::updateAction(int mode)
 
 bool CmdSketcherCreateRectangle::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 DEF_STD_CMD_AU(CmdSketcherCreateRectangleCenter)
@@ -222,7 +222,7 @@ void CmdSketcherCreateRectangleCenter::updateAction(int mode)
 
 bool CmdSketcherCreateRectangleCenter::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 DEF_STD_CMD_AU(CmdSketcherCreateOblong)
@@ -294,7 +294,7 @@ void CmdSketcherCreatePolygon::activated(int iMsg)
 
 bool CmdSketcherCreatePolygon::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 DEF_STD_CMD_A(CmdSketcherCreateTriangle)
@@ -321,7 +321,7 @@ void CmdSketcherCreateTriangle::activated(int iMsg)
 
 bool CmdSketcherCreateTriangle::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 DEF_STD_CMD_A(CmdSketcherCreateSquare)
@@ -348,7 +348,7 @@ void CmdSketcherCreateSquare::activated(int iMsg)
 
 bool CmdSketcherCreateSquare::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 DEF_STD_CMD_A(CmdSketcherCreatePentagon)
@@ -375,7 +375,7 @@ void CmdSketcherCreatePentagon::activated(int iMsg)
 
 bool CmdSketcherCreatePentagon::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 
@@ -403,7 +403,7 @@ void CmdSketcherCreateHexagon::activated(int iMsg)
 
 bool CmdSketcherCreateHexagon::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 DEF_STD_CMD_A(CmdSketcherCreateHeptagon)
@@ -430,7 +430,7 @@ void CmdSketcherCreateHeptagon::activated(int iMsg)
 
 bool CmdSketcherCreateHeptagon::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 DEF_STD_CMD_A(CmdSketcherCreateOctagon)
@@ -457,7 +457,7 @@ void CmdSketcherCreateOctagon::activated(int iMsg)
 
 bool CmdSketcherCreateOctagon::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 /* Rectangles Comp command ==============================================================*/
@@ -558,7 +558,7 @@ void CmdSketcherCompCreateRectangles::languageChange()
 
 bool CmdSketcherCompCreateRectangles::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 /* Polyline ================================================================================*/
@@ -603,7 +603,7 @@ void CmdSketcherCreatePolyline::updateAction(int mode)
 
 bool CmdSketcherCreatePolyline::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 
@@ -634,7 +634,7 @@ void CmdSketcherCreateCircle::activated(int iMsg)
 
 bool CmdSketcherCreateCircle::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 DEF_STD_CMD_A(CmdSketcherCreate3PointCircle)
@@ -661,7 +661,7 @@ void CmdSketcherCreate3PointCircle::activated(int iMsg)
 
 bool CmdSketcherCreate3PointCircle::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 DEF_STD_CMD_A(CmdSketcherCreateEllipseByCenter)
@@ -688,7 +688,7 @@ void CmdSketcherCreateEllipseByCenter::activated(int iMsg)
 
 bool CmdSketcherCreateEllipseByCenter::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 /// @brief Macro that declares a new sketcher command class 'CmdSketcherCreateEllipseBy3Points'
@@ -719,7 +719,7 @@ void CmdSketcherCreateEllipseBy3Points::activated(int iMsg)
 
 bool CmdSketcherCreateEllipseBy3Points::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 // Comp for circle and ellipse ============================================================
@@ -820,7 +820,7 @@ void CmdSketcherCompCreateCircle::languageChange()
 
 bool CmdSketcherCompCreateCircle::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 
@@ -851,7 +851,7 @@ void CmdSketcherCreateArc::activated(int iMsg)
 
 bool CmdSketcherCreateArc::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 DEF_STD_CMD_A(CmdSketcherCreate3PointArc)
@@ -878,7 +878,7 @@ void CmdSketcherCreate3PointArc::activated(int iMsg)
 
 bool CmdSketcherCreate3PointArc::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 
@@ -908,7 +908,7 @@ void CmdSketcherCreateArcOfEllipse::activated(int iMsg)
 
 bool CmdSketcherCreateArcOfEllipse::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 
@@ -935,7 +935,7 @@ void CmdSketcherCreateArcOfHyperbola::activated(int /*iMsg*/)
 
 bool CmdSketcherCreateArcOfHyperbola::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 
@@ -962,7 +962,7 @@ void CmdSketcherCreateArcOfParabola::activated(int /*iMsg*/)
 
 bool CmdSketcherCreateArcOfParabola::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 // Comp for arcs (circle, ellipse, hyperbola, parabola)===========================================
@@ -1086,7 +1086,7 @@ void CmdSketcherCompCreateArc::languageChange()
 
 bool CmdSketcherCompCreateArc::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 // ======================================================================================
@@ -1129,7 +1129,7 @@ void CmdSketcherCreateBSpline::activated(int iMsg)
 
 bool CmdSketcherCreateBSpline::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 /// @brief Macro that declares a new sketcher command class 'CmdSketcherCreateBSpline'
@@ -1160,7 +1160,7 @@ void CmdSketcherCreatePeriodicBSpline::activated(int iMsg)
 
 bool CmdSketcherCreatePeriodicBSpline::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 
@@ -1271,7 +1271,7 @@ void CmdSketcherCompCreateBSpline::languageChange()
 
 bool CmdSketcherCompCreateBSpline::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 /* Create Point =======================================================*/
@@ -1300,7 +1300,7 @@ void CmdSketcherCreatePoint::activated(int iMsg)
 
 bool CmdSketcherCreatePoint::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 // Fillet and Chamfer ===================================================================
@@ -1345,7 +1345,7 @@ void CmdSketcherCreateFillet::updateAction(int mode)
 
 bool CmdSketcherCreateFillet::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 // Trim edge =========================================================================
@@ -1374,7 +1374,7 @@ void CmdSketcherTrimming::activated(int iMsg)
 
 bool CmdSketcherTrimming::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 
@@ -1405,7 +1405,7 @@ void CmdSketcherExtend::activated(int iMsg)
 
 bool CmdSketcherExtend::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 
@@ -1436,7 +1436,7 @@ void CmdSketcherSplit::activated(int iMsg)
 
 bool CmdSketcherSplit::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 DEF_STD_CMD_A(CmdSketcherInsert)
@@ -1478,7 +1478,7 @@ void CmdSketcherInsert::activated(int iMsg)
 
 bool CmdSketcherInsert::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 /* Modify edge comp ====================================================================*/
@@ -1594,7 +1594,7 @@ void CmdSketcherCompModifyEdge::languageChange()
 
 bool CmdSketcherCompModifyEdge::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 /* External Geometries ==================================================================*/
@@ -1624,7 +1624,7 @@ void CmdSketcherExternal::activated(int iMsg)
 
 bool CmdSketcherExternal::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 // ======================================================================================
@@ -1654,7 +1654,7 @@ void CmdSketcherCarbonCopy::activated(int iMsg)
 
 bool CmdSketcherCarbonCopy::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 void CmdSketcherCarbonCopy::updateAction(int mode)
@@ -1698,7 +1698,7 @@ void CmdSketcherCreateSlot::activated(int iMsg)
 
 bool CmdSketcherCreateSlot::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 /* Create Arc Slot =========================================================*/
@@ -1728,7 +1728,7 @@ void CmdSketcherCreateArcSlot::activated(int iMsg)
 
 bool CmdSketcherCreateArcSlot::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 /* Slot comp ============================================================*/
@@ -1832,7 +1832,7 @@ void CmdSketcherCompCreateSlot::languageChange()
 
 bool CmdSketcherCompCreateSlot::isActive(void)
 {
-    return isCreateGeoActive(getActiveGuiDocument());
+    return isCommandActive(getActiveGuiDocument());
 }
 
 /*=========================================================================*/
