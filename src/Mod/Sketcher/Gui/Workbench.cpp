@@ -192,11 +192,8 @@ template <>
 inline void SketcherAddWorkspaceArcs<Gui::MenuItem>(Gui::MenuItem& geom)
 {
     geom    << "Sketcher_CreateArc"
-            << "Sketcher_Create3PointArc"
             << "Sketcher_CreateCircle"
-            << "Sketcher_Create3PointCircle"
             << "Sketcher_CreateEllipseByCenter"
-            << "Sketcher_CreateEllipseBy3Points"
             << "Sketcher_CreateArcOfEllipse"
             << "Sketcher_CreateArcOfHyperbola"
             << "Sketcher_CreateArcOfParabola"
@@ -209,29 +206,7 @@ inline void SketcherAddWorkspaceArcs<Gui::ToolBarItem>(Gui::ToolBarItem& geom)
 {
     geom    << "Sketcher_CompCreateArc"
             << "Sketcher_CompCreateCircle"
-            << "Sketcher_CompCreateConic"
             << "Sketcher_CompCreateBSpline";
-}
-
-template <typename T>
-void SketcherAddWorkspaceRegularPolygon(T& geom);
-
-template <>
-inline void SketcherAddWorkspaceRegularPolygon<Gui::MenuItem>(Gui::MenuItem& geom)
-{
-    geom    << "Sketcher_CreateTriangle"
-            << "Sketcher_CreateSquare"
-            << "Sketcher_CreatePentagon"
-            << "Sketcher_CreateHexagon"
-            << "Sketcher_CreateHeptagon"
-            << "Sketcher_CreateOctagon"
-            << "Sketcher_CreateRegularPolygon";
-}
-
-template <>
-inline void SketcherAddWorkspaceRegularPolygon<Gui::ToolBarItem>(Gui::ToolBarItem& geom)
-{
-    geom    << "Sketcher_CompCreateRegularPolygon";
 }
 
 template <typename T>
@@ -241,8 +216,7 @@ template <>
 inline void SketcherAddWorkspaceRectangles<Gui::MenuItem>(Gui::MenuItem& geom)
 {
     geom    << "Sketcher_CreateRectangle"
-            << "Sketcher_CreateRectangle_Center"
-            << "Sketcher_CreateOblong";
+            << "Sketcher_CreatePolygon";
 }
 
 template <>
@@ -252,19 +226,37 @@ inline void SketcherAddWorkspaceRectangles<Gui::ToolBarItem>(Gui::ToolBarItem& g
 }
 
 template <typename T>
-void SketcherAddWorkspaceFillets(T& geom);
+void SketcherAddWorkspaceSlot(T& geom);
 
 template <>
-inline void SketcherAddWorkspaceFillets<Gui::MenuItem>(Gui::MenuItem& geom)
+inline void SketcherAddWorkspaceSlot<Gui::MenuItem>(Gui::MenuItem& geom)
 {
-    geom    << "Sketcher_CreateFillet"
-            << "Sketcher_CreatePointFillet";
+    geom << "Sketcher_CreateSlot"
+        << "Sketcher_CreateArcSlot";
 }
 
 template <>
-inline void SketcherAddWorkspaceFillets<Gui::ToolBarItem>(Gui::ToolBarItem& geom)
+inline void SketcherAddWorkspaceSlot<Gui::ToolBarItem>(Gui::ToolBarItem& geom)
 {
-    geom    << "Sketcher_CompCreateFillets";
+    geom << "Sketcher_CompCreateSlot";
+}
+
+
+template <typename T>
+void SketcherAddWorkspaceEdges(T& geom);
+
+template <>
+inline void SketcherAddWorkspaceEdges<Gui::MenuItem>(Gui::MenuItem& geom)
+{
+    geom << "Sketcher_Trimming"
+        << "Sketcher_Extend"
+        << "Sketcher_Split";
+}
+
+template <>
+inline void SketcherAddWorkspaceEdges<Gui::ToolBarItem>(Gui::ToolBarItem& geom)
+{
+    geom << "Sketcher_CompModifyEdge";
 }
 
 template <typename T>
@@ -276,14 +268,11 @@ inline void SketcherAddWorkbenchGeometries(T& geom)
     geom    << "Separator"
             << "Sketcher_CreatePolyline";
     SketcherAddWorkspaceRectangles(geom);
-    SketcherAddWorkspaceRegularPolygon(geom);
-    geom    << "Sketcher_CreateSlot"
-            << "Separator";
-    SketcherAddWorkspaceFillets(geom);
-    geom    << "Sketcher_Trimming"
-            << "Sketcher_Extend"
-            << "Sketcher_Split"
-            << "Sketcher_External"
+    SketcherAddWorkspaceSlot(geom);
+    geom    << "Separator"
+            << "Sketcher_CreateFillet";
+    SketcherAddWorkspaceEdges(geom);
+    geom    << "Sketcher_External"
             << "Sketcher_CarbonCopy"
             << "Sketcher_ToggleConstruction"
             /*<< "Sketcher_CreateText"*/
@@ -390,6 +379,10 @@ inline void SketcherAddWorkbenchTools<Gui::ToolBarItem>(Gui::ToolBarItem& consac
                 << "Sketcher_SelectRedundantConstraints"
                 << "Sketcher_SelectConflictingConstraints"
                 << "Sketcher_RestoreInternalAlignmentGeometry"
+                << "Sketcher_Translate"
+                << "Sketcher_Rotate"
+                << "Sketcher_Scale"
+                << "Sketcher_Offset"
                 << "Sketcher_Symmetry"
                 << "Sketcher_CompCopy"
                 << "Sketcher_RectangularArray"
