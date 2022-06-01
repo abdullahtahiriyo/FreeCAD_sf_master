@@ -106,6 +106,29 @@ protected:
         onModeChanged();
     }
 
+    void ensureState(SelectModeT mode) {
+        if(Mode != mode) {
+            Mode = mode;
+            onModeChanged();
+        }
+    }
+
+    /** Ensure the state machine is the provided mode
+     * but only if the mode is an earlier state.
+     *
+     * This allows to return to previous states (e.g.
+     * for modification), only if that state has previously
+     * been completed.
+     */
+    void ensureStateIfEarlier(SelectModeT mode) {
+        if(Mode != mode) {
+            if(mode < Mode) {
+                Mode = mode;
+                onModeChanged();
+            }
+        }
+    }
+
     SelectModeT state() const {
         return Mode;
     }
@@ -115,6 +138,10 @@ protected:
     bool isFirstState() const { return Mode == (static_cast<SelectModeT>(0));}
 
     bool isLastState() const { return Mode == SelectModeT::End;}
+
+    constexpr SelectModeT getFirstState() const {
+        return static_cast<SelectModeT>(0);
+    }
 
     SelectModeT getNextMode() const {
         auto modeint = static_cast<int>(state());
@@ -325,15 +352,21 @@ protected:
             unsetCursor();
             resetPositionText();
 
-            executeCommands();
+            try {
+                executeCommands();
 
-            generateAutoConstraints();
+                generateAutoConstraints();
 
-            beforeCreateAutoConstraints();
+                beforeCreateAutoConstraints();
 
-            createAutoConstraints();
+                createAutoConstraints();
 
-            tryAutoRecomputeIfNotSolve(static_cast<Sketcher::SketchObject *>(sketchgui->getObject()));
+                tryAutoRecomputeIfNotSolve(static_cast<Sketcher::SketchObject *>(sketchgui->getObject()));
+
+            }
+            catch (const Base::RuntimeError& e) {
+                e.ReportException();
+            }
 
             handleContinuousMode();
         }
@@ -397,14 +430,12 @@ private:
     virtual void beforeCreateAutoConstraints() {}
     virtual void createAutoConstraints() {}
 
-    virtual void onModeChanged() override { };
-
     virtual void onConstructionMethodChanged() override {};
 
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) {Q_UNUSED(onSketchPos)};
 
     // function intended to populate ShapeGeometry and ShapeConstraints
-    virtual void createShape(bool onlygeometry) {Q_UNUSED(onlygeometry)}
+    virtual void createShape(bool onlyeditoutline) {Q_UNUSED(onlyeditoutline)}
     //@}
 protected:
     /** @name functions are intended to be overridden/specialised to extend basic functionality
@@ -426,6 +457,10 @@ protected:
         this->updateDataAndDrawToPosition(onSketchPos);
         this->moveToNextMode();
     }
+
+    virtual void onModeChanged() override {
+        finish(); // internally checks that state is SelectMode::End, and only finishes then.
+    };
     //@}
 
     /** @name Helper functions
@@ -687,6 +722,108 @@ protected:
 
         THROWM(Base::ValueError, "Geometry does not have solver extension when trying to apply widget constraints!")
     }
+
+    int getLineDoFs(int geoid)
+    {
+        auto startpointinfo = getPointInfo(Sketcher::GeoElementId(geoid, Sketcher::PointPos::start));
+        auto endpointinfo = getPointInfo(Sketcher::GeoElementId(geoid, Sketcher::PointPos::end));
+
+        int DoFs = startpointinfo.getDoFs();
+        DoFs += endpointinfo.getDoFs();
+
+        return DoFs;
+    }
+
+    Sketcher::SolverGeometryExtension::EdgeParameterStatus getEdgeInfo(int geoid) {
+
+        auto sketchobject = getSketchObject();
+        // it is important not to rely on Geometry attached extension from the solver, as geometry is not updated during
+        // temporary diagnose of additional constraints
+        const auto & solvedsketch = sketchobject->getSolvedSketch();
+
+        auto solvext = solvedsketch.getSolverExtension(geoid);
+
+        if(solvext) {
+            Sketcher::SolverGeometryExtension::EdgeParameterStatus edgeinfo = solvext->getEdgeParameters();
+
+            return edgeinfo;
+        }
+
+        THROWM(Base::ValueError, "Geometry does not have solver extension when trying to apply widget constraints!")
+    }
+
+    void addToShapeConstraints(Sketcher::ConstraintType type, int first, Sketcher::PointPos firstPos = Sketcher::PointPos::none, int second = -2000, Sketcher::PointPos secondPos = Sketcher::PointPos::none, int third = -2000, Sketcher::PointPos thirdPos = Sketcher::PointPos::none) {
+        auto constr = std::make_unique<Sketcher::Constraint>();
+        constr->Type = type;
+        constr->First = first;
+        constr->FirstPos = firstPos;
+        constr->Second = second;
+        constr->SecondPos = secondPos;
+        constr->Third = third;
+        constr->ThirdPos = thirdPos;
+        ShapeConstraints.push_back(std::move(constr));
+    }
+
+    void addLineToShapeGeometry(Base::Vector3d p1, Base::Vector3d p2, bool constructionMode) {
+        auto line = std::make_unique<Part::GeomLineSegment>();
+        line->setPoints(p1, p2);
+        Sketcher::GeometryFacade::setConstruction(line.get(), constructionMode);
+        ShapeGeometry.push_back(std::move(line));
+    }
+
+    void addArcToShapeGeometry(Base::Vector3d p1, double start, double end, double radius, bool constructionMode) {
+        auto arc = std::make_unique<Part::GeomArcOfCircle>();
+        arc->setCenter(p1);
+        arc->setRange(start, end, true);
+        arc->setRadius(radius);
+        Sketcher::GeometryFacade::setConstruction(arc.get(), constructionMode);
+        ShapeGeometry.push_back(std::move(arc));
+    }
+
+    void addPointToShapeGeometry(Base::Vector3d p1, bool constructionMode) {
+        auto point = std::make_unique<Part::GeomPoint>();
+        point->setPoint(p1);
+        Sketcher::GeometryFacade::setConstruction(point.get(), constructionMode);
+        ShapeGeometry.push_back(std::move(point));
+    }
+
+    void addEllipseToShapeGeometry(Base::Vector3d centerPoint, Base::Vector3d majorAxisDirection, double majorRadius, double minorRadius, bool constructionMode) {
+        auto ellipse = std::make_unique<Part::GeomEllipse>();
+        ellipse->setMajorRadius(majorRadius);
+        ellipse->setMinorRadius(minorRadius);
+        ellipse->setMajorAxisDir(majorAxisDirection);
+        ellipse->setCenter(centerPoint);
+        Sketcher::GeometryFacade::setConstruction(ellipse.get(), constructionMode);
+        ShapeGeometry.push_back(std::move(ellipse));
+    }
+
+    void addCircleToShapeGeometry(Base::Vector3d centerPoint, double radius, bool constructionMode) {
+        auto circle = std::make_unique<Part::GeomCircle>();
+        circle->setRadius(radius);
+        circle->setCenter(centerPoint);
+        Sketcher::GeometryFacade::setConstruction(circle.get(), constructionMode);
+        ShapeGeometry.push_back(std::move(circle));
+    }
+
+    void commandAddShapeGeometryAndConstraints() {
+            auto shapeGeometry = toPointerVector(ShapeGeometry);
+            Gui::Command::doCommand(Gui::Command::Doc,
+                Sketcher::PythonConverter::convert(Gui::Command::getObjectCmd(sketchgui->getObject()), shapeGeometry).c_str());
+
+            auto shapeConstraints = toPointerVector(ShapeConstraints);
+            Gui::Command::doCommand(Gui::Command::Doc,
+                Sketcher::PythonConverter::convert(Gui::Command::getObjectCmd(sketchgui->getObject()), shapeConstraints).c_str());
+    }
+
+    void DrawShapeGeometry() {
+        drawEdit(toPointerVector(ShapeGeometry));
+    }
+
+    void CreateAndDrawShapeGeometry() {
+        createShape(true);
+        drawEdit(toPointerVector(ShapeGeometry));
+    }
+
     //@}
 
 protected:
