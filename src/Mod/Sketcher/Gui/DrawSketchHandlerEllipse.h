@@ -29,11 +29,18 @@
 #include "GeometryCreationMode.h"
 #include "Utils.h"
 
-#include "CircleEllipseConstructionMethod.h"
-
 namespace SketcherGui {
 
 extern GeometryCreationMode geometryCreationMode; // defined in CommandCreateGeo.cpp
+
+namespace ConstructionMethods {
+
+enum class EllipseConstructionMethod {
+    Center,
+    PeriapsisApoapsisMinorRadius,
+    End // Must be the last one
+};
+}
 
 /* Ellipse ==============================================================================*/
 class DrawSketchHandlerEllipse;
@@ -42,10 +49,10 @@ using DrawSketchHandlerEllipseBase = DrawSketchDefaultWidgetHandler<  DrawSketch
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 3,
-    /*WidgetParametersT =*/WidgetParameters<5, 6>,
+    /*WidgetParametersT =*/WidgetParameters<5, 5>,
     /*WidgetCheckboxesT =*/WidgetCheckboxes<0, 0>,
     /*WidgetComboboxesT =*/WidgetComboboxes<1, 1>,
-    ConstructionMethods::CircleEllipseConstructionMethod,
+    ConstructionMethods::EllipseConstructionMethod,
     /*bool PFirstComboboxIsConstructionMethod =*/ true>;
 
 class DrawSketchHandlerEllipse : public DrawSketchHandlerEllipseBase
@@ -77,12 +84,11 @@ private:
                     return;
                 }
             }
-
         }
         break;
         case SelectMode::SeekSecond:
         {
-            if (constructionMethod() == ConstructionMethod::ThreeRim) {
+            if (constructionMethod() == ConstructionMethod::PeriapsisApoapsisMinorRadius) {
                 apoapsis = onSketchPos;
                 centerPoint = (apoapsis - periapsis) / 2 + periapsis;
             }
@@ -93,13 +99,10 @@ private:
             firstAxis = periapsis - centerPoint;
             firstRadius = firstAxis.Length();
 
-            //for this step we just draw a circle.
-            std::vector<Part::Geometry*> geometriesToAdd;
-            Part::GeomCircle* ellipse = new Part::GeomCircle();
-            ellipse->setRadius(firstRadius);
-            ellipse->setCenter(Base::Vector3d(centerPoint.x, centerPoint.y, 0.));
-            geometriesToAdd.push_back(ellipse);
-            drawEdit(geometriesToAdd);
+            try {
+                CreateAndDrawShapeGeometry();
+            }
+            catch(const Base::ValueError &) {} // avoid polluting the error console with drawing exceptions.
 
             SbString text;
             double angle = GetPointAngle(centerPoint, onSketchPos);
@@ -114,51 +117,32 @@ private:
         break;
         case SelectMode::SeekThird:
         {
-            try
-            {
-                //recalculate in case widget modified something
-                if (constructionMethod() == ConstructionMethod::ThreeRim) {
-                    centerPoint = (apoapsis - periapsis) / 2 + periapsis;
-                }
-                firstAxis = periapsis - centerPoint;
-                firstRadius = firstAxis.Length();
-
-                //Find bPoint For that first we need the distance of onSketchPos to major axis.
-                Base::Vector2d projectedPtn;
-                projectedPtn.ProjectToLine(onSketchPos - centerPoint, firstAxis);
-                projectedPtn = centerPoint + projectedPtn;
-                secondAxis = onSketchPos - projectedPtn;
-                secondRadius = secondAxis.Length();
-
-                Base::Vector2d majorAxis = firstAxis;
-                double majorRadius = firstRadius;
-                double minorRadius = secondRadius;
-                if (secondRadius > firstRadius) {
-                    majorAxis = secondAxis;
-                    majorRadius = secondRadius;
-                    minorRadius = firstRadius;
-                }
-
-                std::vector<Part::Geometry*> geometriesToAdd;
-                Part::GeomEllipse* ellipse = new Part::GeomEllipse();
-                ellipse->setMajorRadius(majorRadius);
-                ellipse->setMinorRadius(minorRadius);
-                ellipse->setMajorAxisDir(Base::Vector3d(majorAxis.x, majorAxis.y, 0.));
-                ellipse->setCenter(Base::Vector3d(centerPoint.x, centerPoint.y, 0.));
-                geometriesToAdd.push_back(ellipse);
-                drawEdit(geometriesToAdd);
-
-                SbString text;
-                text.sprintf(" (%.1fR,%.1fR)", (float)majorRadius, (float)minorRadius);
-                setPositionText(onSketchPos, text);
-
-                if (seekAutoConstraint(sugConstraints[2], onSketchPos, Base::Vector2d(0.f, 0.f), AutoConstraint::CURVE)) {
-                    renderSuggestConstraintsCursor(sugConstraints[2]);
-                    return;
-                }
+            //recalculate in case widget modified something
+            if (constructionMethod() == ConstructionMethod::PeriapsisApoapsisMinorRadius) {
+                centerPoint = (apoapsis - periapsis) / 2 + periapsis;
             }
-            catch (Base::ValueError& e) {
-                e.ReportException();
+            firstAxis = periapsis - centerPoint;
+            firstRadius = firstAxis.Length();
+
+            //Find bPoint For that first we need the distance of onSketchPos to major axis.
+            Base::Vector2d projectedPtn;
+            projectedPtn.ProjectToLine(onSketchPos - centerPoint, firstAxis);
+            projectedPtn = centerPoint + projectedPtn;
+            secondAxis = onSketchPos - projectedPtn;
+            secondRadius = secondAxis.Length();
+
+            try {
+                CreateAndDrawShapeGeometry();
+            }
+            catch(const Base::ValueError &) {} // avoid polluting the error console with drawing exceptions.
+
+            SbString text;
+            text.sprintf(" (%.1fR,%.1fR)", (float)majorRadius, (float)minorRadius);
+            setPositionText(onSketchPos, text);
+
+            if (seekAutoConstraint(sugConstraints[2], onSketchPos, Base::Vector2d(0.f, 0.f), AutoConstraint::CURVE)) {
+                renderSuggestConstraintsCursor(sugConstraints[2]);
+                return;
             }
         }
         break;
@@ -168,77 +152,99 @@ private:
     }
 
     virtual void executeCommands() override {
-        unsetCursor();
-        resetPositionText();
-        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
-        if (fabs(firstRadius - secondRadius) < Precision::Confusion()) {
-            //don't make an ellipse with equal radius it won't work. We could create a circle instead?
-            return;
-        }
+
         try {
-            ellipseGeoId = getHighestCurveIndex() + 1;
             Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add sketch ellipse"));
 
-            Base::Vector2d majorAxis = firstAxis;
-            double majorRadius = firstRadius;
-            double minorRadius = secondRadius;
+            ellipseGeoId = getHighestCurveIndex() + 1;
+
+            createShape(false);
+
+            commandAddShapeGeometryAndConstraints();
+
+            Gui::cmdAppObjectArgs(sketchgui->getObject(), "exposeInternalGeometry(%d)", ellipseGeoId);
+
+            Gui::Command::commitCommand();
+        }
+        catch (const Base::Exception& e) {
+            Base::Console().Error("Failed to add ellipse: %s\n", e.what());
+            Gui::Command::abortCommand();
+            THROWM(Base::RuntimeError, "Tool execution aborted\n") // This prevents constraints from being applied on non existing geometry
+        }
+    }
+
+    virtual void generateAutoConstraints() override {
+
+        if (constructionMethod() == ConstructionMethod::Center) {
+
+            auto & ac1 = sugConstraints[0];
+            auto & ac2 = sugConstraints[1];
+
+            generateAutoConstraintsOnElement(ac1, ellipseGeoId, Sketcher::PointPos::mid);    // add auto constraints for the center point
+            generateAutoConstraintsOnElement(ac2, ellipseGeoId, Sketcher::PointPos::none);   // add auto constraints for the edge
+        }
+        else {
+
+            auto & ac1 = sugConstraints[0];
+            auto & ac2 = sugConstraints[1];
+            auto & ac3 = sugConstraints[2];
+
+            generateAutoConstraintsOnElement(ac1, ellipseGeoId, Sketcher::PointPos::none);   // add auto constraints for the first point
+            generateAutoConstraintsOnElement(ac2, ellipseGeoId, Sketcher::PointPos::none);   // add auto constraints for the second point
+            generateAutoConstraintsOnElement(ac3, ellipseGeoId, Sketcher::PointPos::none);   // add auto constraints for the edge
+        }
+        // Ensure temporary autoconstraints do not generate a redundancy and that the geometry parameters are accurate
+        // This is particularly important for adding widget mandated constraints.
+        removeRedundantAutoConstraints();
+    }
+
+    virtual void createAutoConstraints() override {
+        // execute python command to create autoconstraints
+        createGeneratedAutoConstraints(true);
+
+        sugConstraints[0].clear();
+        sugConstraints[1].clear();
+        sugConstraints[2].clear();
+    }
+
+    virtual void createShape(bool onlyeditoutline) override {
+        Q_UNUSED(onlyeditoutline);
+
+        ShapeGeometry.clear();
+
+        Base::Vector2d majorAxis = firstAxis;
+        majorRadius = firstRadius;
+
+        if( state() == SelectMode::SeekSecond) {
+            auto ellipse = std::make_unique<Part::GeomEllipse>();
+            ellipse->setMajorRadius(majorRadius);
+            ellipse->setMinorRadius(majorRadius*0.5);
+            ellipse->setMajorAxisDir(toVector3d(majorAxis));
+            ellipse->setCenter(toVector3d(centerPoint));
+            ShapeGeometry.push_back(std::move(ellipse));
+        }
+        else { // SelectMode::SeekThird or SelectMode::End
+            minorRadius = secondRadius;
+
             if (secondRadius > firstRadius) {
                 majorAxis = secondAxis;
                 majorRadius = secondRadius;
                 minorRadius = firstRadius;
             }
 
-            std::vector<Part::Geometry*> geometriesToAdd;
-            Part::GeomEllipse* ellipse = new Part::GeomEllipse();
-            ellipse->setMajorRadius(majorRadius);
-            ellipse->setMinorRadius(minorRadius);
-            ellipse->setMajorAxisDir(Base::Vector3d(majorAxis.x, majorAxis.y, 0.));
-            ellipse->setCenter(Base::Vector3d(centerPoint.x, centerPoint.y, 0.));
-            geometriesToAdd.push_back(ellipse);
-            Obj->addGeometry(std::move(geometriesToAdd));
-
-            Gui::cmdAppObjectArgs(Obj, "exposeInternalGeometry(%d)", ellipseGeoId);
-
-            Gui::Command::commitCommand();
-
-        }
-        catch (const Base::Exception& e) {
-            Base::Console().Error("Failed to add ellipse: %s\n", e.what());
-            Gui::Command::abortCommand();
-        }
-    }
-
-    virtual void createAutoConstraints() override {
-        if (constructionMethod() == ConstructionMethod::Center) {
-            // add auto constraints for the center point
-            if (!sugConstraints[0].empty()) {
-                DrawSketchHandler::createAutoConstraints(sugConstraints[0], ellipseGeoId, Sketcher::PointPos::mid);
-                sugConstraints[0].clear();
+            if (fabs(firstRadius - secondRadius) < Precision::Confusion()) {
+                auto circle = std::make_unique<Part::GeomCircle>();
+                circle->setRadius(firstRadius);
+                circle->setCenter(toVector3d(centerPoint));
+                ShapeGeometry.push_back(std::move(circle));
             }
-
-            // add suggested constraints for circumference
-            if (!sugConstraints[1].empty()) {
-                DrawSketchHandler::createAutoConstraints(sugConstraints[1], ellipseGeoId, Sketcher::PointPos::none);
-                sugConstraints[1].clear();
-            }
-        }
-        else {
-            // Auto Constraint first picked point
-            if (sugConstraints[0].size() > 0) {
-                DrawSketchHandler::createAutoConstraints(sugConstraints[0], ellipseGeoId, Sketcher::PointPos::none);
-                sugConstraints[0].clear();
-            }
-
-            // Auto Constraint second picked point
-            if (sugConstraints[1].size() > 0) {
-                DrawSketchHandler::createAutoConstraints(sugConstraints[1], ellipseGeoId, Sketcher::PointPos::none);
-                sugConstraints[1].clear();
-            }
-
-            // Auto Constraint third picked point
-            if (sugConstraints[2].size() > 0) {
-                DrawSketchHandler::createAutoConstraints(sugConstraints[2], ellipseGeoId, Sketcher::PointPos::none);
-                sugConstraints[2].clear();
+            else {
+                auto ellipse = std::make_unique<Part::GeomEllipse>();
+                ellipse->setMajorRadius(majorRadius);
+                ellipse->setMinorRadius(minorRadius);
+                ellipse->setMajorAxisDir(toVector3d(majorAxis));
+                ellipse->setCenter(toVector3d(centerPoint));
+                ShapeGeometry.push_back(std::move(ellipse));
             }
         }
     }
@@ -256,20 +262,49 @@ private:
 
 private:
     Base::Vector2d centerPoint, periapsis, apoapsis, firstAxis, secondAxis;
-    double firstRadius, secondRadius;
+    double firstRadius, secondRadius, majorRadius, minorRadius;
     int ellipseGeoId;
-
-    void swapPoints(Base::Vector2d& p1, Base::Vector2d& p2) {
-        Base::Vector2d p3 = p1;
-        p1 = p2;
-        p2 = p3;
-    }
 };
+
+template <> auto DrawSketchHandlerEllipseBase::ToolWidgetManager::getState(int parameterindex) const {
+
+    if (handler->constructionMethod() == DrawSketchHandlerEllipse::ConstructionMethod::Center) {
+        switch (parameterindex) {
+        case WParameter::First:
+        case WParameter::Second:
+            return SelectMode::SeekFirst;
+            break;
+        case WParameter::Third:
+            return SelectMode::SeekSecond;
+            break;
+        default:
+            THROWM(Base::ValueError, "Parameter index without an associated machine state")
+        }
+    }
+    else { //if (constructionMethod == ConstructionMethod::ThreeRim)
+        switch (parameterindex) {
+        case WParameter::First:
+        case WParameter::Second:
+            return SelectMode::SeekFirst;
+            break;
+        case WParameter::Third:
+        case WParameter::Fourth:
+            return SelectMode::SeekSecond;
+            break;
+        case WParameter::Fifth:
+        case WParameter::Sixth:
+            return SelectMode::SeekThird;
+            break;
+        default:
+            THROWM(Base::ValueError, "Parameter index without an associated machine state")
+        }
+    }
+}
 
 template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::configureToolWidget() {
 
     if(!init) { // Code to be executed only upon initialisation
-        QStringList names = {QStringLiteral("Center"), QStringLiteral("3 rim points")};
+        QStringList names = {QStringLiteral("Center"), QStringLiteral("Periapsis, apoapsis, minor radius")};
         toolWidget->setComboboxElements(WCombobox::FirstCombo, names);
 
         syncConstructionMethodComboboxToHandler(); // in case the DSH was called with a specific construction method
@@ -283,12 +318,11 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::configureToolW
         toolWidget->setParameterLabel(WParameter::Fifth, QApplication::translate("TaskSketcherTool_p3_ellipse", "Second radius"));
     }
     else {
-        toolWidget->setParameterLabel(WParameter::First, QApplication::translate("ToolWidgetManager_p1", "x of 1st point"));
-        toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("ToolWidgetManager_p2", "y of 1st point"));
-        toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("ToolWidgetManager_p3", "x of 2nd point"));
-        toolWidget->setParameterLabel(WParameter::Fourth, QApplication::translate("ToolWidgetManager_p4", "y of 2nd point"));
-        toolWidget->setParameterLabel(WParameter::Fifth, QApplication::translate("ToolWidgetManager_p5", "x of 3rd point"));
-        toolWidget->setParameterLabel(WParameter::Sixth, QApplication::translate("ToolWidgetManager_p6", "y of 3rd point"));
+        toolWidget->setParameterLabel(WParameter::First, QApplication::translate("ToolWidgetManager_p1", "x of periapsis"));
+        toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("ToolWidgetManager_p2", "y of periapsis"));
+        toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("ToolWidgetManager_p3", "x of apoapsis"));
+        toolWidget->setParameterLabel(WParameter::Fourth, QApplication::translate("ToolWidgetManager_p4", "y of apoapsis"));
+        toolWidget->setParameterLabel(WParameter::Fifth, QApplication::translate("ToolWidgetManager_p5", "Minor radius"));
     }
 }
 
