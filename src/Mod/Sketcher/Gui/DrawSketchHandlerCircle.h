@@ -29,11 +29,19 @@
 #include "GeometryCreationMode.h"
 #include "Utils.h"
 
-#include "CircleEllipseConstructionMethod.h"
-
 namespace SketcherGui {
 
 extern GeometryCreationMode geometryCreationMode; // defined in CommandCreateGeo.cpp
+
+namespace ConstructionMethods {
+
+enum class CircleConstructionMethod {
+    Center,
+    ThreeRim,
+    End // Must be the last one
+};
+}
+
 
 class DrawSketchHandlerCircle;
 
@@ -44,7 +52,7 @@ using DrawSketchHandlerCircleBase = DrawSketchDefaultWidgetHandler<  DrawSketchH
     /*WidgetParametersT =*/WidgetParameters<3, 6>,
     /*WidgetCheckboxesT =*/WidgetCheckboxes<0, 0>,
     /*WidgetComboboxesT =*/WidgetComboboxes<1, 1>,
-    ConstructionMethods::CircleEllipseConstructionMethod,
+    ConstructionMethods::CircleConstructionMethod,
     /*bool PFirstComboboxIsConstructionMethod =*/ true>;
 
 class DrawSketchHandlerCircle : public DrawSketchHandlerCircleBase
