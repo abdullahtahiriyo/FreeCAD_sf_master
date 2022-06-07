@@ -167,7 +167,20 @@ PythonConverter::SingleGeometry PythonConverter::process(const Part::Geometry * 
             sg.construction = Sketcher::GeometryFacade::getConstruction(geo);
             return sg;
         }},
-
+    { Part::GeomEllipse::getClassTypeId(),
+        [](const Part::Geometry * geo){
+            auto ellipse = static_cast<const Part::GeomEllipse *>(geo);
+            SingleGeometry sg;
+            auto periapsis = ellipse->getCenter() + ellipse->getMajorAxisDir() * ellipse->getMajorRadius();
+            auto positiveB = ellipse->getCenter() + ellipse->getMinorAxisDir() * ellipse->getMinorRadius();
+            auto center = ellipse->getCenter();
+            sg.creation = boost::str(boost::format("Part.Ellipse(App.Vector(%f, %f, %f), App.Vector(%f, %f, %f), App.Vector(%f, %f, %f))") %
+                    periapsis.x % periapsis.y % periapsis.z %
+                    positiveB.x % positiveB.y % positiveB.z %
+                    center.x % center.y % center.z);
+            sg.construction = Sketcher::GeometryFacade::getConstruction(geo);
+            return sg;
+        }},
     };
 
     auto result = converterMap.find(geo->getTypeId());
