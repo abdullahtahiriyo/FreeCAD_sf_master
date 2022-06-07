@@ -44,7 +44,7 @@ using DrawSketchHandlerArcBase = DrawSketchDefaultWidgetHandler<  DrawSketchHand
     /*WidgetParametersT =*/WidgetParameters<5, 6>,
     /*WidgetCheckboxesT =*/WidgetCheckboxes<0, 0>,
     /*WidgetComboboxesT =*/WidgetComboboxes<1, 1>,
-    ConstructionMethods::CircleEllipseConstructionMethod,
+    ConstructionMethods::CircleConstructionMethod,
     /*bool PFirstComboboxIsConstructionMethod =*/ true>;
 
 class DrawSketchHandlerArc : public DrawSketchHandlerArcBase
