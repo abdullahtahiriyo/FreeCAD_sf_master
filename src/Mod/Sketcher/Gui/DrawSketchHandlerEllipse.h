@@ -216,12 +216,7 @@ private:
         majorRadius = firstRadius;
 
         if( state() == SelectMode::SeekSecond) {
-            auto ellipse = std::make_unique<Part::GeomEllipse>();
-            ellipse->setMajorRadius(majorRadius);
-            ellipse->setMinorRadius(majorRadius*0.5);
-            ellipse->setMajorAxisDir(toVector3d(majorAxis));
-            ellipse->setCenter(toVector3d(centerPoint));
-            ShapeGeometry.push_back(std::move(ellipse));
+            addEllipseToShapeGeometry(toVector3d(centerPoint), toVector3d(majorAxis), majorRadius, majorRadius*0.5, geometryCreationMode);
         }
         else { // SelectMode::SeekThird or SelectMode::End
             minorRadius = secondRadius;
@@ -232,20 +227,10 @@ private:
                 minorRadius = firstRadius;
             }
 
-            if (fabs(firstRadius - secondRadius) < Precision::Confusion()) {
-                auto circle = std::make_unique<Part::GeomCircle>();
-                circle->setRadius(firstRadius);
-                circle->setCenter(toVector3d(centerPoint));
-                ShapeGeometry.push_back(std::move(circle));
-            }
-            else {
-                auto ellipse = std::make_unique<Part::GeomEllipse>();
-                ellipse->setMajorRadius(majorRadius);
-                ellipse->setMinorRadius(minorRadius);
-                ellipse->setMajorAxisDir(toVector3d(majorAxis));
-                ellipse->setCenter(toVector3d(centerPoint));
-                ShapeGeometry.push_back(std::move(ellipse));
-            }
+            if (fabs(firstRadius - secondRadius) < Precision::Confusion())
+                addCircleToShapeGeometry(toVector3d(centerPoint), firstRadius, geometryCreationMode);
+            else
+                addEllipseToShapeGeometry(toVector3d(centerPoint), toVector3d(majorAxis), majorRadius, minorRadius, geometryCreationMode);
         }
     }
 
