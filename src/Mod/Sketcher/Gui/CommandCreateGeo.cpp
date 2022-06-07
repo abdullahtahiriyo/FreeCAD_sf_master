@@ -639,7 +639,7 @@ CmdSketcherCreateCircle::CmdSketcherCreateCircle()
 void CmdSketcherCreateCircle::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
-    ActivateHandler(getActiveGuiDocument(),new DrawSketchHandlerCircle(ConstructionMethods::CircleEllipseConstructionMethod::Center));
+    ActivateHandler(getActiveGuiDocument(),new DrawSketchHandlerCircle(ConstructionMethods::CircleConstructionMethod::Center));
 }
 
 bool CmdSketcherCreateCircle::isActive(void)
@@ -666,7 +666,7 @@ CmdSketcherCreate3PointCircle::CmdSketcherCreate3PointCircle()
 void CmdSketcherCreate3PointCircle::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
-    ActivateHandler(getActiveGuiDocument(),new DrawSketchHandlerCircle(ConstructionMethods::CircleEllipseConstructionMethod::ThreeRim));
+    ActivateHandler(getActiveGuiDocument(),new DrawSketchHandlerCircle(ConstructionMethods::CircleConstructionMethod::ThreeRim));
 }
 
 bool CmdSketcherCreate3PointCircle::isActive(void)
@@ -693,7 +693,7 @@ CmdSketcherCreateEllipseByCenter::CmdSketcherCreateEllipseByCenter()
 void CmdSketcherCreateEllipseByCenter::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
-    ActivateHandler(getActiveGuiDocument(),new DrawSketchHandlerEllipse(ConstructionMethods::CircleEllipseConstructionMethod::Center));
+    ActivateHandler(getActiveGuiDocument(),new DrawSketchHandlerEllipse(ConstructionMethods::EllipseConstructionMethod::Center));
 }
 
 bool CmdSketcherCreateEllipseByCenter::isActive(void)
@@ -724,7 +724,7 @@ CmdSketcherCreateEllipseBy3Points::CmdSketcherCreateEllipseBy3Points()
 void CmdSketcherCreateEllipseBy3Points::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
-    ActivateHandler(getActiveGuiDocument(),new DrawSketchHandlerEllipse(ConstructionMethods::CircleEllipseConstructionMethod::ThreeRim));
+    ActivateHandler(getActiveGuiDocument(),new DrawSketchHandlerEllipse(ConstructionMethods::EllipseConstructionMethod::PeriapsisApoapsisMinorRadius));
 }
 
 bool CmdSketcherCreateEllipseBy3Points::isActive(void)
@@ -751,9 +751,9 @@ CmdSketcherCompCreateCircle::CmdSketcherCompCreateCircle()
 void CmdSketcherCompCreateCircle::activated(int iMsg)
 {
     if (iMsg == 0)
-        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerCircle(ConstructionMethods::CircleEllipseConstructionMethod::Center));
+        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerCircle(ConstructionMethods::CircleConstructionMethod::Center));
     else if (iMsg == 1)
-        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerEllipse(ConstructionMethods::CircleEllipseConstructionMethod::Center));
+        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerEllipse(ConstructionMethods::EllipseConstructionMethod::Center));
     else
         return;
 
@@ -883,7 +883,7 @@ CmdSketcherCreate3PointArc::CmdSketcherCreate3PointArc()
 void CmdSketcherCreate3PointArc::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
-    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerArc(ConstructionMethods::CircleEllipseConstructionMethod::ThreeRim));
+    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerArc(ConstructionMethods::CircleConstructionMethod::ThreeRim));
 }
 
 bool CmdSketcherCreate3PointArc::isActive(void)
