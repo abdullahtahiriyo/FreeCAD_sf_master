@@ -65,7 +65,6 @@ SET(SketcherGui_SRCS
     AutoConstraint.h
     Utils.h
     Utils.cpp
-    CircleEllipseConstructionMethod.h
     DrawSketchHandlerLine.h
     DrawSketchHandlerRectangle.h
     DrawSketchHandlerPolygon.h
