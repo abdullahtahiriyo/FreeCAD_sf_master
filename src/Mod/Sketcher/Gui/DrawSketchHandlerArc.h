@@ -29,8 +29,6 @@
 #include "GeometryCreationMode.h"
 #include "Utils.h"
 
-#include "CircleEllipseConstructionMethod.h"
-
 namespace SketcherGui {
 
 extern GeometryCreationMode geometryCreationMode; // defined in CommandCreateGeo.cpp
