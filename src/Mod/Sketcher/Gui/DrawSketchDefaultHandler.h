@@ -776,6 +776,24 @@ protected:
         ShapeGeometry.push_back(std::move(point));
     }
 
+    void addEllipseToShapeGeometry(Base::Vector3d centerPoint, Base::Vector3d majorAxisDirection, double majorRadius, double minorRadius, bool constructionMode) {
+        auto ellipse = std::make_unique<Part::GeomEllipse>();
+        ellipse->setMajorRadius(majorRadius);
+        ellipse->setMinorRadius(minorRadius);
+        ellipse->setMajorAxisDir(majorAxisDirection);
+        ellipse->setCenter(centerPoint);
+        Sketcher::GeometryFacade::setConstruction(ellipse.get(), constructionMode);
+        ShapeGeometry.push_back(std::move(ellipse));
+    }
+
+    void addCircleToShapeGeometry(Base::Vector3d centerPoint, double radius, bool constructionMode) {
+        auto circle = std::make_unique<Part::GeomCircle>();
+        circle->setRadius(radius);
+        circle->setCenter(centerPoint);
+        Sketcher::GeometryFacade::setConstruction(circle.get(), constructionMode);
+        ShapeGeometry.push_back(std::move(circle));
+    }
+
     void commandAddShapeGeometryAndConstraints() {
             auto shapeGeometry = toPointerVector(ShapeGeometry);
             Gui::Command::doCommand(Gui::Command::Doc,
