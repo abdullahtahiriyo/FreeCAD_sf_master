@@ -24,6 +24,8 @@
 #ifndef SKETCHERGUI_DrawSketchHandlerEllipse_H
 #define SKETCHERGUI_DrawSketchHandlerEllipse_H
 
+#include <cmath>
+
 #include "DrawSketchDefaultWidgetHandler.h"
 
 #include "GeometryCreationMode.h"
@@ -49,7 +51,7 @@ using DrawSketchHandlerEllipseBase = DrawSketchDefaultWidgetHandler<  DrawSketch
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 3,
-    /*WidgetParametersT =*/WidgetParameters<5, 5>,
+    /*WidgetParametersT =*/WidgetParameters<5, 6>,
     /*WidgetCheckboxesT =*/WidgetCheckboxes<0, 0>,
     /*WidgetComboboxesT =*/WidgetComboboxes<1, 1>,
     ConstructionMethods::EllipseConstructionMethod,
@@ -78,7 +80,7 @@ private:
                 }
             }
             else {
-                periapsis = onSketchPos;
+                apoapsis = onSketchPos;
                 if (seekAutoConstraint(sugConstraints[0], onSketchPos, Base::Vector2d(0.f, 0.f), AutoConstraint::CURVE)) {
                     renderSuggestConstraintsCursor(sugConstraints[0]);
                     return;
@@ -88,16 +90,9 @@ private:
         break;
         case SelectMode::SeekSecond:
         {
-            if (constructionMethod() == ConstructionMethod::PeriapsisApoapsisMinorRadius) {
-                apoapsis = onSketchPos;
-                centerPoint = (apoapsis - periapsis) / 2 + periapsis;
-            }
-            else {
-                periapsis = onSketchPos;
-            }
+            periapsis = onSketchPos;
 
-            firstAxis = periapsis - centerPoint;
-            firstRadius = firstAxis.Length();
+            calculateMajorAxisParameters();
 
             try {
                 CreateAndDrawShapeGeometry();
@@ -117,19 +112,7 @@ private:
         break;
         case SelectMode::SeekThird:
         {
-            //recalculate in case widget modified something
-            if (constructionMethod() == ConstructionMethod::PeriapsisApoapsisMinorRadius) {
-                centerPoint = (apoapsis - periapsis) / 2 + periapsis;
-            }
-            firstAxis = periapsis - centerPoint;
-            firstRadius = firstAxis.Length();
-
-            //Find bPoint For that first we need the distance of onSketchPos to major axis.
-            Base::Vector2d projectedPtn;
-            projectedPtn.ProjectToLine(onSketchPos - centerPoint, firstAxis);
-            projectedPtn = centerPoint + projectedPtn;
-            secondAxis = onSketchPos - projectedPtn;
-            secondRadius = secondAxis.Length();
+            calculateThroughPointMinorAxisParameters(onSketchPos);
 
             try {
                 CreateAndDrawShapeGeometry();
@@ -179,9 +162,11 @@ private:
 
             auto & ac1 = sugConstraints[0];
             auto & ac2 = sugConstraints[1];
+            auto & ac3 = sugConstraints[2];
 
             generateAutoConstraintsOnElement(ac1, ellipseGeoId, Sketcher::PointPos::mid);    // add auto constraints for the center point
             generateAutoConstraintsOnElement(ac2, ellipseGeoId, Sketcher::PointPos::none);   // add auto constraints for the edge
+            generateAutoConstraintsOnElement(ac3, ellipseGeoId, Sketcher::PointPos::none);   // add auto constraints for the edge
         }
         else {
 
@@ -245,51 +230,75 @@ private:
             return QString::fromLatin1("Sketcher_Pointer_Create_3PointEllipse");
     }
 
+    void calculateMajorAxisParameters() {
+
+        if (constructionMethod() == ConstructionMethod::PeriapsisApoapsisMinorRadius)
+            centerPoint = (apoapsis - periapsis) / 2 + periapsis;
+
+        firstAxis = periapsis - centerPoint;
+        firstRadius = firstAxis.Length();
+    }
+
+    void calculateThroughPointMinorAxisParameters(const Base::Vector2d & onSketchPos) {
+        // we calculate the ellipse that will pass via the cursor as per de la Hire
+
+        Base::Vector2d projx;
+        projx.ProjectToLine(onSketchPos - centerPoint, firstAxis); // projection onto the major axis
+
+        auto projy = onSketchPos - centerPoint - projx;
+
+        auto lprojx = projx.Length(); // Px = a cos t
+        auto lprojy = projy.Length(); // Py = b sin t
+
+        double t = std::acos(lprojx/firstRadius);
+
+        secondRadius = lprojy / std::sin(t); // b = Py / sin t
+
+        secondAxis = projy.Normalize() * secondRadius;
+    }
+
+    void calculateMinorAxis(double minorradius) {
+        //Find bPoint For that first we need the distance of onSketchPos to major axis.
+        secondAxis = firstAxis.Perpendicular(false).Normalize() * minorRadius;
+        secondRadius = minorradius;
+    }
+
 private:
-    Base::Vector2d centerPoint, periapsis, apoapsis, firstAxis, secondAxis;
+    Base::Vector2d centerPoint, periapsis; // Center Mode SeekFirst and SeekSecond, 3PointMode SeekFirst
+    Base::Vector2d apoapsis; // 3Point SeekSecond
+    Base::Vector2d firstAxis, secondAxis;
     double firstRadius, secondRadius, majorRadius, minorRadius;
     int ellipseGeoId;
 };
 
 template <> auto DrawSketchHandlerEllipseBase::ToolWidgetManager::getState(int parameterindex) const {
 
-    if (handler->constructionMethod() == DrawSketchHandlerEllipse::ConstructionMethod::Center) {
-        switch (parameterindex) {
-        case WParameter::First:
-        case WParameter::Second:
-            return SelectMode::SeekFirst;
-            break;
-        case WParameter::Third:
-            return SelectMode::SeekSecond;
-            break;
-        default:
-            THROWM(Base::ValueError, "Parameter index without an associated machine state")
-        }
-    }
-    else { //if (constructionMethod == ConstructionMethod::ThreeRim)
-        switch (parameterindex) {
-        case WParameter::First:
-        case WParameter::Second:
-            return SelectMode::SeekFirst;
-            break;
-        case WParameter::Third:
-        case WParameter::Fourth:
-            return SelectMode::SeekSecond;
-            break;
-        case WParameter::Fifth:
-        case WParameter::Sixth:
+    switch (parameterindex) {
+    case WParameter::First:
+    case WParameter::Second:
+        return SelectMode::SeekFirst;
+        break;
+    case WParameter::Third:
+    case WParameter::Fourth:
+        return SelectMode::SeekSecond;
+        break;
+    case WParameter::Fifth:
+        return SelectMode::SeekThird;
+        break;
+    case WParameter::Sixth:
+        if(handler->constructionMethod() == ConstructionMethod::PeriapsisApoapsisMinorRadius)
             return SelectMode::SeekThird;
-            break;
-        default:
-            THROWM(Base::ValueError, "Parameter index without an associated machine state")
-        }
+        THROWM(Base::ValueError, "Parameter index without an associated machine state")
+        break;
+    default:
+        THROWM(Base::ValueError, "Parameter index without an associated machine state")
     }
 }
 
 template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::configureToolWidget() {
 
     if(!init) { // Code to be executed only upon initialisation
-        QStringList names = {QStringLiteral("Center"), QStringLiteral("Periapsis, apoapsis, minor radius")};
+        QStringList names = {QStringLiteral("Center"), QStringLiteral("Axis endpoints and radius")};
         toolWidget->setComboboxElements(WCombobox::FirstCombo, names);
 
         syncConstructionMethodComboboxToHandler(); // in case the DSH was called with a specific construction method
@@ -300,14 +309,16 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::configureToolW
         toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_ellipse", "y of center"));
         toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("TaskSketcherTool_p3_ellipse", "First radius"));
         toolWidget->setParameterLabel(WParameter::Fourth, QApplication::translate("TaskSketcherTool_p3_ellipse", "Angle to HAxis"));
+        toolWidget->configureParameterUnit(WParameter::Fourth, Base::Unit::Angle);
         toolWidget->setParameterLabel(WParameter::Fifth, QApplication::translate("TaskSketcherTool_p3_ellipse", "Second radius"));
     }
-    else {
-        toolWidget->setParameterLabel(WParameter::First, QApplication::translate("ToolWidgetManager_p1", "x of periapsis"));
-        toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("ToolWidgetManager_p2", "y of periapsis"));
-        toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("ToolWidgetManager_p3", "x of apoapsis"));
-        toolWidget->setParameterLabel(WParameter::Fourth, QApplication::translate("ToolWidgetManager_p4", "y of apoapsis"));
-        toolWidget->setParameterLabel(WParameter::Fifth, QApplication::translate("ToolWidgetManager_p5", "Minor radius"));
+    else { // PeriapsisApoapsisMinorRadius
+        toolWidget->setParameterLabel(WParameter::First, QApplication::translate("ToolWidgetManager_p1", "x of first point"));
+        toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("ToolWidgetManager_p2", "y of first point"));
+        toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("ToolWidgetManager_p3", "x of second point"));
+        toolWidget->setParameterLabel(WParameter::Fourth, QApplication::translate("ToolWidgetManager_p4", "y of second point"));
+        toolWidget->setParameterLabel(WParameter::Fifth, QApplication::translate("ToolWidgetManager_p5", "x of third point"));
+        toolWidget->setParameterLabel(WParameter::Sixth, QApplication::translate("ToolWidgetManager_p6", "y of third point"));
     }
 }
 
@@ -321,27 +332,65 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::adaptDrawingTo
             dHandler->centerPoint.y = value;
             break;
         case WParameter::Third:
-            //change angle?
-            break;
-        case WParameter::Fourth:
-            dHandler->firstRadius = value;
+        {
+            auto radius = value;
+            auto angle = toolWidget->getParameter(WParameter::Fourth) * M_PI / 180;
+
+            dHandler->periapsis = dHandler->centerPoint + Base::Vector2d::FromPolar(radius, angle);
+
+            dHandler->calculateMajorAxisParameters();
             break;
         }
+        case WParameter::Fourth:
+        {
+            auto angle = value * M_PI / 180;
+            auto radius = toolWidget->getParameter(WParameter::Third);
+
+            dHandler->periapsis = dHandler->centerPoint + Base::Vector2d::FromPolar(radius, angle);
+
+            dHandler->calculateMajorAxisParameters();
+            break;
+        }
+        case WParameter::Fifth:
+        {
+             auto minorradius = value;
+
+             dHandler->calculateMinorAxis(minorradius);
+        }
+        }
+
     }
-    else { //if (constructionMethod == ConstructionMethod::ThreeRim)
+    else { // PeriapsisApoapsisMinorRadius
         switch (parameterindex) {
         case WParameter::First:
-            dHandler->periapsis.x = value;
-            break;
-        case WParameter::Second:
-            dHandler->periapsis.y = value;
-            break;
-        case WParameter::Third:
             dHandler->apoapsis.x = value;
             break;
-        case WParameter::Fourth:
+        case WParameter::Second:
             dHandler->apoapsis.y = value;
             break;
+        case WParameter::Third:
+            dHandler->periapsis.x = value;
+            dHandler->calculateMajorAxisParameters();
+            break;
+        case WParameter::Fourth:
+            dHandler->periapsis.y = value;
+            dHandler->calculateMajorAxisParameters();
+            break;
+        case WParameter::Fifth:
+        {
+            auto px = value;
+            auto py = toolWidget->getParameter(WParameter::Sixth);
+            dHandler->calculateThroughPointMinorAxisParameters(Base::Vector2d(px,py));
+            break;
+        }
+        case WParameter::Sixth:
+        {
+            auto px = toolWidget->getParameter(WParameter::Fifth);
+            auto py = value;
+            dHandler->calculateThroughPointMinorAxisParameters(Base::Vector2d(px,py));
+            break;
+        }
+
         }
     }
 }
@@ -363,16 +412,21 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::doEnforceWidge
         if (dHandler->constructionMethod() == DrawSketchHandlerEllipse::ConstructionMethod::Center) {
             double length = (onSketchPos - dHandler->centerPoint).Length();
             if (toolWidget->isParameterSet(WParameter::Third)) {
-                dHandler->firstRadius = toolWidget->getParameter(WParameter::Third);
-                if (length != 0.) {
-                    onSketchPos.x = dHandler->centerPoint.x + (onSketchPos.x - dHandler->centerPoint.x) * dHandler->firstRadius / length;
-                    onSketchPos.y = dHandler->centerPoint.y + (onSketchPos.y - dHandler->centerPoint.y) * dHandler->firstRadius / length;
-                }
+                length = toolWidget->getParameter(WParameter::Third);
+                if (length < Precision::Confusion())
+                    return;
+
+                Base::Vector2d v = onSketchPos - dHandler->centerPoint;
+                if( v.x < Precision::Confusion() && v.y < Precision::Confusion())
+                    v.x = 1; // if direction cannot be determined, default to (1,0)
+
+                onSketchPos = dHandler->centerPoint + v * length / v.Length();
             }
+
             if (toolWidget->isParameterSet(WParameter::Fourth)) {
-                double angle = toolWidget->getParameter(WParameter::Fourth);
-                onSketchPos.x = dHandler->centerPoint.x + cos(angle * M_PI / 180) * length;
-                onSketchPos.y = dHandler->centerPoint.y + sin(angle * M_PI / 180) * length;
+                double angle = toolWidget->getParameter(WParameter::Fourth) * M_PI / 180;
+                onSketchPos.x = dHandler->centerPoint.x + cos(angle) * length;
+                onSketchPos.y = dHandler->centerPoint.y + sin(angle) * length;
             }
         }
         else {
@@ -388,8 +442,8 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::doEnforceWidge
     {
         if (dHandler->constructionMethod() == DrawSketchHandlerEllipse::ConstructionMethod::Center) {
             if (toolWidget->isParameterSet(WParameter::Fifth)) {
-                dHandler->secondRadius = toolWidget->getParameter(WParameter::Fifth);
-                onSketchPos = dHandler->centerPoint + dHandler->secondAxis * dHandler->secondRadius / dHandler->secondAxis.Length();
+                auto minorradius = toolWidget->getParameter(WParameter::Fifth);
+                onSketchPos = dHandler->centerPoint +(dHandler->periapsis - dHandler->centerPoint).Perpendicular(true).Normalize() * minorradius;
             }
         }
         else {
@@ -420,11 +474,14 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::adaptWidgetPar
     case SelectMode::SeekSecond:
     {
         if (dHandler->constructionMethod() == DrawSketchHandlerEllipse::ConstructionMethod::Center) {
-            if (!toolWidget->isParameterSet(WParameter::Third))
-                toolWidget->updateVisualValue(WParameter::Third, dHandler->firstRadius);
+
+            auto v = onSketchPos - dHandler->centerPoint;
+            if (!toolWidget->isParameterSet(WParameter::Third)) {
+                toolWidget->updateVisualValue(WParameter::Third, v.Length());
+            }
 
             if (!toolWidget->isParameterSet(WParameter::Fourth))
-                toolWidget->updateVisualValue(WParameter::Fourth, dHandler->firstAxis.Angle());
+                toolWidget->updateVisualValue(WParameter::Fourth, v.Length() > 0 ? v.Angle() * 180 / M_PI:0, Base::Unit::Angle);
         }
         else {
             if (!toolWidget->isParameterSet(WParameter::Third))
@@ -438,8 +495,9 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::adaptWidgetPar
     case SelectMode::SeekThird:
     {
         if (dHandler->constructionMethod() == DrawSketchHandlerEllipse::ConstructionMethod::Center) {
+            auto v = onSketchPos - dHandler->centerPoint;
             if (!toolWidget->isParameterSet(WParameter::Fifth))
-                toolWidget->updateVisualValue(WParameter::Fifth, dHandler->secondRadius);
+                toolWidget->updateVisualValue(WParameter::Fifth, v.Length());
         }
         else {
             if (!toolWidget->isParameterSet(WParameter::Fifth))
@@ -463,24 +521,15 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::doChangeDrawSk
             toolWidget->isParameterSet(WParameter::Second)) {
 
             handler->setState(SelectMode::SeekSecond);
-
-            handler->updateDataAndDrawToPosition(prevCursorPosition);
         }
     }
     break;
     case SelectMode::SeekSecond:
     {
-        if (toolWidget->isParameterSet(WParameter::Third) ||
+        if (toolWidget->isParameterSet(WParameter::Third) &&
             toolWidget->isParameterSet(WParameter::Fourth)) {
 
-            handler->updateDataAndDrawToPosition(prevCursorPosition);
-
-            if (toolWidget->isParameterSet(WParameter::Third) &&
-                toolWidget->isParameterSet(WParameter::Fourth)) {
-
-                handler->setState(SelectMode::SeekThird);
-
-            }
+            handler->setState(SelectMode::SeekThird);
         }
     }
     break;
@@ -489,24 +538,14 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::doChangeDrawSk
         if (dHandler->constructionMethod() == DrawSketchHandlerEllipse::ConstructionMethod::Center) {
             if (toolWidget->isParameterSet(WParameter::Fifth)) {
 
-                handler->updateDataAndDrawToPosition(prevCursorPosition);
-
                 handler->setState(SelectMode::End);
-                handler->finish();
             }
         }
         else {
-            if (toolWidget->isParameterSet(WParameter::Fifth) ||
+            if (toolWidget->isParameterSet(WParameter::Fifth) &&
                 toolWidget->isParameterSet(WParameter::Sixth)) {
 
-                handler->updateDataAndDrawToPosition(prevCursorPosition);
-
-                if (toolWidget->isParameterSet(WParameter::Fifth) &&
-                    toolWidget->isParameterSet(WParameter::Sixth)) {
-
-                    handler->setState(SelectMode::End);
-                    handler->finish();
-                }
+                handler->setState(SelectMode::End);
             }
         }
     }
@@ -533,40 +572,98 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::addConstraints
 
         using namespace Sketcher;
 
-        if (x0set && y0set && x0 == 0. && y0 == 0.) {
-            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::mid), GeoElementId::RtPnt,
-                x0, handler->sketchgui->getObject());
-        }
-        else {
-            if (x0set)
-                ConstraintToAttachment(GeoElementId(firstCurve, PointPos::mid), GeoElementId::VAxis,
-                    x0, handler->sketchgui->getObject());
+        int firstLine = firstCurve + 1;     // this is always the major axis
+        int secondLine = firstCurve + 2;    // this is always the minor axis
 
-            if (y0set)
-                ConstraintToAttachment(GeoElementId(firstCurve, PointPos::mid), GeoElementId::HAxis,
-                    y0, handler->sketchgui->getObject());
-        }
+        // NOTE: Because mouse positions are enforced by the widget, it is not possible to use the last radius > first radius when
+        // widget parameters are enforced. Then firstLine always goes with firstRadiusSet.
 
-        int firstLine = firstCurve + 1;
-        int secondLine = firstCurve + 2;
-        if (dHandler->secondRadius > dHandler->firstRadius)
-            std::swap(firstLine, secondLine);
+        auto constraintx0 = [&]() {
+            ConstraintToAttachment(GeoElementId(firstCurve,PointPos::mid), GeoElementId::VAxis, x0, handler->sketchgui->getObject());
+        };
 
+        auto constrainty0 = [&]() {
+            ConstraintToAttachment(GeoElementId(firstCurve,PointPos::mid), GeoElementId::HAxis, y0,  handler->sketchgui->getObject());
+        };
 
-        //this require to show internal geometry.
-        if (firstRadiusSet) {
+        auto constraintFirstRadius = [&]() {
             Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Distance',%d,%d,%d,%d,%f)) ",
                 firstCurve, 3, firstLine, 1, dHandler->firstRadius);
-        }
-        //Todo: this makes the ellipse 'jump' because it's doing a 180 degree turn before applying asked angle. Probably because start and end points of line are not in the correct direction.
-        if (angleSet) {
-            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Angle',%d,%f)) ",
-                firstLine, angle);
-        }
+        };
 
-        if (secondRadiusSet) {
+        auto constraintSecondRadius = [&]() {
             Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Distance',%d,%d,%d,%d,%f)) ",
                 firstCurve, 3, secondLine, 1, dHandler->secondRadius);
+        };
+
+        auto constraintAngle = [&]() {
+            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Angle',%d,%f)) ",
+                firstLine, angle);
+        };
+
+        // NOTE: if AutoConstraints is empty, we can add constraints directly without any diagnose. No diagnose was run.
+        if(handler->AutoConstraints.empty()) {
+            if(x0set)
+                constraintx0();
+
+            if(y0set)
+                constrainty0();
+
+
+            //this require to show internal geometry.
+            if (firstRadiusSet)
+                constraintFirstRadius();
+
+            //Todo: this makes the ellipse 'jump' because it's doing a 180 degree turn before applying asked angle. Probably because start and end points of line are not in the correct direction.
+            if (angleSet)
+                constraintAngle();
+
+            if (secondRadiusSet)
+                constraintSecondRadius();
+
+        }
+        else { // There is a valid diagnose.
+            auto centerpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::mid));
+
+            // if Autoconstraints is empty we do not have a diagnosed system and the parameter will always be set
+            if(x0set && centerpointinfo.isXDoF()) {
+                constraintx0();
+
+                handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
+
+                centerpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::mid)); // get updated point position
+            }
+
+            // if Autoconstraints is empty we do not have a diagnosed system and the parameter will always be set
+            if(y0set && centerpointinfo.isYDoF()) {
+                constrainty0();
+
+                handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
+            }
+
+            // Major axis (it is not a solver parameter in the solver implementation)
+
+            int leftDoFs = handler->getLineDoFs(firstLine);
+
+            if (firstRadiusSet && leftDoFs > 0) {
+                constraintFirstRadius();
+                handler->diagnoseWithAutoConstraints(); // It is not a normal line as it is constrained by the Ellipse, so we need to recalculate after radius addition
+                leftDoFs = handler->getLineDoFs(firstLine);
+            }
+
+            if (angleSet && leftDoFs > 0) {
+                constraintAngle();
+                handler->diagnoseWithAutoConstraints(); // It is not a normal line as it is constrained by the Ellipse, so we need to recalculate after radius addition
+            }
+
+            // Minor axis (it is a solver parameter in the solver implementation)
+
+            auto edgeinfo = handler->getEdgeInfo(firstCurve);
+            auto ellipse = static_cast<SolverGeometryExtension::Ellipse &>(edgeinfo);
+
+            if(secondRadiusSet && ellipse.isMinorRadiusDoF()) {
+                constraintSecondRadius();
+            }
         }
     }
     //No constraint possible for 3 rim ellipse.
