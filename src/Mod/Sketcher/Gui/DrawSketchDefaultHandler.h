@@ -723,6 +723,17 @@ protected:
         THROWM(Base::ValueError, "Geometry does not have solver extension when trying to apply widget constraints!")
     }
 
+    int getLineDoFs(int geoid)
+    {
+        auto startpointinfo = getPointInfo(Sketcher::GeoElementId(geoid, Sketcher::PointPos::start));
+        auto endpointinfo = getPointInfo(Sketcher::GeoElementId(geoid, Sketcher::PointPos::end));
+
+        int DoFs = startpointinfo.getDoFs();
+        DoFs += endpointinfo.getDoFs();
+
+        return DoFs;
+    }
+
     Sketcher::SolverGeometryExtension::EdgeParameterStatus getEdgeInfo(int geoid) {
 
         auto sketchobject = getSketchObject();
