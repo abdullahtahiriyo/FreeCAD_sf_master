@@ -55,6 +55,8 @@
 #include <Mod/Part/App/BodyBase.h>
 #include <Mod/Part/App/Geometry2d.h>
 #include <Mod/Sketcher/App/Constraint.h>
+#include <Mod/Sketcher/App/SolverGeometryExtension.h>
+#include <Mod/Sketcher/App/PythonConverter.h>
 
 #include "ViewProviderSketch.h"
 #include "DrawSketchHandler.h"
@@ -69,6 +71,10 @@
 #include "GeometryCreationMode.h"
 
 #include "SketcherRegularPolygonDialog.h"
+
+#include "SketcherToolDefaultWidget.h"
+
+#include "DrawSketchDefaultWidgetHandler.h"
 
 #include "DrawSketchHandlerLine.h"
 #include "DrawSketchHandlerRectangle.h"
