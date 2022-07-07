@@ -260,6 +260,24 @@ template <> void DrawSketchHandlerSlotBase::ToolWidgetManager::configureToolWidg
     toolWidget->setNoticeText(QApplication::translate("TaskSketcherTool_p3_notice", "Press Ctrl to snap angle at 5° steps."));
 }
 
+template <> auto DrawSketchHandlerSlotBase::ToolWidgetManager::getState(int parameterindex) const {
+    switch (parameterindex) {
+    case WParameter::First:
+    case WParameter::Second:
+        return SelectMode::SeekFirst;
+        break;
+    case WParameter::Third:
+    case WParameter::Fourth:
+        return SelectMode::SeekSecond;
+        break;
+    case WParameter::Fifth:
+        return SelectMode::SeekThird;
+        break;
+    default:
+        THROWM(Base::ValueError, "Parameter index without an associated machine state")
+    }
+}
+
 template <> void DrawSketchHandlerSlotBase::ToolWidgetManager::adaptDrawingToParameterChange(int parameterindex, double value) {
 
     switch (parameterindex) {
