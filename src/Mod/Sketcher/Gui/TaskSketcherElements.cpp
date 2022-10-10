@@ -83,6 +83,7 @@ public:
     ElementData() = default;
     ~ElementData() = default;
     ElementData(const ElementData&) = default;
+    ElementData& operator=(const ElementData&) = default;
 
     ElementData(int elementnr, int startingVertex, int midVertex, int endVertex,
         Base::Type geometryType, bool construction, bool external, QIcon ic0, QIcon ic1, QIcon ic2, QIcon ic3, QString lab) :
