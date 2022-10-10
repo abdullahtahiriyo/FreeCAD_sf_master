@@ -69,7 +69,6 @@ Q_SIGNALS:
 protected:
     void contextMenuEvent (QContextMenuEvent* event) override;
     void keyPressEvent(QKeyEvent * event) override;
-    void mousePressEvent(QMouseEvent* event) override;
 
 protected Q_SLOTS:
     // Constraints
@@ -111,7 +110,6 @@ class TaskSketcherElements : public Gui::TaskView::TaskBox, public Gui::Selectio
     class MultIcon {
 
     public:
-        MultIcon() {};
         explicit MultIcon(const char*);
 
         QIcon Normal;
@@ -161,34 +159,34 @@ private:
 
     bool isNamingBoxChecked;
 
-    MultIcon Sketcher_Element_Arc_Edge;
-    MultIcon Sketcher_Element_Arc_EndPoint;
-    MultIcon Sketcher_Element_Arc_MidPoint;
-    MultIcon Sketcher_Element_Arc_StartingPoint;
-    MultIcon Sketcher_Element_Circle_Edge;
-    MultIcon Sketcher_Element_Circle_MidPoint;
-    MultIcon Sketcher_Element_Line_Edge;
-    MultIcon Sketcher_Element_Line_EndPoint;
-    MultIcon Sketcher_Element_Line_StartingPoint;
-    MultIcon Sketcher_Element_Point_StartingPoint;
-    MultIcon Sketcher_Element_Ellipse_Edge;
-    MultIcon Sketcher_Element_Ellipse_MidPoint;
-    MultIcon Sketcher_Element_ArcOfEllipse_Edge;
-    MultIcon Sketcher_Element_ArcOfEllipse_MidPoint;
-    MultIcon Sketcher_Element_ArcOfEllipse_StartingPoint;
-    MultIcon Sketcher_Element_ArcOfEllipse_EndPoint;
-    MultIcon Sketcher_Element_ArcOfHyperbola_Edge;
-    MultIcon Sketcher_Element_ArcOfHyperbola_MidPoint;
-    MultIcon Sketcher_Element_ArcOfHyperbola_StartingPoint;
-    MultIcon Sketcher_Element_ArcOfHyperbola_EndPoint;
-    MultIcon Sketcher_Element_ArcOfParabola_Edge;
-    MultIcon Sketcher_Element_ArcOfParabola_MidPoint;
-    MultIcon Sketcher_Element_ArcOfParabola_StartingPoint;
-    MultIcon Sketcher_Element_ArcOfParabola_EndPoint;
-    MultIcon Sketcher_Element_BSpline_Edge;
-    MultIcon Sketcher_Element_BSpline_StartingPoint;
-    MultIcon Sketcher_Element_BSpline_EndPoint;
-    MultIcon none;
+    const MultIcon Sketcher_Element_Arc_Edge = MultIcon("Sketcher_Element_Arc_Edge");
+    const MultIcon Sketcher_Element_Arc_EndPoint = MultIcon("Sketcher_Element_Arc_EndPoint");
+    const MultIcon Sketcher_Element_Arc_MidPoint = MultIcon("Sketcher_Element_Arc_MidPoint");
+    const MultIcon Sketcher_Element_Arc_StartingPoint = MultIcon("Sketcher_Element_Arc_StartingPoint");
+    const MultIcon Sketcher_Element_Circle_Edge = MultIcon("Sketcher_Element_Circle_Edge");
+    const MultIcon Sketcher_Element_Circle_MidPoint = MultIcon("Sketcher_Element_Circle_MidPoint");
+    const MultIcon Sketcher_Element_Line_Edge = MultIcon("Sketcher_Element_Line_Edge");
+    const MultIcon Sketcher_Element_Line_EndPoint = MultIcon("Sketcher_Element_Line_EndPoint");
+    const MultIcon Sketcher_Element_Line_StartingPoint = MultIcon("Sketcher_Element_Line_StartingPoint");
+    const MultIcon Sketcher_Element_Point_StartingPoint = MultIcon("Sketcher_Element_Point_StartingPoint");
+    const MultIcon Sketcher_Element_Ellipse_Edge = MultIcon("Sketcher_Element_Ellipse_Edge_2");
+    const MultIcon Sketcher_Element_Ellipse_MidPoint = MultIcon("Sketcher_Element_Ellipse_CentrePoint");
+    const MultIcon Sketcher_Element_ArcOfEllipse_Edge = MultIcon("Sketcher_Element_Elliptical_Arc_Edge");
+    const MultIcon Sketcher_Element_ArcOfEllipse_MidPoint = MultIcon("Sketcher_Element_Elliptical_Arc_Centre_Point");
+    const MultIcon Sketcher_Element_ArcOfEllipse_StartingPoint = MultIcon("Sketcher_Element_Elliptical_Arc_Start_Point");
+    const MultIcon Sketcher_Element_ArcOfEllipse_EndPoint = MultIcon("Sketcher_Element_Elliptical_Arc_End_Point");
+    const MultIcon Sketcher_Element_ArcOfHyperbola_Edge = MultIcon("Sketcher_Element_Hyperbolic_Arc_Edge");
+    const MultIcon Sketcher_Element_ArcOfHyperbola_MidPoint = MultIcon("Sketcher_Element_Hyperbolic_Arc_Centre_Point");
+    const MultIcon Sketcher_Element_ArcOfHyperbola_StartingPoint = MultIcon("Sketcher_Element_Hyperbolic_Arc_Start_Point");
+    const MultIcon Sketcher_Element_ArcOfHyperbola_EndPoint = MultIcon("Sketcher_Element_Hyperbolic_Arc_End_Point");
+    const MultIcon Sketcher_Element_ArcOfParabola_Edge = MultIcon("Sketcher_Element_Parabolic_Arc_Edge");
+    const MultIcon Sketcher_Element_ArcOfParabola_MidPoint = MultIcon("Sketcher_Element_Parabolic_Arc_Centre_Point");
+    const MultIcon Sketcher_Element_ArcOfParabola_StartingPoint = MultIcon("Sketcher_Element_Parabolic_Arc_Start_Point");
+    const MultIcon Sketcher_Element_ArcOfParabola_EndPoint = MultIcon("Sketcher_Element_Parabolic_Arc_End_Point");
+    const MultIcon Sketcher_Element_BSpline_Edge = MultIcon("Sketcher_Element_BSpline_Edge");
+    const MultIcon Sketcher_Element_BSpline_StartingPoint = MultIcon("Sketcher_Element_BSpline_StartPoint");
+    const MultIcon Sketcher_Element_BSpline_EndPoint = MultIcon("Sketcher_Element_BSpline_EndPoint");
+    const MultIcon none = MultIcon("Sketcher_Element_SelectionTypeInvalid");
 };
 
 } //namespace SketcherGui

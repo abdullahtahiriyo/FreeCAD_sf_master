@@ -245,17 +245,6 @@ void ElementView::keyPressEvent(QKeyEvent * event)
     }
 }
 
-void ElementView::mousePressEvent(QMouseEvent* event) {
-
-    if (event->button() == Qt::RightButton) {
-        QListWidgetItem* item = itemAt(event->pos());
-        ElementData* itemData = qvariant_cast<ElementData*>(item->data(Qt::UserRole));
-        itemData->rightClicked = true;
-    }
-
-    QListWidget::mousePressEvent(event);
-}
-
 // ----------------------------------------------------------------------------
 
 void ElementItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
@@ -320,6 +309,8 @@ bool ElementItemDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, 
         else
             itemData->clickedOn = ElementType::none; 
 
+        if (mEvent->button() == Qt::RightButton)
+            itemData->rightClicked = true;
     }
     return QStyledItemDelegate::editorEvent(event, model, option, index);
 }
@@ -335,35 +326,6 @@ TaskSketcherElements::TaskSketcherElements(ViewProviderSketch *sketchView)
     , previouslySelectedItemIndex(-1)
     , isNamingBoxChecked(false)
 {
-    Sketcher_Element_Arc_Edge = MultIcon("Sketcher_Element_Arc_Edge");
-    Sketcher_Element_Arc_EndPoint = MultIcon("Sketcher_Element_Arc_EndPoint");
-    Sketcher_Element_Arc_MidPoint = MultIcon("Sketcher_Element_Arc_MidPoint");
-    Sketcher_Element_Arc_StartingPoint = MultIcon("Sketcher_Element_Arc_StartingPoint");
-    Sketcher_Element_Circle_Edge = MultIcon("Sketcher_Element_Circle_Edge");
-    Sketcher_Element_Circle_MidPoint = MultIcon("Sketcher_Element_Circle_MidPoint");
-    Sketcher_Element_Line_Edge = MultIcon("Sketcher_Element_Line_Edge");
-    Sketcher_Element_Line_EndPoint = MultIcon("Sketcher_Element_Line_EndPoint");
-    Sketcher_Element_Line_StartingPoint = MultIcon("Sketcher_Element_Line_StartingPoint");
-    Sketcher_Element_Point_StartingPoint = MultIcon("Sketcher_Element_Point_StartingPoint");
-    Sketcher_Element_Ellipse_Edge = MultIcon("Sketcher_Element_Ellipse_Edge_2");
-    Sketcher_Element_Ellipse_MidPoint = MultIcon("Sketcher_Element_Ellipse_CentrePoint");
-    Sketcher_Element_ArcOfEllipse_Edge = MultIcon("Sketcher_Element_Elliptical_Arc_Edge");
-    Sketcher_Element_ArcOfEllipse_MidPoint = MultIcon("Sketcher_Element_Elliptical_Arc_Centre_Point");
-    Sketcher_Element_ArcOfEllipse_StartingPoint = MultIcon("Sketcher_Element_Elliptical_Arc_Start_Point");
-    Sketcher_Element_ArcOfEllipse_EndPoint = MultIcon("Sketcher_Element_Elliptical_Arc_End_Point");
-    Sketcher_Element_ArcOfHyperbola_Edge = MultIcon("Sketcher_Element_Hyperbolic_Arc_Edge");
-    Sketcher_Element_ArcOfHyperbola_MidPoint = MultIcon("Sketcher_Element_Hyperbolic_Arc_Centre_Point");
-    Sketcher_Element_ArcOfHyperbola_StartingPoint = MultIcon("Sketcher_Element_Hyperbolic_Arc_Start_Point");
-    Sketcher_Element_ArcOfHyperbola_EndPoint = MultIcon("Sketcher_Element_Hyperbolic_Arc_End_Point");
-    Sketcher_Element_ArcOfParabola_Edge = MultIcon("Sketcher_Element_Parabolic_Arc_Edge");
-    Sketcher_Element_ArcOfParabola_MidPoint = MultIcon("Sketcher_Element_Parabolic_Arc_Centre_Point");
-    Sketcher_Element_ArcOfParabola_StartingPoint = MultIcon("Sketcher_Element_Parabolic_Arc_Start_Point");
-    Sketcher_Element_ArcOfParabola_EndPoint = MultIcon("Sketcher_Element_Parabolic_Arc_End_Point");
-    Sketcher_Element_BSpline_Edge = MultIcon("Sketcher_Element_BSpline_Edge");
-    Sketcher_Element_BSpline_StartingPoint = MultIcon("Sketcher_Element_BSpline_StartPoint");
-    Sketcher_Element_BSpline_EndPoint = MultIcon("Sketcher_Element_BSpline_EndPoint");
-    none = MultIcon("Sketcher_Element_SelectionTypeInvalid");
-
     // we need a separate container widget to add all controls to
     proxy = new QWidget(this);
     ui->setupUi(proxy);
@@ -423,16 +385,17 @@ TaskSketcherElements::TaskSketcherElements(ViewProviderSketch *sketchView)
     slotElementsChanged();
 
     // make filter items checkable
-    bool sigblk = ui->listMultiFilter->blockSignals(true);
-    for (int i = 0; i < ui->listMultiFilter->count(); i++) {
-        QListWidgetItem* item = ui->listMultiFilter->item(i);
+    {
+        QSignalBlocker sigblk(ui->listMultiFilter);
+        for (int i = 0; i < ui->listMultiFilter->count(); i++) {
+            QListWidgetItem* item = ui->listMultiFilter->item(i);
 
-        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+            item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
 
-        item->setCheckState(Qt::Checked);
+            item->setCheckState(Qt::Checked);
+        }
+        ui->listMultiFilter->setVisible(false);
     }
-    ui->listMultiFilter->setVisible(false);
-    ui->listMultiFilter->blockSignals(sigblk);
 
     this->installEventFilter(this);
     ui->filterBox->installEventFilter(this);
@@ -471,15 +434,14 @@ bool TaskSketcherElements::eventFilter(QObject* obj, QEvent* event)
 
 void TaskSketcherElements::on_listMultiFilter_itemChanged(QListWidgetItem* item)
 {
-    bool sglVal = ui->listMultiFilter->blockSignals(true);
-
-    if (item == ui->listMultiFilter->item(3)) { //3 is 'All geos'
-        for (int i = 4; i < ui->listMultiFilter->count(); i++) {
-            ui->listMultiFilter->item(i)->setCheckState(item->checkState());
+    {
+        QSignalBlocker sigblk(ui->listMultiFilter);
+        if (item == ui->listMultiFilter->item(3)) { //3 is 'All geos'
+            for (int i = 4; i < ui->listMultiFilter->count(); i++) { //From 4 to the end, it's the geometry types (line, circle, arc...)
+                ui->listMultiFilter->item(i)->setCheckState(item->checkState());
+            }
         }
     }
-
-    ui->listMultiFilter->blockSignals(sglVal);
 
     updateVisibility();
 }
@@ -507,20 +469,22 @@ void TaskSketcherElements::setItemVisibility(QListWidgetItem* item)
 
     if (ui->filterBox->checkState() == Qt::Unchecked) { item->setHidden(false); return; }
 
-    if (ui->listMultiFilter->item(0)->checkState() == Qt::Unchecked && !itemData->isConstruction) { item->setHidden(true); return; }
-    if (ui->listMultiFilter->item(1)->checkState() == Qt::Unchecked && itemData->isConstruction) { item->setHidden(true); return; }
-    if (ui->listMultiFilter->item(2)->checkState() == Qt::Unchecked && itemData->isExternal) { item->setHidden(true); return; }
-
-    if (ui->listMultiFilter->item(4)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomPoint::getClassTypeId()) { item->setHidden(true); return; }
-    if (ui->listMultiFilter->item(5)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomLineSegment::getClassTypeId()) { item->setHidden(true); return; }
-    if (ui->listMultiFilter->item(6)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomCircle::getClassTypeId()) { item->setHidden(true); return; }
-    if (ui->listMultiFilter->item(7)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomEllipse::getClassTypeId()) { item->setHidden(true); return; }
-    if (ui->listMultiFilter->item(8)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomArcOfCircle::getClassTypeId()) { item->setHidden(true); return; }
-    if (ui->listMultiFilter->item(9)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomArcOfEllipse::getClassTypeId()) { item->setHidden(true); return; }
-    if (ui->listMultiFilter->item(10)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomArcOfHyperbola::getClassTypeId()) { item->setHidden(true); return; }
-    if (ui->listMultiFilter->item(11)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomArcOfParabola::getClassTypeId()) { item->setHidden(true); return; }
-    if (ui->listMultiFilter->item(12)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomBSplineCurve::getClassTypeId()) { item->setHidden(true); return; }
-
+    if ((ui->listMultiFilter->item(0)->checkState() == Qt::Unchecked && !itemData->isConstruction) ||
+        (ui->listMultiFilter->item(1)->checkState() == Qt::Unchecked && itemData->isConstruction) ||
+        (ui->listMultiFilter->item(2)->checkState() == Qt::Unchecked && itemData->isExternal) ||
+        (ui->listMultiFilter->item(4)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomPoint::getClassTypeId()) ||
+        (ui->listMultiFilter->item(5)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomLineSegment::getClassTypeId()) ||
+        (ui->listMultiFilter->item(6)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomCircle::getClassTypeId()) ||
+        (ui->listMultiFilter->item(7)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomEllipse::getClassTypeId()) ||
+        (ui->listMultiFilter->item(8)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomArcOfCircle::getClassTypeId()) ||
+        (ui->listMultiFilter->item(9)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomArcOfEllipse::getClassTypeId()) ||
+        (ui->listMultiFilter->item(10)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomArcOfHyperbola::getClassTypeId()) ||
+        (ui->listMultiFilter->item(11)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomArcOfParabola::getClassTypeId()) ||
+        (ui->listMultiFilter->item(12)->checkState() == Qt::Unchecked && itemData->GeometryType == Part::GeomBSplineCurve::getClassTypeId())
+        ) {
+        item->setHidden(true);
+        return;
+    }
     item->setHidden(false);
     return;
 }
@@ -606,16 +570,14 @@ void TaskSketcherElements::onSelectionChanged(const Gui::SelectionChanges& msg)
                     }
                 }
                 // update the listwidget
-                bool sgnBlock = ui->listWidgetElements->blockSignals(true);
-
-                for (int i=0;i<ui->listWidgetElements->count(); i++) {
-                    QListWidgetItem* item = ui->listWidgetElements->item(i);
-                    ElementData* itemData = qvariant_cast<ElementData*>(item->data(Qt::UserRole));
-                    item->setSelected(itemData->isLineSelected || itemData->isStartingPointSelected || itemData->isEndPointSelected || itemData->isMidPointSelected);
+                {
+                    QSignalBlocker sigblk(ui->listWidgetElements);
+                    for (int i = 0; i < ui->listWidgetElements->count(); i++) {
+                        QListWidgetItem* item = ui->listWidgetElements->item(i);
+                        ElementData* itemData = qvariant_cast<ElementData*>(item->data(Qt::UserRole));
+                        item->setSelected(itemData->isLineSelected || itemData->isStartingPointSelected || itemData->isEndPointSelected || itemData->isMidPointSelected);
+                    }
                 }
-
-                ui->listWidgetElements->blockSignals(sgnBlock);
-
             }
         }
     }
@@ -633,132 +595,133 @@ void TaskSketcherElements::on_listWidgetElements_itemPressed(QListWidgetItem* it
     itfData->rightClicked = false;
     if (rightClickOnSelected) { return; } //if user right clicked on a selected item, change nothing.
 
-    ui->listWidgetElements->blockSignals(true);
+    {
+        QSignalBlocker sigblk(ui->listWidgetElements);
 
-    bool multipleselection = false;
-    bool multipleconsecutiveselection = false;
-    if (QApplication::keyboardModifiers() == Qt::ControlModifier)
-        multipleselection = true;
-    if (QApplication::keyboardModifiers() == Qt::ShiftModifier)
-        multipleconsecutiveselection = true;
+        bool multipleselection = false;
+        bool multipleconsecutiveselection = false;
+        if (QApplication::keyboardModifiers() == Qt::ControlModifier)
+            multipleselection = true;
+        if (QApplication::keyboardModifiers() == Qt::ShiftModifier)
+            multipleconsecutiveselection = true;
 
-    if (multipleselection && multipleconsecutiveselection) { // ctrl takes priority over shift functionality
-        multipleselection = true;
-        multipleconsecutiveselection = false;
-    }
-
-    std::vector<std::string> elementSubNames;
-    std::string doc_name = sketchView->getSketchObject()->getDocument()->getName();
-    std::string obj_name = sketchView->getSketchObject()->getNameInDocument();
-
-    bool block = this->blockSelection(true); // avoid to be notified by itself
-    Gui::Selection().clearSelection();
-
-    for (int i = 0; i < ui->listWidgetElements->count(); i++) {
-        QListWidgetItem* item = ui->listWidgetElements->item(i);
-        ElementData* itemData = qvariant_cast<ElementData*>(item->data(Qt::UserRole));
-
-        if (!multipleselection && !multipleconsecutiveselection ) {
-            //if not multiple selection, then all are disabled but the one that was just selected
-            itemData->isLineSelected = false;
-            itemData->isStartingPointSelected = false;
-            itemData->isEndPointSelected = false;
-            itemData->isMidPointSelected = false;
+        if (multipleselection && multipleconsecutiveselection) { // ctrl takes priority over shift functionality
+            multipleselection = true;
+            multipleconsecutiveselection = false;
         }
 
-        if (item == itf) {
+        std::vector<std::string> elementSubNames;
+        std::string doc_name = sketchView->getSketchObject()->getDocument()->getName();
+        std::string obj_name = sketchView->getSketchObject()->getNameInDocument();
 
-            if (itemData->GeometryType == Part::GeomPoint::getClassTypeId()) {
-                itemData->isStartingPointSelected = !itemData->isStartingPointSelected;
-            }
-            else if (itemData->clickedOn == ElementType::mid
-                && (itemData->GeometryType == Part::GeomArcOfCircle::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomArcOfEllipse::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomArcOfHyperbola::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomArcOfParabola::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomCircle::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomEllipse::getClassTypeId())) {
-                itemData->isMidPointSelected = !itemData->isMidPointSelected;
-            }
-            else if (itemData->clickedOn == ElementType::start &&
-                (itemData->GeometryType == Part::GeomArcOfCircle::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomArcOfEllipse::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomArcOfHyperbola::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomArcOfParabola::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomLineSegment::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomBSplineCurve::getClassTypeId())) {
-                itemData->isStartingPointSelected = !itemData->isStartingPointSelected;
-            }
-            else if (itemData->clickedOn == ElementType::end &&
-                (itemData->GeometryType == Part::GeomArcOfCircle::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomArcOfEllipse::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomArcOfHyperbola::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomArcOfParabola::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomLineSegment::getClassTypeId()
-                    || itemData->GeometryType == Part::GeomBSplineCurve::getClassTypeId())) {
-                itemData->isEndPointSelected = !itemData->isEndPointSelected;
-            }
-            else {
-                itemData->isLineSelected = !itemData->isLineSelected;
-            }
-            itemData->clickedOn == ElementType::none;
-        }
-        else if (multipleconsecutiveselection && previouslySelectedItemIndex >= 0 && !rightClickOnSelected &&
-            ((i > focusItemIndex && i < previouslySelectedItemIndex) || (i<focusItemIndex && i>previouslySelectedItemIndex))) {
-            if (itemData->GeometryType == Part::GeomPoint::getClassTypeId()) {
-                itemData->isStartingPointSelected = true;
-            }
-            else {
-                itemData->isLineSelected = true;
-            }
-        }
+        bool block = this->blockSelection(true); // avoid to be notified by itself
+        Gui::Selection().clearSelection();
 
-        // first update the listwidget. Item is selected if at least one element of the geo is selected.
-        item->setSelected(itemData->isLineSelected || itemData->isStartingPointSelected || itemData->isEndPointSelected || itemData->isMidPointSelected);
+        for (int i = 0; i < ui->listWidgetElements->count(); i++) {
+            QListWidgetItem* item = ui->listWidgetElements->item(i);
+            ElementData* itemData = qvariant_cast<ElementData*>(item->data(Qt::UserRole));
 
-        // now the scene
-        std::stringstream ss;
-        int vertex;
+            if (!multipleselection && !multipleconsecutiveselection ) {
+                //if not multiple selection, then all are disabled but the one that was just selected
+                itemData->isLineSelected = false;
+                itemData->isStartingPointSelected = false;
+                itemData->isEndPointSelected = false;
+                itemData->isMidPointSelected = false;
+            }
 
-        if (itemData->isLineSelected) {
-            ss << "Edge" << itemData->ElementNbr + 1;
-            elementSubNames.push_back(ss.str());
-        }
+            if (item == itf) {
 
-        if (itemData->isStartingPointSelected) {
-            ss.str(std::string());
-            vertex = itemData->StartingVertex;
-            if (vertex != -1) {
-                ss << "Vertex" << vertex + 1;
+                if (itemData->GeometryType == Part::GeomPoint::getClassTypeId()) {
+                    itemData->isStartingPointSelected = !itemData->isStartingPointSelected;
+                }
+                else if (itemData->clickedOn == ElementType::mid
+                    && (itemData->GeometryType == Part::GeomArcOfCircle::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomArcOfEllipse::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomArcOfHyperbola::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomArcOfParabola::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomCircle::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomEllipse::getClassTypeId())) {
+                    itemData->isMidPointSelected = !itemData->isMidPointSelected;
+                }
+                else if (itemData->clickedOn == ElementType::start &&
+                    (itemData->GeometryType == Part::GeomArcOfCircle::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomArcOfEllipse::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomArcOfHyperbola::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomArcOfParabola::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomLineSegment::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomBSplineCurve::getClassTypeId())) {
+                    itemData->isStartingPointSelected = !itemData->isStartingPointSelected;
+                }
+                else if (itemData->clickedOn == ElementType::end &&
+                    (itemData->GeometryType == Part::GeomArcOfCircle::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomArcOfEllipse::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomArcOfHyperbola::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomArcOfParabola::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomLineSegment::getClassTypeId()
+                        || itemData->GeometryType == Part::GeomBSplineCurve::getClassTypeId())) {
+                    itemData->isEndPointSelected = !itemData->isEndPointSelected;
+                }
+                else {
+                    itemData->isLineSelected = !itemData->isLineSelected;
+                }
+                itemData->clickedOn == ElementType::none;
+            }
+            else if (multipleconsecutiveselection && previouslySelectedItemIndex >= 0 && !rightClickOnSelected &&
+                ((i > focusItemIndex && i < previouslySelectedItemIndex) || (i<focusItemIndex && i>previouslySelectedItemIndex))) {
+                if (itemData->GeometryType == Part::GeomPoint::getClassTypeId()) {
+                    itemData->isStartingPointSelected = true;
+                }
+                else {
+                    itemData->isLineSelected = true;
+                }
+            }
+
+            // first update the listwidget. Item is selected if at least one element of the geo is selected.
+            item->setSelected(itemData->isLineSelected || itemData->isStartingPointSelected || itemData->isEndPointSelected || itemData->isMidPointSelected);
+
+            // now the scene
+            std::stringstream ss;
+            int vertex;
+
+            if (itemData->isLineSelected) {
+                ss << "Edge" << itemData->ElementNbr + 1;
                 elementSubNames.push_back(ss.str());
             }
-        }
 
-        if (itemData->isEndPointSelected) {
-            ss.str(std::string());
-            vertex = itemData->EndVertex;
-            if (vertex != -1) {
-                ss << "Vertex" << vertex + 1;
-                elementSubNames.push_back(ss.str());
+            if (itemData->isStartingPointSelected) {
+                ss.str(std::string());
+                vertex = itemData->StartingVertex;
+                if (vertex != -1) {
+                    ss << "Vertex" << vertex + 1;
+                    elementSubNames.push_back(ss.str());
+                }
+            }
+
+            if (itemData->isEndPointSelected) {
+                ss.str(std::string());
+                vertex = itemData->EndVertex;
+                if (vertex != -1) {
+                    ss << "Vertex" << vertex + 1;
+                    elementSubNames.push_back(ss.str());
+                }
+            }
+
+            if (itemData->isMidPointSelected) {
+                ss.str(std::string());
+                vertex = itemData->MidVertex;
+                if (vertex != -1) {
+                    ss << "Vertex" << vertex + 1;
+                    elementSubNames.push_back(ss.str());
+                }
             }
         }
 
-        if (itemData->isMidPointSelected) {
-            ss.str(std::string());
-            vertex = itemData->MidVertex;
-            if (vertex != -1) {
-                ss << "Vertex" << vertex + 1;
-                elementSubNames.push_back(ss.str());
-            }
+        if (!elementSubNames.empty()) {
+            Gui::Selection().addSelections(doc_name.c_str(), obj_name.c_str(), elementSubNames);
         }
-    }
 
-    if (!elementSubNames.empty()) {
-        Gui::Selection().addSelections(doc_name.c_str(), obj_name.c_str(), elementSubNames);
+        this->blockSelection(block);
     }
-
-    this->blockSelection(block);
-    ui->listWidgetElements->blockSignals(false);
 
     if (focusItemIndex > -1 && focusItemIndex < ui->listWidgetElements->count())
         previouslySelectedItemIndex = focusItemIndex;
@@ -1089,9 +1052,10 @@ void TaskSketcherElements::on_listWidgetElements_filterShortcutPressed()
 
 void TaskSketcherElements::clearWidget()
 {
-    ui->listWidgetElements->blockSignals(true);
-    ui->listWidgetElements->clearSelection ();
-    ui->listWidgetElements->blockSignals(false);
+    {
+        QSignalBlocker sigblk(ui->listWidgetElements);
+        ui->listWidgetElements->clearSelection();
+    }
 
     // update widget
     int countItems = ui->listWidgetElements->count();
