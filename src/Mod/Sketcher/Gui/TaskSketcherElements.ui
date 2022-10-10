@@ -26,138 +26,136 @@
    <string>Form</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
-  
-    <item>
-		<layout class="QHBoxLayout" name="horizontalLayout1">
-			<item>
-				<widget class="QCheckBox" name="filterBox">
-					<property name="toolTip">
-						<string>Check to activate filters</string>
-					</property>
-				   <property name="styleSheet">
-					<string notr="true">padding-bottom: 0px; margin-bottom: 0px</string>
-				   </property>
-					<property name="text">
-						<string>Filters</string>
-					</property>
-					<property name="checked">
-						<bool>false</bool>
-					</property>
-				</widget>
-			</item>
-			<item>
-				<widget class="QToolButton" name="settingsButton">
-					<property name="sizePolicy">
-					<sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-						<horstretch>0</horstretch>
-						<verstretch>0</verstretch>
-					</sizepolicy>
-					</property>
-					<property name="toolTip">
-						<string>Settings</string>
-					</property>
-					<property name="text">
-						<string/>
-					</property>
-					<property name="icon">
-						<iconset resource="Resources/Sketcher.qrc">
-						<normaloff>:/icons/dialogs/Sketcher_Settings.svg</normaloff>:/icons/dialogs/Sketcher_Settings.svg</iconset>
-					</property>
-					<property name="popupMode">
-						<enum>QToolButton::MenuButtonPopup</enum>
-					</property>
-				</widget>
-			</item>
-		</layout>
-    </item>
-	<item>
-		<widget class="QListWidget" name="listMultiFilter">
-		 <property name="sizePolicy">
-		  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-		   <horstretch>0</horstretch>
-		   <verstretch>0</verstretch>
-		  </sizepolicy>
-		 </property>
-		 <property name="styleSheet">
-		  <string notr="true">padding-top: 0px; margin-top: 0px</string>
-		 </property>
-		 <property name="sizeAdjustPolicy">
-		  <enum>QAbstractScrollArea::AdjustToContents</enum>
-		 </property>
-		 <property name="selectionMode">
-		  <enum>QAbstractItemView::NoSelection</enum>
-		 </property>
-		 <property name="modelColumn">
-		  <number>0</number>
-		 </property>
-		 <item>
-		  <property name="text">
-		   <string>Normal</string>
-		  </property>
-		 </item>
-		 <item>
-		  <property name="text">
-		   <string>Construction</string>
-		  </property>
-		 </item>
-		 <item>
-		  <property name="text">
-		   <string>External</string>
-		  </property>
-		 </item>
-		 <item>
-		  <property name="text">
-		   <string>All types</string>
-		  </property>
-		 </item>
-		 <item>
-		  <property name="text">
-		   <string> - Point</string>
-		  </property>
-		 </item>
-		 <item>
-		  <property name="text">
-		   <string> - Line</string>
-		  </property>
-		 </item>
-		 <item>
-		  <property name="text">
-		   <string> - Circle</string>
-		  </property>
-		 </item>
-		 <item>
-		  <property name="text">
-		   <string> - Ellipse </string>
-		  </property>
-		 </item>
-		 <item>
-		  <property name="text">
-		   <string> - Arc</string>
-		  </property>
-		 </item>
-		 <item>
-		  <property name="text">
-		   <string> - Arc of ellipse</string>
-		  </property>
-		 </item>
-		 <item>
-		  <property name="text">
-		   <string> - Arc of hyperbola</string>
-		  </property>
-		 </item>
-		 <item>
-		  <property name="text">
-		   <string> - Arc of parabola</string>
-		  </property>
-		 </item>
-		 <item>
-		  <property name="text">
-		   <string> - B-Spline</string>
-		  </property>
-		 </item>
-		</widget>
-	</item>
-   
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout1">
+     <item>
+      <widget class="QCheckBox" name="filterBox">
+       <property name="toolTip">
+        <string>Check to activate filters</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">padding-bottom: 0px; margin-bottom: 0px</string>
+       </property>
+       <property name="text">
+        <string>Filters</string>
+       </property>
+       <property name="checked">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="settingsButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="toolTip">
+        <string>Settings</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset resource="Resources/Sketcher.qrc">
+        <normaloff>:/icons/dialogs/Sketcher_Settings.svg</normaloff>:/icons/dialogs/Sketcher_Settings.svg</iconset>
+       </property>
+       <property name="popupMode">
+        <enum>QToolButton::MenuButtonPopup</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QListWidget" name="listMultiFilter">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">padding-top: 0px; margin-top: 0px</string>
+     </property>
+     <property name="sizeAdjustPolicy">
+      <enum>QAbstractScrollArea::AdjustToContents</enum>
+     </property>
+     <property name="selectionMode">
+      <enum>QAbstractItemView::NoSelection</enum>
+     </property>
+     <property name="modelColumn">
+      <number>0</number>
+     </property>
+     <item>
+      <property name="text">
+       <string>Normal</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Construction</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>External</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>All types</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string> - Point</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string> - Line</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string> - Circle</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string> - Ellipse </string>
+      </property>
+     </item>
+      <item>
+      <property name="text">
+       <string> - Arc</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string> - Arc of ellipse</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string> - Arc of hyperbola</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string> - Arc of parabola</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string> - B-Spline</string>
+      </property>
+     </item>
+    </widget>
+   </item>
    <item>
     <widget class="ElementView" name="listWidgetElements">
      <property name="sizePolicy">
@@ -173,19 +171,18 @@
    </item>
    <item>
     <widget class="QLabel" name="Explanation">
-	<property name="sizePolicy">
-	<sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-		<horstretch>0</horstretch>
-		<verstretch>0</verstretch>
-	</sizepolicy>
-	</property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="text">
       <string notr="true">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&amp;quot;Z&amp;quot;: switch to next valid type&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
     </widget>
    </item>
   </layout>
-  
  </widget>
  <customwidgets>
   <customwidget>

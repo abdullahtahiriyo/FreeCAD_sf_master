@@ -39,7 +39,7 @@ namespace SketcherGui {
 class ViewProviderSketch;
 class Ui_TaskSketcherElements;
 
-class MyDelegate : public QStyledItemDelegate
+class ElementItemDelegate : public QStyledItemDelegate
 {
     Q_OBJECT
 public:
@@ -52,58 +52,7 @@ private Q_SLOTS:
     //void commitAndCloseEditor();
 };
 
-class ElementData
-{
-public:
-    ElementData() = default;
-    ~ElementData() = default;
-    ElementData(const ElementData&) = default;
-
-    ElementData(int elementnr, int startingVertex, int midVertex, int endVertex,
-        Base::Type geometryType, bool construction, bool external, QIcon ic0,QIcon ic1,QIcon ic2,QIcon ic3, QString lab ) : 
-         ElementNbr(elementnr)
-        , StartingVertex(startingVertex)
-        , MidVertex(midVertex)
-        , EndVertex(endVertex)
-        , isLineSelected(false)
-        , isStartingPointSelected(false)
-        , isEndPointSelected(false)
-        , isMidPointSelected(false)
-        , GeometryType(geometryType)
-        , isConstruction(construction)
-        , isExternal(external)
-        , icon0(ic0)
-        , icon1(ic1)
-        , icon2(ic2)
-        , icon3(ic3)
-        , label(lab)
-        , rightClicked(false)
-    {}
-
-    int ElementNbr;
-    int StartingVertex;
-    int MidVertex;
-    int EndVertex;
-    bool isLineSelected;
-    bool isStartingPointSelected;
-    bool isEndPointSelected;
-    bool isMidPointSelected;
-    Base::Type GeometryType;
-    bool isConstruction;
-    bool isExternal;
-
-    enum ClickedOn{edge, start, end, mid, none};
-    int clickedOn;
-    bool rightClicked;
-
-    QIcon icon0;
-    QIcon icon1;
-    QIcon icon2;
-    QIcon icon3;
-    QString label;
-};
-
-Q_DECLARE_METATYPE(ElementData*);
+enum ElementType { edge, start, end, mid, none }; //This is to identify the type of element selected
 
 class ElementView : public QListWidget
 {
@@ -121,7 +70,6 @@ protected:
     void contextMenuEvent (QContextMenuEvent* event) override;
     void keyPressEvent(QKeyEvent * event) override;
     void mousePressEvent(QMouseEvent* event) override;
-
 
 protected Q_SLOTS:
     // Constraints

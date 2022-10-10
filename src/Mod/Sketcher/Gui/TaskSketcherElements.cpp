@@ -75,9 +75,68 @@ QIcon icon_ ## FUNC( Gui::BitmapFactory().pixmap(ICONSTR) ); \
 void ElementView::FUNC(){ \
    Gui::Application::Instance->commandManager().runCommandByName(CMDSTR);}
 
-ElementView::ElementView(QWidget *parent) : QListWidget(parent) {}
+// helper class to store additional information about the listWidget entry.
+class ElementData
+{
+public:
 
-ElementView::~ElementView() {}
+    ElementData() = default;
+    ~ElementData() = default;
+    ElementData(const ElementData&) = default;
+
+    ElementData(int elementnr, int startingVertex, int midVertex, int endVertex,
+        Base::Type geometryType, bool construction, bool external, QIcon ic0, QIcon ic1, QIcon ic2, QIcon ic3, QString lab) :
+        ElementNbr(elementnr)
+        , StartingVertex(startingVertex)
+        , MidVertex(midVertex)
+        , EndVertex(endVertex)
+        , isLineSelected(false)
+        , isStartingPointSelected(false)
+        , isEndPointSelected(false)
+        , isMidPointSelected(false)
+        , GeometryType(geometryType)
+        , isConstruction(construction)
+        , isExternal(external)
+        , clickedOn(ElementType::none)
+        , rightClicked(false)
+        , icon0(ic0)
+        , icon1(ic1)
+        , icon2(ic2)
+        , icon3(ic3)
+        , label(lab)
+    {}
+
+    int ElementNbr;
+    int StartingVertex;
+    int MidVertex;
+    int EndVertex;
+    bool isLineSelected;
+    bool isStartingPointSelected;
+    bool isEndPointSelected;
+    bool isMidPointSelected;
+    Base::Type GeometryType;
+    bool isConstruction;
+    bool isExternal;
+
+    int clickedOn;
+    bool rightClicked;
+
+    QIcon icon0;
+    QIcon icon1;
+    QIcon icon2;
+    QIcon icon3;
+    QString label;
+};
+
+Q_DECLARE_METATYPE(ElementData*);
+
+ElementView::ElementView(QWidget *parent) : QListWidget(parent) 
+{
+}
+
+ElementView::~ElementView()
+{
+}
 
 void ElementView::contextMenuEvent (QContextMenuEvent* event)
 {
@@ -199,15 +258,15 @@ void ElementView::mousePressEvent(QMouseEvent* event) {
 
 // ----------------------------------------------------------------------------
 
-void MyDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
+void ElementItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
     if (index.data(Qt::UserRole).canConvert<ElementData*>()) {
         ElementData* itemData = qvariant_cast<ElementData*>(index.data(Qt::UserRole));
 
-        int border = 1;
+        int border = 1; //1px, looks good around buttons.
         int rectBorder = 1;
         int height = option.rect.height();
-        int x0 = option.rect.x() + 4;
+        int x0 = option.rect.x() + 4; //4px on the left of icons, looks good.
         int iconsize = height - 2 * border;
         int btny = option.rect.y() + border;
 
@@ -236,74 +295,30 @@ void MyDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, co
         painter->drawPixmap(x0 + border + height * 2, btny, itemData->icon2.pixmap(iconsize, iconsize));
         painter->drawPixmap(x0 + border + height * 3, btny, itemData->icon3.pixmap(iconsize, iconsize));
 
-
-        /*Buttons
-        QStyleOptionButton opt0;
-        QStyleOptionButton opt1;
-        QStyleOptionButton opt2;
-        QStyleOptionButton opt3;
-        opt0.state |= QStyle::State_Enabled;
-        opt1.state |= QStyle::State_Enabled;
-        opt2.state |= QStyle::State_Enabled;
-        opt3.state |= QStyle::State_Enabled;
-
-        opt0.rect.setRect(x0 + border, btny, buttonSize, buttonSize);
-        opt1.rect.setRect(x0 + height + border, btny, buttonSize, buttonSize);
-        opt2.rect.setRect(x0 + height * 2 + border, btny, buttonSize, buttonSize);
-        opt3.rect.setRect(x0 + height * 3 + border, btny, buttonSize, buttonSize);
-
-        opt0.icon = itemData.icon0;
-        opt1.icon = itemData.icon1;
-        opt2.icon = itemData.icon2;
-        opt3.icon = itemData.icon3;
-        QSize btnSize = QSize(16, 16);
-        opt0.iconSize = btnSize; opt1.iconSize = btnSize; opt2.iconSize = btnSize; opt3.iconSize = btnSize;
-
-        QApplication::style()->drawControl(QStyle::CE_PushButton, &opt0, painter, 0);
-        QApplication::style()->drawControl(QStyle::CE_PushButton, &opt1, painter, 0);
-        QApplication::style()->drawControl(QStyle::CE_PushButton, &opt2, painter, 0);
-        QApplication::style()->drawControl(QStyle::CE_PushButton, &opt3, painter, 0);*/
-
         //Label : 
         painter->drawText(x0 + height * 4 + 3 * border, option.rect.y() + height - 5, itemData->label);
 
     }
 }
 
-bool MyDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index)
+bool ElementItemDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index)
 {
-    if (event->type() == QEvent::MouseMove) {
-        /*if (index != m_lastUnderMouse) {
-            if (m_lastUnderMouse.isValid()) {
-                model->setData(m_lastUnderMouse, (int)Normal, Qt::UserRole);
-                emit needsUpdate(m_lastUnderMouse);
-            }
-            if (index.isValid() && index.column() == ButtonColumn) {
-                model->setData(index, (int)Hovered, Qt::UserRole);
-                emit needsUpdate(index);
-                m_lastUnderMouse = index;
-            }
-            else {
-                m_lastUnderMouse = QModelIndex();
-            }
-        }*/
-    }
     if (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseButtonDblClick) {
-        QMouseEvent* mEvent = (QMouseEvent*)event;
+        QMouseEvent* mEvent = static_cast<QMouseEvent*>(event);
         QPoint point = mEvent->pos();
         int xPos = point.x();
         int border = 1;
         ElementData* itemData = qvariant_cast<ElementData*>(index.data(Qt::UserRole));
         if(xPos < option.rect.x() + 4 + option.rect.height() + border)
-            itemData->clickedOn = 0; //0 = edge
+            itemData->clickedOn = ElementType::edge;
         else if (xPos < option.rect.x() + 4 + option.rect.height() * 2 + border)
-            itemData->clickedOn = 1; //1 = start
+            itemData->clickedOn = ElementType::start;
         else if (xPos < option.rect.x() + 4 + option.rect.height() * 3 + border)
-            itemData->clickedOn = 2; //2 = end
+            itemData->clickedOn = ElementType::end;
         else if (xPos < option.rect.x() + 4 + option.rect.height() * 4 + border)
-            itemData->clickedOn = 3; //3 = mid
+            itemData->clickedOn = ElementType::mid;
         else
-            itemData->clickedOn = 4; //4 = none
+            itemData->clickedOn = ElementType::none; 
 
     }
     return QStyledItemDelegate::editorEvent(event, model, option, index);
@@ -362,7 +377,7 @@ TaskSketcherElements::TaskSketcherElements(ViewProviderSketch *sketchView)
 #endif
     ui->Explanation->setText(tr("(Z) next valid type"));
 
-    ui->listWidgetElements->setItemDelegate(new MyDelegate);
+    ui->listWidgetElements->setItemDelegate(new ElementItemDelegate);
     ui->listWidgetElements->setSelectionMode(QAbstractItemView::ExtendedSelection);
     ui->listWidgetElements->setEditTriggers(QListWidget::NoEditTriggers);
     ui->listWidgetElements->setMouseTracking(true);
@@ -408,7 +423,7 @@ TaskSketcherElements::TaskSketcherElements(ViewProviderSketch *sketchView)
     slotElementsChanged();
 
     // make filter items checkable
-    ui->listMultiFilter->blockSignals(true);
+    bool sigblk = ui->listMultiFilter->blockSignals(true);
     for (int i = 0; i < ui->listMultiFilter->count(); i++) {
         QListWidgetItem* item = ui->listMultiFilter->item(i);
 
@@ -417,7 +432,7 @@ TaskSketcherElements::TaskSketcherElements(ViewProviderSketch *sketchView)
         item->setCheckState(Qt::Checked);
     }
     ui->listMultiFilter->setVisible(false);
-    ui->listMultiFilter->blockSignals(false);
+    ui->listMultiFilter->blockSignals(sigblk);
 
     this->installEventFilter(this);
     ui->filterBox->installEventFilter(this);
@@ -442,21 +457,21 @@ void TaskSketcherElements::on_filterBox_stateChanged(int val){
 
 bool TaskSketcherElements::eventFilter(QObject* obj, QEvent* event)
 {
-    if (obj == (QObject*)ui->filterBox && event->type() == QEvent::Enter && ui->filterBox->checkState() == Qt::Checked) {
+    if (obj == qobject_cast<QObject*>(ui->filterBox) && event->type() == QEvent::Enter && ui->filterBox->checkState() == Qt::Checked) {
         ui->listMultiFilter->show();
     }
-    else if (obj == (QObject*)ui->listMultiFilter && event->type() == QEvent::Leave) {
+    else if (obj == qobject_cast<QObject*>(ui->listMultiFilter) && event->type() == QEvent::Leave) {
         ui->listMultiFilter->hide();
     }
     else if (obj == this && event->type() == QEvent::Leave) {
         ui->listMultiFilter->hide();
     }
-    return QWidget::eventFilter(obj, event);
+    return TaskBox::eventFilter(obj, event);
 }
 
 void TaskSketcherElements::on_listMultiFilter_itemChanged(QListWidgetItem* item)
 {
-    ui->listMultiFilter->blockSignals(true);
+    bool sglVal = ui->listMultiFilter->blockSignals(true);
 
     if (item == ui->listMultiFilter->item(3)) { //3 is 'All geos'
         for (int i = 4; i < ui->listMultiFilter->count(); i++) {
@@ -464,7 +479,7 @@ void TaskSketcherElements::on_listMultiFilter_itemChanged(QListWidgetItem* item)
         }
     }
 
-    ui->listMultiFilter->blockSignals(false);
+    ui->listMultiFilter->blockSignals(sglVal);
 
     updateVisibility();
 }
@@ -591,7 +606,7 @@ void TaskSketcherElements::onSelectionChanged(const Gui::SelectionChanges& msg)
                     }
                 }
                 // update the listwidget
-                ui->listWidgetElements->blockSignals(true);
+                bool sgnBlock = ui->listWidgetElements->blockSignals(true);
 
                 for (int i=0;i<ui->listWidgetElements->count(); i++) {
                     QListWidgetItem* item = ui->listWidgetElements->item(i);
@@ -599,7 +614,7 @@ void TaskSketcherElements::onSelectionChanged(const Gui::SelectionChanges& msg)
                     item->setSelected(itemData->isLineSelected || itemData->isStartingPointSelected || itemData->isEndPointSelected || itemData->isMidPointSelected);
                 }
 
-                ui->listWidgetElements->blockSignals(false);
+                ui->listWidgetElements->blockSignals(sgnBlock);
 
             }
         }
@@ -656,7 +671,7 @@ void TaskSketcherElements::on_listWidgetElements_itemPressed(QListWidgetItem* it
             if (itemData->GeometryType == Part::GeomPoint::getClassTypeId()) {
                 itemData->isStartingPointSelected = !itemData->isStartingPointSelected;
             }
-            else if (itemData->clickedOn == ElementData::ClickedOn::mid
+            else if (itemData->clickedOn == ElementType::mid
                 && (itemData->GeometryType == Part::GeomArcOfCircle::getClassTypeId()
                     || itemData->GeometryType == Part::GeomArcOfEllipse::getClassTypeId()
                     || itemData->GeometryType == Part::GeomArcOfHyperbola::getClassTypeId()
@@ -665,7 +680,7 @@ void TaskSketcherElements::on_listWidgetElements_itemPressed(QListWidgetItem* it
                     || itemData->GeometryType == Part::GeomEllipse::getClassTypeId())) {
                 itemData->isMidPointSelected = !itemData->isMidPointSelected;
             }
-            else if (itemData->clickedOn == ElementData::ClickedOn::start &&
+            else if (itemData->clickedOn == ElementType::start &&
                 (itemData->GeometryType == Part::GeomArcOfCircle::getClassTypeId()
                     || itemData->GeometryType == Part::GeomArcOfEllipse::getClassTypeId()
                     || itemData->GeometryType == Part::GeomArcOfHyperbola::getClassTypeId()
@@ -674,7 +689,7 @@ void TaskSketcherElements::on_listWidgetElements_itemPressed(QListWidgetItem* it
                     || itemData->GeometryType == Part::GeomBSplineCurve::getClassTypeId())) {
                 itemData->isStartingPointSelected = !itemData->isStartingPointSelected;
             }
-            else if (itemData->clickedOn == ElementData::ClickedOn::end &&
+            else if (itemData->clickedOn == ElementType::end &&
                 (itemData->GeometryType == Part::GeomArcOfCircle::getClassTypeId()
                     || itemData->GeometryType == Part::GeomArcOfEllipse::getClassTypeId()
                     || itemData->GeometryType == Part::GeomArcOfHyperbola::getClassTypeId()
@@ -686,7 +701,7 @@ void TaskSketcherElements::on_listWidgetElements_itemPressed(QListWidgetItem* it
             else {
                 itemData->isLineSelected = !itemData->isLineSelected;
             }
-            itemData->clickedOn == ElementData::ClickedOn::none;
+            itemData->clickedOn == ElementType::none;
         }
         else if (multipleconsecutiveselection && previouslySelectedItemIndex >= 0 && !rightClickOnSelected &&
             ((i > focusItemIndex && i < previouslySelectedItemIndex) || (i<focusItemIndex && i>previouslySelectedItemIndex))) {
@@ -754,7 +769,7 @@ void TaskSketcherElements::on_listWidgetElements_itemPressed(QListWidgetItem* it
 void TaskSketcherElements::on_listWidgetElements_itemEntered(QListWidgetItem *item)
 {
     ElementData* itemData = qvariant_cast<ElementData*>(item->data(Qt::UserRole));
-    if (!item)
+    if (!itemData)
         return;
 
     Gui::Selection().rmvPreselect();
@@ -771,24 +786,6 @@ void TaskSketcherElements::on_listWidgetElements_itemEntered(QListWidgetItem *it
      */
     std::stringstream ss;
 
-
-    /*
-    int tempitemindex=ui->listWidgetElements->row(item);
-    //Edge Auto-Switch functionality
-    if (isautoSwitchBoxChecked && tempitemindex!=focusItemIndex){
-        ui->listWidgetElements->blockSignals(true);
-        if (it->GeometryType==Part::GeomPoint::getClassTypeId()) {
-            ui->comboBoxElementFilter->setCurrentIndex(1);
-        }
-        else {
-            ui->comboBoxElementFilter->setCurrentIndex(0);
-        }
-        ui->listWidgetElements->blockSignals(false);
-    }
-
-    int element=ui->comboBoxElementFilter->currentIndex();
-    
-    focusItemIndex=tempitemindex;*/
     focusItemIndex = ui->listWidgetElements->row(item);
 
     if (itemData->isStartingPointSelected) {
@@ -1070,18 +1067,18 @@ void TaskSketcherElements::on_listWidgetElements_filterShortcutPressed()
     Base::Type type = itfData->GeometryType;
 
     if (itfData->isLineSelected) {
-        itfData->clickedOn = static_cast<int>((type == Part::GeomCircle::getClassTypeId() || type == Part::GeomEllipse::getClassTypeId()) ? ElementData::ClickedOn::mid : ElementData::ClickedOn::start);
+        itfData->clickedOn = static_cast<int>((type == Part::GeomCircle::getClassTypeId() || type == Part::GeomEllipse::getClassTypeId()) ? ElementType::mid : ElementType::start);
     }
     else if (itfData->isStartingPointSelected) {
-        itfData->clickedOn = static_cast<int>((type == Part::GeomCircle::getClassTypeId() || type == Part::GeomEllipse::getClassTypeId()) ? ElementData::ClickedOn::mid :
-            (type == Part::GeomPoint::getClassTypeId()) ? ElementData::ClickedOn::start : ElementData::ClickedOn::end);
+        itfData->clickedOn = static_cast<int>((type == Part::GeomCircle::getClassTypeId() || type == Part::GeomEllipse::getClassTypeId()) ? ElementType::mid :
+            (type == Part::GeomPoint::getClassTypeId()) ? ElementType::start : ElementType::end);
     }
     else if (itfData->isEndPointSelected) {
-        itfData->clickedOn = static_cast<int>(type == Part::GeomLineSegment::getClassTypeId() ? ElementData::ClickedOn::edge :
-            type == Part::GeomPoint::getClassTypeId() ? ElementData::ClickedOn::start : ElementData::ClickedOn::mid);
+        itfData->clickedOn = static_cast<int>(type == Part::GeomLineSegment::getClassTypeId() ? ElementType::edge :
+            type == Part::GeomPoint::getClassTypeId() ? ElementType::start : ElementType::mid);
     }
     else {
-        itfData->clickedOn = static_cast<int>(type == Part::GeomPoint::getClassTypeId() ? ElementData::ClickedOn::start : ElementData::ClickedOn::edge);
+        itfData->clickedOn = static_cast<int>(type == Part::GeomPoint::getClassTypeId() ? ElementType::start : ElementType::edge);
     }
 
     Gui::Selection().rmvPreselect();
