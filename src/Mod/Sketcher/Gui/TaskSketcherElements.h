@@ -29,6 +29,7 @@
 #include <boost_signals2.hpp>
 #include <QListWidget>
 #include <QIcon>
+#include <QStyledItemDelegate>
 
 namespace App {
 class Property;

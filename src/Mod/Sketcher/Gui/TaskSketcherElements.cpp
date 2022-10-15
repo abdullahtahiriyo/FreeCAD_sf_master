@@ -31,6 +31,7 @@
 # include <QString>
 # include <QImage>
 # include <QPixmap>
+# include <QPainter>
 #endif
 
 #include "TaskSketcherElements.h"
@@ -131,7 +132,7 @@ public:
 
 Q_DECLARE_METATYPE(ElementData*);
 
-ElementView::ElementView(QWidget *parent) : QListWidget(parent) 
+ElementView::ElementView(QWidget *parent) : QListWidget(parent)
 {
 }
 
@@ -254,7 +255,6 @@ void ElementItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& o
         ElementData* itemData = qvariant_cast<ElementData*>(index.data(Qt::UserRole));
 
         int border = 1; //1px, looks good around buttons.
-        int rectBorder = 1;
         int height = option.rect.height();
         int x0 = option.rect.x() + 4; //4px on the left of icons, looks good.
         int iconsize = height - 2 * border;
@@ -285,7 +285,7 @@ void ElementItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& o
         painter->drawPixmap(x0 + border + height * 2, btny, itemData->icon2.pixmap(iconsize, iconsize));
         painter->drawPixmap(x0 + border + height * 3, btny, itemData->icon3.pixmap(iconsize, iconsize));
 
-        //Label : 
+        //Label :
         painter->drawText(x0 + height * 4 + 3 * border, option.rect.y() + height - 5, itemData->label);
 
     }
@@ -308,7 +308,7 @@ bool ElementItemDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, 
         else if (xPos < option.rect.x() + 4 + option.rect.height() * 4 + border)
             itemData->clickedOn = ElementType::mid;
         else
-            itemData->clickedOn = ElementType::none; 
+            itemData->clickedOn = ElementType::none;
 
         if (mEvent->button() == Qt::RightButton)
             itemData->rightClicked = true;
@@ -410,7 +410,9 @@ TaskSketcherElements::~TaskSketcherElements()
 
 /* filter functions --------------------------------------------------- */
 
-void TaskSketcherElements::on_filterBox_stateChanged(int val){ 
+void TaskSketcherElements::on_filterBox_stateChanged(int val){
+    Q_UNUSED(val)
+
     if(ui->filterBox->checkState() == Qt::Checked)
         ui->listMultiFilter->show();
     else
@@ -466,7 +468,6 @@ void TaskSketcherElements::setItemVisibility(QListWidgetItem* item)
     */
 
     ElementData* itemData = qvariant_cast<ElementData*>(item->data(Qt::UserRole));
-    bool visibility = true;
 
     if (ui->filterBox->checkState() == Qt::Unchecked) { item->setHidden(false); return; }
 
@@ -495,7 +496,7 @@ void TaskSketcherElements::updateVisibility()
     for (int i = 0; i < ui->listWidgetElements->count(); i++) {
         setItemVisibility(ui->listWidgetElements->item(i));
     }
-} 
+}
 
 /*------------------*/
 void TaskSketcherElements::onSelectionChanged(const Gui::SelectionChanges& msg)
@@ -665,7 +666,7 @@ void TaskSketcherElements::on_listWidgetElements_itemPressed(QListWidgetItem* it
                 else {
                     itemData->isLineSelected = !itemData->isLineSelected;
                 }
-                itemData->clickedOn == ElementType::none;
+                itemData->clickedOn = ElementType::none;
             }
             else if (multipleconsecutiveselection && previouslySelectedItemIndex >= 0 && !rightClickOnSelected &&
                 ((i > focusItemIndex && i < previouslySelectedItemIndex) || (i<focusItemIndex && i>previouslySelectedItemIndex))) {
@@ -888,7 +889,7 @@ void TaskSketcherElements::slotElementsChanged(void)
             (isNamingBoxChecked ?
                 (tr("Other") + QString::fromLatin1("(Edge%1#ID%2)").arg(i).arg(i - 1)) +
                 (construction ? (QString::fromLatin1("-") + tr("Construction")) : QString::fromLatin1("")) :
-                (QString::fromLatin1("%1-").arg(i) + tr("Other"))) 
+                (QString::fromLatin1("%1-").arg(i) + tr("Other")))
         );
 
         QVariant dataInVariant;
@@ -1023,7 +1024,7 @@ void TaskSketcherElements::on_listWidgetElements_filterShortcutPressed()
     ElementData* itfData = qvariant_cast<ElementData*>(itf->data(Qt::UserRole));
 
     //We switch to next type only if only one element of the geo is selected.
-    if (!(itfData->isLineSelected != itfData->isStartingPointSelected != itfData->isEndPointSelected != itfData->isMidPointSelected)) //note != act as XOr
+    if (!( ((itfData->isLineSelected != itfData->isStartingPointSelected) != itfData->isEndPointSelected) != itfData->isMidPointSelected)) //note != act as XOr
         return;
 
     previouslySelectedItemIndex = -1; // Shift selection on list widget implementation
