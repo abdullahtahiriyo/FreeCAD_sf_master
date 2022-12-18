@@ -93,7 +93,6 @@ protected:
     void slotSkipRecompute(const App::Document &doc, const std::vector<App::DocumentObject*> &objs);
     void slotTouchedObject(const App::DocumentObject &);
     void slotChangePropertyEditor(const App::Document&, const App::Property &);
-    void slotCriticalMessage(const App::DocumentObject&, const QString &);
     //@}
 
     void addViewProvider(Gui::ViewProviderDocumentObject*);

@@ -28,6 +28,7 @@
 # include <QFileInfo>
 # include <QMessageBox>
 # include <QTextStream>
+# include <QTimer>
 # include <Inventor/actions/SoSearchAction.h>
 # include <Inventor/nodes/SoSeparator.h>
 #endif
@@ -69,6 +70,146 @@ using namespace Gui;
 namespace bp = boost::placeholders;
 
 namespace Gui {
+
+class MessageManager {
+public:
+    MessageManager() = default;
+    ~MessageManager();
+
+    void setDocument(Gui::Document * pDocument);
+    void slotUserMessage(const App::DocumentObject&, const QString &, App::Document::NotificationType);
+
+
+private:
+    void reorderAutoClosingMessages();
+    QMessageBox* createNonModalMessage(const QString & msg, App::Document::NotificationType notificationtype);
+    void pushAutoClosingMessage(const QString & msg, App::Document::NotificationType notificationtype);
+
+private:
+    using Connection = boost::signals2::connection;
+    Gui::Document * pDoc;
+    Connection connectUserMessage;
+    bool requireConfirmationCriticalMessageDuringRestoring = true;
+    std::vector<QMessageBox*> openAutoClosingMessages;
+    std::mutex mutexAutoClosingMessages;
+    const int autoClosingTimeout = 2000; // ms
+    const int autoClosingMessageStackingOffset = 10;
+};
+
+MessageManager::~MessageManager(){
+    connectUserMessage.disconnect();
+}
+
+void MessageManager::setDocument(Gui::Document * pDocument)
+{
+    pDoc = pDocument;
+
+    connectUserMessage = pDoc->getDocument()->signalUserMessage.connect
+        (boost::bind(&Gui::MessageManager::slotUserMessage, this, bp::_1, bp::_2, bp::_3));
+
+}
+
+void MessageManager::slotUserMessage(const App::DocumentObject& obj, const QString & msg, App::Document::NotificationType notificationtype)
+{
+    (void) obj;
+
+    auto restoring = pDoc->getDocument()->testStatus(App::Document::Restoring);
+
+    if(notificationtype == App::Document::NotificationType::Critical) {
+        if(restoring) { // during restoring, we let the user skip further blocking critical message notifications
+            if(requireConfirmationCriticalMessageDuringRestoring) {
+                auto confirmMsg = msg + QStringLiteral("\n\n") + QObject::tr("Do you want to skip confirmation of further critical message notifications while loading the file?");
+                auto button = QMessageBox::critical(pDoc->getActiveView(), QObject::tr("Critical Message"), confirmMsg, QMessageBox::Yes | QMessageBox::No, QMessageBox::No );
+
+                if(button == QMessageBox::Yes)
+                    requireConfirmationCriticalMessageDuringRestoring = false;
+            }
+            else { // treat as auto closing message
+                pushAutoClosingMessage(msg, notificationtype);
+            }
+        }
+        else {
+            QMessageBox::critical(pDoc->getActiveView(), QObject::tr("Critical Message"), msg);
+        }
+    }
+    else { // Non-critical errors and warnings - auto-closing non-blocking message box
+        pushAutoClosingMessage(msg, notificationtype);
+    }
+}
+
+void MessageManager::pushAutoClosingMessage(const QString & msg, App::Document::NotificationType notificationtype)
+{
+    std::lock_guard<std::mutex> g(mutexAutoClosingMessages); // guard to avoid creating new messages while closing old messages (via timer)
+
+    auto msgBox = createNonModalMessage(msg, notificationtype);
+
+    msgBox->show();
+
+    int numberOpenAutoClosingMessages = openAutoClosingMessages.size();
+
+    openAutoClosingMessages.push_back(msgBox);
+
+    reorderAutoClosingMessages();
+
+    QTimer::singleShot(autoClosingTimeout*numberOpenAutoClosingMessages, [msgBox, this](){
+        std::lock_guard<std::mutex> g(mutexAutoClosingMessages); // guard to avoid closing old messages while creating new ones
+        if(msgBox) { // TODO: Execute this as a transaction
+            msgBox->done(0);
+            openAutoClosingMessages.erase(
+                std::remove(openAutoClosingMessages.begin(), openAutoClosingMessages.end(), msgBox),
+                openAutoClosingMessages.end());
+
+            reorderAutoClosingMessages();
+        }
+    });
+}
+
+
+QMessageBox* MessageManager::createNonModalMessage(const QString & msg, App::Document::NotificationType notificationtype)
+{
+        auto parent = pDoc->getActiveView();
+
+        QMessageBox* msgBox = new QMessageBox(parent);
+        msgBox->setAttribute(Qt::WA_DeleteOnClose); // msgbox deleted automatically upon closed
+        msgBox->setStandardButtons(QMessageBox::NoButton);
+        msgBox->setWindowFlag(Qt::FramelessWindowHint,true);
+        msgBox->setText(msg);
+
+        if(notificationtype == App::Document::NotificationType::Error) {
+            msgBox->setWindowTitle(QObject::tr("Error"));
+            msgBox->setIcon(QMessageBox::Critical);
+        }
+        else if(notificationtype == App::Document::NotificationType::Warning) {
+            msgBox->setWindowTitle(QObject::tr("Warning"));
+            msgBox->setIcon(QMessageBox::Warning);
+        }
+        else if(notificationtype == App::Document::NotificationType::Critical) {
+            msgBox->setWindowTitle(QObject::tr("Critical"));
+            msgBox->setIcon(QMessageBox::Critical);
+        }
+
+        msgBox->setModal( false ); // if you want it non-modal
+
+        return msgBox;
+}
+
+void MessageManager::reorderAutoClosingMessages()
+{
+    auto parent = pDoc->getActiveView();
+
+    int numberOpenAutoClosingMessages = openAutoClosingMessages.size();
+
+    auto x = parent->width() / 2;
+    auto y = parent->height() / 7;
+
+    int posindex = numberOpenAutoClosingMessages - 1;
+    for (auto rit = openAutoClosingMessages.rbegin(); rit != openAutoClosingMessages.rend(); ++rit, posindex--) {
+        int xw = x - (*rit)->width() / 2 + autoClosingMessageStackingOffset*posindex;;
+        int yw = y + autoClosingMessageStackingOffset*posindex;
+        (*rit)->move(xw, yw);
+        (*rit)->raise();
+    }
+}
 
 // Pimpl class
 struct DocumentP
@@ -126,13 +267,13 @@ struct DocumentP
     Connection connectTouchedObject;
     Connection connectChangePropertyEditor;
     Connection connectChangeDocument;
-    Connection connectCriticalMessage;
 
     using ConnectionBlock = boost::signals2::shared_connection_block;
     ConnectionBlock connectActObjectBlocker;
     ConnectionBlock connectChangeDocumentBlocker;
-};
 
+    MessageManager messageManager;
+};
 } // namespace Gui
 
 /* TRANSLATOR Gui::Document */
@@ -213,8 +354,7 @@ Document::Document(App::Document* pcDocument,Application * app)
     d->connectTransactionRemove = pcDocument->signalTransactionRemove.connect
         (boost::bind(&Gui::Document::slotTransactionRemove, this, bp::_1, bp::_2));
 
-    d->connectCriticalMessage = pcDocument->signalCriticalMessage.connect
-        (boost::bind(&Gui::Document::slotCriticalMessage, this, bp::_1, bp::_2));
+    d->messageManager.setDocument(this);
     // pointer to the python class
     // NOTE: As this Python object doesn't get returned to the interpreter we
     // mustn't increment it (Werner Jan-12-2006)
@@ -257,7 +397,6 @@ Document::~Document()
     d->connectTouchedObject.disconnect();
     d->connectChangePropertyEditor.disconnect();
     d->connectChangeDocument.disconnect();
-    d->connectCriticalMessage.disconnect();
 
     // e.g. if document gets closed from within a Python command
     d->_isClosing = true;
@@ -1694,13 +1833,6 @@ void Document::slotFinishImportObjects(const std::vector<App::DocumentObject*> &
     //     if(vpd) vpd->finishRestoring();
     // }
 }
-
-void Document::slotCriticalMessage(const App::DocumentObject& obj, const QString & msg)
-{
-    (void) obj;
-    QMessageBox::critical(getActiveView(), QObject::tr("Critical Message"), msg);
-}
-
 
 void Document::addRootObjectsToGroup(const std::vector<App::DocumentObject*>& obj, App::DocumentObjectGroup* grp)
 {
