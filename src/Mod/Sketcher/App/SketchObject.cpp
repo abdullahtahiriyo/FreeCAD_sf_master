@@ -8315,8 +8315,8 @@ void SketchObject::migrateSketch()
 
             Base::Console().Warning("In Sketch %s, parabolas were migrated. Migrated files won't open in previous versions of FreeCAD!!\n",this->Label.getStrValue().c_str());
 
-            this->getDocument()->signalCriticalMessage(*this, QStringLiteral(QT_TRANSLATE_NOOP("CriticalMessages","Sketch:")) + QStringLiteral(" ") + QString::fromStdString(this->Label.getStrValue()) +
-                QStringLiteral(".\n\n") + QString::fromLatin1(QT_TRANSLATE_NOOP("CriticalMessages","Parabolas were migrated. Migrated files won't open in previous versions of FreeCAD!!")));
+            this->getDocument()->signalUserMessage(*this, QStringLiteral(QT_TRANSLATE_NOOP("CriticalMessages","Sketch:")) + QStringLiteral(" ") + QString::fromStdString(this->Label.getStrValue()) +
+                QStringLiteral(".\n\n") + QString::fromLatin1(QT_TRANSLATE_NOOP("CriticalMessages","Parabolas were migrated. Migrated files won't open in previous versions of FreeCAD!!")), App::Document::NotificationType::Critical);
         }
     }
 }
