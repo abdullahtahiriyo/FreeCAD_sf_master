@@ -996,6 +996,7 @@ SET(Widget_CPP_SRCS
     FileDialog.cpp
     MainWindow.cpp
     MainWindowPy.cpp
+    NotificationArea.cpp
     PrefWidgets.cpp
     InputField.cpp
     ProgressBar.cpp
@@ -1014,6 +1015,7 @@ SET(Widget_HPP_SRCS
     FileDialog.h
     MainWindow.h
     MainWindowPy.h
+    NotificationArea.h
     PrefWidgets.h
     InputField.h
     ProgressBar.h
