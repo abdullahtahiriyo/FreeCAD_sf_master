@@ -80,6 +80,7 @@
 #include "DownloadManager.h"
 #include "FileDialog.h"
 #include "MenuManager.h"
+#include "NotificationArea.h"
 #include "ProgressBar.h"
 #include "PropertyView.h"
 #include "PythonConsole.h"
@@ -250,7 +251,6 @@ protected:
 
 } // namespace Gui
 
-
 /* TRANSLATOR Gui::MainWindow */
 
 MainWindow::MainWindow(QWidget * parent, Qt::WindowFlags f)
@@ -302,6 +302,17 @@ MainWindow::MainWindow(QWidget * parent, Qt::WindowFlags f)
     statusBar()->addPermanentWidget(progressBar, 0);
     statusBar()->addPermanentWidget(d->sizeLabel, 0);
 
+    auto hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/NotificationArea");
+
+    auto notificationAreaEnabled = hGrp->GetBool("NotificationAreaEnabled", true);
+
+    if(notificationAreaEnabled) {
+        NotificationArea* notificationArea = new NotificationArea(statusBar());
+        notificationArea->setObjectName(QString::fromLatin1("notificationArea"));
+        notificationArea->setIcon(QIcon(QString::fromLatin1(":/icons/InTray.svg")));
+        notificationArea->setStyleSheet(QStringLiteral("text-align:left;"));
+        statusBar()->addPermanentWidget(notificationArea);
+    }
     // clears the action label
     d->actionTimer = new QTimer( this );
     d->actionTimer->setObjectName(QString::fromLatin1("actionTimer"));
@@ -2142,7 +2153,7 @@ void StatusBarObserver::OnChange(Base::Subject<const char*> &rCaller, const char
 void StatusBarObserver::SendLog(const std::string& notifiername, const std::string& msg, Base::LogStyle level)
 {
     (void) notifiername;
-    
+
     int messageType = -1;
     switch(level){
         case Base::LogStyle::Warning:
