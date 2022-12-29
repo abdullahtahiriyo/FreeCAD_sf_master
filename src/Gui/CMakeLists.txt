@@ -997,6 +997,7 @@ SET(Widget_CPP_SRCS
     MainWindow.cpp
     MainWindowPy.cpp
     NotificationBox.cpp
+    NotificationArea.cpp
     PrefWidgets.cpp
     InputField.cpp
     ProgressBar.cpp
@@ -1016,6 +1017,7 @@ SET(Widget_HPP_SRCS
     MainWindow.h
     MainWindowPy.h
     NotificationBox.h
+    NotificationArea.h
     PrefWidgets.h
     InputField.h
     ProgressBar.h
