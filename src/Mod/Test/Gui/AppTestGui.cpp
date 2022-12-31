@@ -40,7 +40,8 @@ public:
 
     void flush() {buffer.str("");buffer.clear();}
 
-    void SendLog(const std::string& msg, Base::LogStyle level) override{
+    void SendLog(const std::string& notifiername, const std::string& msg, Base::LogStyle level) override{
+        (void) notifiername;
         (void) msg;
         switch(level){
             case Base::LogStyle::Warning:
@@ -55,6 +56,11 @@ public:
             case Base::LogStyle::Log:
                 buffer << "LOG";
                 break;
+            case Base::LogStyle::CriticalMessage:
+                buffer << "CMS";
+                break;
+            default:
+                break;
         }
     }
 
@@ -65,6 +71,7 @@ public:
         Base::Console().Message("MSG");
         Base::Console().Warning("WRN");
         Base::Console().Error("ERR");
+        Base::Console().CriticalMessage("CMS");
         if (buffer.str() != expectedResult)
             throw Py::RuntimeError("ILoggerTest: " + buffer.str() + " different from " + expectedResult);
     }
