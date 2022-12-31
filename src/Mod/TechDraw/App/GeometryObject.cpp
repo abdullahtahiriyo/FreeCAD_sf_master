@@ -498,7 +498,7 @@ void GeometryObject::extractGeometry(edgeClass category, bool hlrVisible)
             default:
                 Base::Console().Warning(
                     "GeometryObject::ExtractGeometry - unsupported hlrVisible edgeClass: %d\n",
-                    category);
+                    static_cast<int>(category));
                 return;
         }
     }
