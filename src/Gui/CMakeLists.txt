@@ -996,6 +996,7 @@ SET(Widget_CPP_SRCS
     FileDialog.cpp
     MainWindow.cpp
     MainWindowPy.cpp
+    NotificationBox.cpp
     NotificationArea.cpp
     PrefWidgets.cpp
     InputField.cpp
@@ -1015,6 +1016,7 @@ SET(Widget_HPP_SRCS
     FileDialog.h
     MainWindow.h
     MainWindowPy.h
+    NotificationBox.h
     NotificationArea.h
     PrefWidgets.h
     InputField.h
