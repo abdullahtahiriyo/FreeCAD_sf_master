@@ -169,6 +169,9 @@ void ReportHighlighter::highlightBlock (const QString & text)
         case LogText:
             setFormat(start, it.length-start, logCol);
             break;
+        case CriticalMessage:
+            setFormat(start, it.length-start, criticalTxtCol);
+            break;
         default:
             break;
         }
@@ -200,6 +203,11 @@ void ReportHighlighter::setWarningColor( const QColor& col )
 void ReportHighlighter::setErrorColor( const QColor& col )
 {
     errCol = col;
+}
+
+void ReportHighlighter::setCriticalTextColor( const QColor& col )
+{
+    criticalTxtCol = col;
 }
 
 // ----------------------------------------------------------------------------
@@ -243,6 +251,15 @@ public:
     {
         bool show = showOnError();
         getGroup()->SetBool("checkShowReportViewOnError", !show);
+    }
+    static bool showOnCriticalMessage()
+    {
+        return getGroup()->GetBool("checkShowReportViewOnCriticalMessage", false);
+    }
+    static void toggleShowOnCriticalMessage()
+    {
+        bool show = showOnMessage();
+        getGroup()->SetBool("checkShowReportViewOnCriticalMessage", !show);
     }
 
 private:
@@ -325,6 +342,11 @@ bool ReportOutputObserver::eventFilter(QObject *obj, QEvent *event)
             }
             else if (msgType == ReportHighlighter::LogText) {
                 if (ReportOutputParameter::showOnLogMessage()) {
+                    showReportView();
+                }
+            }
+            else if (msgType == ReportHighlighter::CriticalMessage) {
+                if (ReportOutputParameter::showOnCriticalMessage()) {
                     showReportView();
                 }
             }
@@ -467,6 +489,9 @@ void ReportOutput::SendLog(const std::string& notifiername, const std::string& m
         case Base::LogStyle::Log:
             style = ReportHighlighter::LogText;
             break;
+        case Base::LogStyle::CriticalMessage:
+            style = ReportHighlighter::CriticalMessage;
+            break;
     }
 
     QString qMsg = QString::fromUtf8(msg.c_str());
@@ -545,6 +570,7 @@ void ReportOutput::contextMenuEvent ( QContextMenuEvent * e )
     bool bShowOnNormal = ReportOutputParameter::showOnMessage();
     bool bShowOnWarn = ReportOutputParameter::showOnWarning();
     bool bShowOnError = ReportOutputParameter::showOnError();
+    bool bShowOnCritical = ReportOutputParameter::showOnCriticalMessage();
 
     auto menu = new QMenu(this);
     auto optionMenu = new QMenu( menu );
@@ -572,6 +598,10 @@ void ReportOutput::contextMenuEvent ( QContextMenuEvent * e )
     errAct->setCheckable(true);
     errAct->setChecked(bErr);
 
+    QAction* logCriticalMsg = displayMenu->addAction(tr("Critical messages"), this, SLOT(onToggleCriticalMessage()));
+    logCriticalMsg->setCheckable(true);
+    logCriticalMsg->setChecked(bCriticalMsg);
+
     auto showOnMenu = new QMenu (optionMenu);
     showOnMenu->setTitle(tr("Show Report view on"));
     optionMenu->addMenu(showOnMenu);
@@ -591,6 +621,10 @@ void ReportOutput::contextMenuEvent ( QContextMenuEvent * e )
     QAction* showErrAct = showOnMenu->addAction(tr("Errors"), this, SLOT(onToggleShowReportViewOnError()));
     showErrAct->setCheckable(true);
     showErrAct->setChecked(bShowOnError);
+
+    QAction* showCriticalAct = showOnMenu->addAction(tr("Critical messages"), this, SLOT(onToggleShowReportViewOnCriticalMessage()));
+    showCriticalAct->setCheckable(true);
+    showCriticalAct->setChecked(bShowOnCritical);
 
     optionMenu->addSeparator();
 
@@ -665,6 +699,12 @@ bool ReportOutput::isNormalMessage() const
     return bMsg;
 }
 
+
+bool ReportOutput::isCriticalMessage() const
+{
+    return bCriticalMsg;
+}
+
 void ReportOutput::onToggleError()
 {
     bErr = bErr ? false : true;
@@ -689,6 +729,12 @@ void ReportOutput::onToggleNormalMessage()
     getWindowParameter()->SetBool( "checkMessage", bMsg );
 }
 
+void ReportOutput::onToggleCriticalMessage()
+{
+    bCriticalMsg = bCriticalMsg ? false : true;
+    getWindowParameter()->SetBool( "checkCriticalMessage", bCriticalMsg );
+}
+
 void ReportOutput::onToggleShowReportViewOnWarning()
 {
     ReportOutputParameter::toggleShowOnWarning();
@@ -702,6 +748,11 @@ void ReportOutput::onToggleShowReportViewOnError()
 void ReportOutput::onToggleShowReportViewOnNormalMessage()
 {
     ReportOutputParameter::toggleShowOnMessage();
+}
+
+void ReportOutput::onToggleShowReportViewOnCriticalMessage()
+{
+    ReportOutputParameter::toggleShowOnCriticalMessage();
 }
 
 void ReportOutput::onToggleShowReportViewOnLogMessage()
@@ -762,7 +813,14 @@ void ReportOutput::OnChange(Base::Subject<const char*> &rCaller, const char * sR
     else if (strcmp(sReason, "checkMessage") == 0) {
         bMsg = rclGrp.GetBool( sReason, bMsg );
     }
+    else if (strcmp(sReason, "checkCriticalMessage") == 0) {
+        bMsg = rclGrp.GetBool( sReason, bMsg );
+    }
     else if (strcmp(sReason, "colorText") == 0) {
+        unsigned long col = rclGrp.GetUnsigned( sReason );
+        reportHl->setTextColor( QColor( (col >> 24) & 0xff,(col >> 16) & 0xff,(col >> 8) & 0xff) );
+    }
+    else if (strcmp(sReason, "colorCriticalText") == 0) {
         unsigned long col = rclGrp.GetUnsigned( sReason );
         reportHl->setTextColor( QColor( (col >> 24) & 0xff,(col >> 16) & 0xff,(col >> 8) & 0xff) );
     }
