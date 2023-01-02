@@ -33,19 +33,16 @@ struct NotificationAreaP;
 class NotificationArea : public QPushButton
 {
 public:
-    enum class NotificationType {
-        Error,
-        Warning,
-        Message,
-    };
-
-public:
     NotificationArea(QWidget *parent = nullptr);
+    ~NotificationArea();
 
-    void pushNotification(NotificationType notificationtype, const QString & notifiername, const QString & message);
+    void pushNotification(const QString & notifiername, const QString & message, Base::LogStyle level);
 
 private:
     void showInNotificationArea();
+    bool confirmationRequired(Base::LogStyle level);
+    void showConfirmationDialog(const QString & notifiername, const QString & message);
+    void slotRestoreFinished(const App::Document&);
 
 private:
     std::unique_ptr<NotificationAreaP> d;
