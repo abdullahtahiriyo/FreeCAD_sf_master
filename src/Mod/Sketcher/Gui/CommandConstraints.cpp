@@ -25,6 +25,7 @@
 # include <cfloat>
 # include <QMessageBox>
 # include <QPainter>
+# include <QtGlobal>
 # include <Precision.hxx>
 #endif
 
@@ -935,8 +936,7 @@ void CmdSketcherConstrainHorizontal::activated(int iMsg)
         if (isEdge(GeoId,PosId)) {// it is an edge
             const Part::Geometry *geo = Obj->getGeometry(GeoId);
             if (geo->getTypeId() != Part::GeomLineSegment::getClassTypeId()) {
-                QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Impossible constraint"),
-                                     QObject::tr("The selected edge is not a line segment."));
+                NotifyWarning(Obj, QT_TRANSLATE_NOOP("Notifications", "Impossible constraint"), QT_TRANSLATE_NOOP("Notifications", "The selected edge is not a line segment."));
                 return;
             }
 
@@ -944,19 +944,16 @@ void CmdSketcherConstrainHorizontal::activated(int iMsg)
             for (std::vector< Sketcher::Constraint * >::const_iterator it= vals.begin();
                  it != vals.end(); ++it) {
                 if ((*it)->Type == Sketcher::Horizontal && (*it)->First == GeoId && (*it)->FirstPos == Sketcher::PointPos::none){
-                    QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Double constraint"),
-                        QObject::tr("The selected edge already has a horizontal constraint!"));
+                    NotifyWarning(Obj, QT_TRANSLATE_NOOP("Notifications", "Double constraint"), QT_TRANSLATE_NOOP("Notifications", "The selected edge already has a horizontal constraint!"));
                     return;
                 }
                 if ((*it)->Type == Sketcher::Vertical && (*it)->First == GeoId && (*it)->FirstPos == Sketcher::PointPos::none) {
-                    QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Impossible constraint"),
-                                         QObject::tr("The selected edge already has a vertical constraint!"));
+                    NotifyWarning(Obj, QT_TRANSLATE_NOOP("Notifications", "Impossible constraint"), QT_TRANSLATE_NOOP("Notifications", "The selected edge already has a vertical constraint!"));
                     return;
                 }
                 // check if the edge already has a Block constraint
                 if ((*it)->Type == Sketcher::Block && (*it)->First == GeoId && (*it)->FirstPos == Sketcher::PointPos::none) {
-                    QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Impossible constraint"),
-                                         QObject::tr("The selected edge already has a Block constraint!"));
+                    NotifyWarning(Obj, QT_TRANSLATE_NOOP("Notifications", "Impossible constraint"), QT_TRANSLATE_NOOP("Notifications", "The selected edge already has a Block constraint!"));
                     return;
                 }
             }
@@ -974,8 +971,7 @@ void CmdSketcherConstrainHorizontal::activated(int iMsg)
     }
 
     if (edgegeoids.empty() && pointgeoids.empty()) {
-        QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Impossible constraint"),
-                             QObject::tr("The selected item(s) can't accept a horizontal constraint!"));
+        NotifyWarning(Obj, QT_TRANSLATE_NOOP("Notifications", "Impossible constraint"), QT_TRANSLATE_NOOP("Notifications", "The selected item(s) can't accept a horizontal constraint!"));
         return;
     }
 
@@ -1002,8 +998,7 @@ void CmdSketcherConstrainHorizontal::activated(int iMsg)
         }
     }
     else { // vertex mode, fixedpoints > 1
-        QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Impossible constraint"),
-                             QObject::tr("There are more than one fixed points selected. Select a maximum of one fixed point!"));
+        NotifyWarning(Obj, QT_TRANSLATE_NOOP("Notifications", "Impossible constraint"), QT_TRANSLATE_NOOP("Notifications", "There are more than one fixed points selected. Select a maximum of one fixed point!"));
         return;
     }
     // finish the transaction and update
@@ -1030,8 +1025,7 @@ void CmdSketcherConstrainHorizontal::applyConstraint(std::vector<SelIdPair> &sel
             if (CrvId != -1) {
                 const Part::Geometry *geo = Obj->getGeometry(CrvId);
                 if (geo->getTypeId() != Part::GeomLineSegment::getClassTypeId()) {
-                    QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Impossible constraint"),
-                                        QObject::tr("The selected edge is not a line segment."));
+                    NotifyWarning(Obj, QT_TRANSLATE_NOOP("Notifications", "Impossible constraint"), QT_TRANSLATE_NOOP("Notifications", "The selected edge is not a line segment."));
                     return;
                 }
 
@@ -1039,19 +1033,16 @@ void CmdSketcherConstrainHorizontal::applyConstraint(std::vector<SelIdPair> &sel
                 for (std::vector< Sketcher::Constraint * >::const_iterator it= vals.begin();
                     it != vals.end(); ++it) {
                     if ((*it)->Type == Sketcher::Horizontal && (*it)->First == CrvId && (*it)->FirstPos == Sketcher::PointPos::none){
-                        QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Double constraint"),
-                            QObject::tr("The selected edge already has a horizontal constraint!"));
+                        NotifyWarning(Obj, QT_TRANSLATE_NOOP("Notifications", "Double constraint"), QT_TRANSLATE_NOOP("Notifications", "The selected edge already has a horizontal constraint!"));
                         return;
                     }
                     if ((*it)->Type == Sketcher::Vertical && (*it)->First == CrvId && (*it)->FirstPos == Sketcher::PointPos::none) {
-                        QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Impossible constraint"),
-                                            QObject::tr("The selected edge already has a vertical constraint!"));
+                        NotifyWarning(Obj, QT_TRANSLATE_NOOP("Notifications", "Impossible constraint"), QT_TRANSLATE_NOOP("Notifications", "The selected edge already has a vertical constraint!"));
                         return;
                     }
                     // check if the edge already has a Block constraint
                     if ((*it)->Type == Sketcher::Block && (*it)->First == CrvId && (*it)->FirstPos == Sketcher::PointPos::none) {
-                        QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Impossible constraint"),
-                                            QObject::tr("The selected edge already has a Block constraint!"));
+                        NotifyWarning(Obj, QT_TRANSLATE_NOOP("Notifications", "Impossible constraint"), QT_TRANSLATE_NOOP("Notifications", "The selected edge already has a Block constraint!"));
                         return;
                     }
                 }
