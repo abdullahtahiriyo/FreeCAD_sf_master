@@ -74,85 +74,6 @@ namespace bp = boost::placeholders;
 
 namespace Gui {
 
-/** This class is an implementation only class to handle user notifications offered by App::Document.
- *
- * It provides a mechanism requiring confirmation for critical notifications only during User initiated restore/document loading ( it
- * does not require confirmation for macro/Python initiated restore, not to interfere with automations).
- *
- * Other notifications are provided to the Notification Area for non-intrusive notification.
- **/
-class MessageManager {
-public:
-    MessageManager() = default;
-    ~MessageManager();
-
-    void setDocument(Gui::Document * pDocument);
-    void slotUserMessage(const App::DocumentObject&, const QString &, App::Document::NotificationType);
-
-private:
-    void redirectToConsole(const App::DocumentObject& obj, const QString & msg, App::Document::NotificationType notificationtype);
-
-private:
-    using Connection = boost::signals2::connection;
-    Gui::Document * pDoc;
-    Connection connectUserMessage;
-    bool requireConfirmationCriticalMessageDuringRestoring = true;
-};
-
-MessageManager::~MessageManager()
-{
-    connectUserMessage.disconnect();
-}
-
-void MessageManager::setDocument(Gui::Document * pDocument)
-{
-    pDoc = pDocument;
-
-    connectUserMessage = pDoc->getDocument()->signalUserMessage.connect
-        (boost::bind(&Gui::MessageManager::slotUserMessage, this, bp::_1, bp::_2, bp::_3));
-}
-
-void MessageManager::slotUserMessage(const App::DocumentObject& obj, const QString & msg, App::Document::NotificationType notificationtype)
-{
-    auto userInitiatedRestore = Application::Instance->testStatus(Gui::Application::UserInitiatedOpenDocument);
-
-    if(notificationtype == App::Document::NotificationType::Critical && userInitiatedRestore && requireConfirmationCriticalMessageDuringRestoring) {
-        auto confirmMsg = msg + QStringLiteral("\n\n") + QObject::tr("Do you want to skip confirmation of further critical message notifications while loading the file?");
-        auto button = QMessageBox::critical(pDoc->getActiveView(), QObject::tr("Critical Message"), confirmMsg, QMessageBox::Yes | QMessageBox::No, QMessageBox::No );
-
-        if(button == QMessageBox::Yes)
-            requireConfirmationCriticalMessageDuringRestoring = false;
-
-        // The user has already acknowledged it, so record it as a Warning
-        redirectToConsole(obj, msg, App::Document::NotificationType::Warning);
-    }
-    else { // Non-critical errors and warnings redirected to the notification area
-        if(notificationtype == App::Document::NotificationType::Critical) {
-            // The user has already acknowledged it, so record it as a Warning
-            notificationtype = App::Document::NotificationType::Warning;
-        }
-
-        redirectToConsole(obj, msg, notificationtype);
-    }
-}
-
-void MessageManager::redirectToConsole(const App::DocumentObject& obj, const QString & msg, App::Document::NotificationType notificationtype)
-{
-    switch(notificationtype) {
-        case App::Document::NotificationType::Critical:
-        case App::Document::NotificationType::Warning:
-            Base::Console().WarningS(obj.getFullName(), msg.toStdString().c_str());
-            break;
-        case App::Document::NotificationType::Error:
-            Base::Console().ErrorS(obj.getFullName(), msg.toStdString().c_str());
-            break;
-        case App::Document::NotificationType::Information:
-            Base::Console().MessageS(obj.getFullName(), msg.toStdString().c_str());
-            break;
-    }
-}
-
-
 // Pimpl class
 struct DocumentP
 {
@@ -213,8 +134,6 @@ struct DocumentP
     using ConnectionBlock = boost::signals2::shared_connection_block;
     ConnectionBlock connectActObjectBlocker;
     ConnectionBlock connectChangeDocumentBlocker;
-
-    MessageManager messageManager;
 };
 } // namespace Gui
 
@@ -296,7 +215,6 @@ Document::Document(App::Document* pcDocument,Application * app)
     d->connectTransactionRemove = pcDocument->signalTransactionRemove.connect
         (boost::bind(&Gui::Document::slotTransactionRemove, this, bp::_1, bp::_2));
 
-    d->messageManager.setDocument(this);
     // pointer to the python class
     // NOTE: As this Python object doesn't get returned to the interpreter we
     // mustn't increment it (Werner Jan-12-2006)
