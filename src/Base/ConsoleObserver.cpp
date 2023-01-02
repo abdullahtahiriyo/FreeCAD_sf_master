@@ -76,6 +76,9 @@ void ConsoleObserverFile::SendLog(const std::string& notifiername, const std::st
         case LogStyle::Log:
             prefix = "Log: ";
             break;
+        case LogStyle::CriticalMessage:
+            prefix = "CriticalMsg: ";
+            break;
     }
 
     cFileStream << prefix << msg;
@@ -112,6 +115,9 @@ void ConsoleObserverStd::SendLog(const std::string& notifiername, const std::str
             break;
         case LogStyle::Log:
             this->Log(msg.c_str());
+            break;
+        case LogStyle::CriticalMessage:
+            this->CriticalMessage(msg.c_str());
             break;
     }
 }
@@ -181,6 +187,27 @@ void ConsoleObserverStd::Log    (const char *sErr)
 #   elif defined(FC_OS_LINUX) || defined(FC_OS_MACOSX) || defined(FC_OS_BSD)
         fprintf(stderr, "\033[0m");
 #   endif
+    }
+}
+
+void ConsoleObserverStd::CriticalMessage(const char *sCriticalMsg)
+{
+    if (useColorStderr) {
+        #   if defined(FC_OS_WIN32)
+        ::SetConsoleTextAttribute(::GetStdHandle(STD_ERROR_HANDLE), FOREGROUND_GREEN | FOREGROUND_BLUE);
+        #   elif defined(FC_OS_LINUX) || defined(FC_OS_MACOSX) || defined(FC_OS_BSD)
+        fprintf(stderr, "\033[1;33m");
+        #   endif
+    }
+
+    fprintf(stderr, "%s", sCriticalMsg);
+
+    if (useColorStderr) {
+        #   if defined(FC_OS_WIN32)
+        ::SetConsoleTextAttribute(::GetStdHandle(STD_ERROR_HANDLE),FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE );
+        #   elif defined(FC_OS_LINUX) || defined(FC_OS_MACOSX) || defined(FC_OS_BSD)
+        fprintf(stderr, "\033[0m");
+        #   endif
     }
 }
 

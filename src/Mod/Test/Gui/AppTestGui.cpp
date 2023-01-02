@@ -56,6 +56,9 @@ public:
             case Base::LogStyle::Log:
                 buffer << "LOG";
                 break;
+            case Base::LogStyle::CriticalMessage:
+                buffer << "CMS";
+                break;
         }
     }
 
@@ -66,6 +69,7 @@ public:
         Base::Console().Message("MSG");
         Base::Console().Warning("WRN");
         Base::Console().Error("ERR");
+        Base::Console().CriticalMessage("CMS");
         if (buffer.str() != expectedResult)
             throw Py::RuntimeError("ILoggerTest: " + buffer.str() + " different from " + expectedResult);
     }

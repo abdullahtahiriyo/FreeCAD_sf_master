@@ -62,10 +62,11 @@ public:
 protected:
     bool useColorStderr;
 private:
-    void Warning(const char *sWarn);
-    void Message(const char *sMsg);
-    void Error  (const char *sErr);
-    void Log    (const char *sErr);
+    void Warning        (const char *sWarn);
+    void Message        (const char *sMsg);
+    void Error          (const char *sErr);
+    void Log            (const char *sLog);
+    void CriticalMessage(const char *sCriticalMsg);
 };
 
 /** The ILoggerBlocker class
