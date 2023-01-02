@@ -77,16 +77,19 @@ public:
             ConsoleEvent* ce = static_cast<ConsoleEvent*>(ev);
             switch (ce->msgtype) {
             case ConsoleSingleton::MsgType_Txt:
-                Console().NotifyMessage(ce->msg.c_str(), ce->notifier.c_str());
+                Console().NotifyMessage(ce->msg.c_str(), ce->notifier);
                 break;
             case ConsoleSingleton::MsgType_Log:
-                Console().NotifyLog(ce->msg.c_str(), ce->notifier.c_str());
+                Console().NotifyLog(ce->msg.c_str(), ce->notifier);
                 break;
             case ConsoleSingleton::MsgType_Wrn:
-                Console().NotifyWarning(ce->msg.c_str(), ce->notifier.c_str());
+                Console().NotifyWarning(ce->msg.c_str(), ce->notifier);
                 break;
             case ConsoleSingleton::MsgType_Err:
-                Console().NotifyError(ce->msg.c_str(), ce->notifier.c_str());
+                Console().NotifyError(ce->msg.c_str(), ce->notifier);
+                break;
+            case ConsoleSingleton::MsgType_CriticalTxt:
+                Console().NotifyCriticalMessage(ce->msg.c_str(), ce->notifier);
                 break;
             }
         }
@@ -190,6 +193,11 @@ ConsoleMsgFlags ConsoleSingleton::SetEnabledMsgType(const char* sObs, ConsoleMsg
                 flags |= MsgType_Log;
             pObs->bLog = b;
         }
+        if ( type&MsgType_CriticalTxt ){
+            if ( pObs->bCriticalMsg != b )
+                flags |= MsgType_CriticalTxt;
+            pObs->bCriticalMsg = b;
+        }
         return flags;
     }
     else {
@@ -210,6 +218,8 @@ bool ConsoleSingleton::IsMsgTypeEnabled(const char* sObs, FreeCAD_ConsoleMsgType
             return pObs->bWrn;
         case MsgType_Err:
             return pObs->bErr;
+        case MsgType_CriticalTxt:
+            return pObs->bCriticalMsg;
         default:
             return false;
         }
@@ -387,6 +397,26 @@ void ConsoleSingleton::LogV( const std::string & notifier, const char *pMsg, va_
     }
 }
 
+void ConsoleSingleton::CriticalMessage( const char *pMsg, ... )
+{
+    va_list namelessVars;
+    va_start(namelessVars, pMsg);
+    CriticalMessageV("", pMsg, namelessVars);
+    va_end(namelessVars);
+}
+
+void ConsoleSingleton::CriticalMessageS ( const std::string & notifier, const char * pMsg, ... )
+{
+    va_list namelessVars;
+    va_start(namelessVars, pMsg);
+    CriticalMessageV(notifier, pMsg, namelessVars);
+    va_end(namelessVars);
+}
+
+void ConsoleSingleton::CriticalMessageV( const std::string & notifier, const char *pMsg, va_list args )
+{
+    FC_CONSOLE_FMT(CriticalMessage,CriticalTxt);
+}
 
 
 //**************************************************************************
@@ -445,6 +475,14 @@ void ConsoleSingleton::NotifyLog(const char *sMsg, const std::string & notifiern
     for (std::set<ILogger * >::iterator Iter=_aclObservers.begin();Iter!=_aclObservers.end();++Iter) {
         if ((*Iter)->bLog)
             (*Iter)->SendLog(notifiername, sMsg, LogStyle::Log);   // send string to the listener
+    }
+}
+
+void ConsoleSingleton::NotifyCriticalMessage(const char *sMsg, const std::string & notifiername)
+{
+    for (std::set<ILogger * >::iterator Iter=_aclObservers.begin();Iter!=_aclObservers.end();++Iter) {
+        if ((*Iter)->bMsg)
+            (*Iter)->SendLog(notifiername, sMsg, LogStyle::CriticalMessage);   // send string to the listener
     }
 }
 
@@ -595,6 +633,13 @@ PyObject *ConsoleSingleton::sPyLog(PyObject * /*self*/, PyObject *args)
     }, args);
 }
 
+PyObject *ConsoleSingleton::sPyCriticalMessage(PyObject * /*self*/, PyObject *args)
+{
+    return FC_PYCONSOLE_MSG([](const char* msg) {
+        Instance().Message("%s", msg);
+    }, args);
+}
+
 PyObject *ConsoleSingleton::sPyGetStatus(PyObject * /*self*/, PyObject *args)
 {
     char *pstr1;
@@ -616,8 +661,10 @@ PyObject *ConsoleSingleton::sPyGetStatus(PyObject * /*self*/, PyObject *args)
             b = pObs->bMsg;
         else if (strcmp(pstr2,"Err") == 0)
             b = pObs->bErr;
+        else if (strcmp(pstr2,"CriticalMsg") == 0)
+            b = pObs->bErr;
         else
-            Py_Error(Base::PyExc_FC_GeneralError,"Unknown message type (use 'Log', 'Err', 'Msg' or 'Wrn')");
+            Py_Error(Base::PyExc_FC_GeneralError,"Unknown message type (use 'Log', 'Err', 'Msg', 'CriticalMsg' or 'Wrn')");
 
         return PyBool_FromLong(b ? 1 : 0);
     }
@@ -644,8 +691,10 @@ PyObject *ConsoleSingleton::sPySetStatus(PyObject * /*self*/, PyObject *args)
                 pObs->bMsg = status;
             else if (strcmp(pstr2,"Err") == 0)
                 pObs->bErr = status;
+            else if (strcmp(pstr2,"CriticalMsg") == 0)
+                pObs->bCriticalMsg = status;
             else
-                Py_Error(Base::PyExc_FC_GeneralError,"Unknown message type (use 'Log', 'Err', 'Msg' or 'Wrn')");
+                Py_Error(Base::PyExc_FC_GeneralError,"Unknown message type (use 'Log', 'Err', 'Msg', 'CriticalMsg' or 'Wrn')");
 
             Py_Return;
         }
