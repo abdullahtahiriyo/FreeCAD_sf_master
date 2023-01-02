@@ -23,9 +23,13 @@
 #ifndef SKETCHERGUI_Recompute_H
 #define SKETCHERGUI_Recompute_H
 
+#include <QCoreApplication>
+#include <QMessageBox>
+
 #include <Base/Exception.h>
 #include <Base/Tools.h>
 #include <Base/Tools2D.h>
+#include <Gui/MainWindow.h>
 #include <Mod/Sketcher/App/GeoEnum.h>
 
 #include "AutoConstraint.h"
@@ -134,7 +138,11 @@ bool        showCursorCoords();
 bool        useSystemDecimals();
 std::string lengthToDisplayFormat(double value, int digits);
 std::string angleToDisplayFormat(double value, int digits);
-}
+
+template <typename TCaption, typename TMessage>
+void NotifyWarning(const App::DocumentObject *, TCaption && caption, TMessage && message);
+
+} // namespace SketcherGui
 
 /// converts a 2D vector into a 3D vector in the XY plane
 inline Base::Vector3d toVector3d(const Base::Vector2d & vector2d) {
@@ -149,6 +157,27 @@ auto toPointerVector(const std::vector<std::unique_ptr<T>> & vector) {
     std::transform(vector.begin(), vector.end(), vp.begin(), [](auto &p) {return p.get();});
 
     return vp;
+}
+
+template <typename TCaption, typename TMessage>
+void SketcherGui::NotifyWarning(const App::DocumentObject * obj, TCaption && caption, TMessage && message)
+{
+    Base::Reference<ParameterGrp> hGrp = App::GetApplication().GetUserParameter().
+    GetGroup("BaseApp")->GetGroup("Preferences")->
+    GetGroup("Mod/Sketcher");
+
+    bool intrusive = hGrp->GetBool("IntrusiveNotifications", false);
+
+    if(intrusive) {
+        QMessageBox::warning(Gui::getMainWindow(),
+                             QCoreApplication::translate("Notifications", caption),
+                             QCoreApplication::translate("Notifications", message));
+    }
+    else {
+        // trailing newline is necessary as this will be shown too in the report window
+        auto msg = std::string(message).append("\n");
+        Base::Console().WarningS(obj->getFullLabel(), msg.c_str());
+    }
 }
 
 #endif // SKETCHERGUI_Recompute_H
