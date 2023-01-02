@@ -23,7 +23,6 @@
 #include "PreCompiled.h"
 #ifndef _PreComp_
 # include <cfloat>
-
 # include <QCursor>
 # include <QLocale>
 # include <QRegularExpression>
@@ -565,3 +564,4 @@ std::string SketcherGui::angleToDisplayFormat(double value, int digits)
     QString numericPart = matched.left(requiredLength);
     return Base::Tools::toStdString(numericPart + qUnitString);
 }
+
