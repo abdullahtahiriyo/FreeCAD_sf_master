@@ -30,30 +30,36 @@
 # include <QHBoxLayout>
 # include <QHeaderView>
 # include <QMenu>
+# include <QMessageBox>
 # include <QStringList>
 # include <QTreeWidget>
 # include <QTimer>
 # include <QWidgetAction>
 #endif
 
+#include <App/Application.h>
 #include <Base/Console.h>
 
 #include "BitmapFactory.h"
 #include "NotificationBox.h"
+#include "Application.h"
+#include "MainWindow.h"
+#include "MDIView.h"
 
 #include "NotificationArea.h"
 
 using namespace Gui;
 
+using Connection = boost::signals2::connection;
+
+namespace bp = boost::placeholders;
+
 namespace Gui {
 class NotificationItem : public QTreeWidgetItem
 {
 public:
-    NotificationItem(NotificationArea::NotificationType notificationtype, QString notifiername, QString message):
-        notificationType(notificationtype), notifierName(std::move(notifiername)){
-            message = message.simplified();
-            msg = std::move(message);
-        }
+    NotificationItem(Base::LogStyle notificationtype, QString notifiername, QString message):
+        notificationType(notificationtype), notifierName(std::move(notifiername)), msg(std::move(message)) {}
 
     QVariant data(int column, int role) const override {
         // property name
@@ -69,19 +75,27 @@ public:
         }
         else
         if(column == 0 && role == Qt::DecorationRole) {
-            if(notificationType == NotificationArea::NotificationType::Error) {
+            if(notificationType == Base::LogStyle::Error) {
                 return QVariant::fromValue(BitmapFactory().pixmapFromSvg(":/icons/edit_Cancel.svg",QSize(16, 16)));
             }
             else
-            if(notificationType == NotificationArea::NotificationType::Warning) {
+            if(notificationType == Base::LogStyle::Warning) {
                 return QVariant::fromValue(BitmapFactory().pixmapFromSvg(":/icons/Warning.svg",QSize(16, 16)));
+            }
+            else
+            if(notificationType == Base::LogStyle::Message) {
+                return QVariant::fromValue(BitmapFactory().pixmapFromSvg(":/icons/info.svg",QSize(16, 16)));
+            }
+            else
+            if(notificationType == Base::LogStyle::CriticalMessage) {
+                return QVariant::fromValue(BitmapFactory().pixmapFromSvg(":/icons/critical-info.svg",QSize(16, 16)));
             }
         }
 
         return QVariant();
     }
 
-    NotificationArea::NotificationType notificationType;
+    Base::LogStyle notificationType;
     QString notifierName;
     QString msg;
 };
@@ -108,10 +122,13 @@ struct NotificationAreaP
     unsigned int unread = 0;
     std::mutex mutexNotification;
     const unsigned int notificationExpirationTime = 10000;
+    bool requireConfirmationCriticalMessageDuringRestoring = true;
     QMenu * menu;
     QTreeWidget * table;
 
     std::unique_ptr<NotificationAreaObserver> observer;
+
+    Connection finishRestoreDocumentConnection;
 };
 
 } // namespace Gui
@@ -119,6 +136,7 @@ struct NotificationAreaP
 NotificationAreaObserver::NotificationAreaObserver(NotificationArea * notificationarea): notificationArea(notificationarea)
 {
     Base::Console().AttachObserver(this);
+    bLog = false; // ignore log messages
 }
 
 NotificationAreaObserver::~NotificationAreaObserver()
@@ -128,19 +146,14 @@ NotificationAreaObserver::~NotificationAreaObserver()
 
 void NotificationAreaObserver::SendLog(const std::string& notifiername, const std::string& msg, Base::LogStyle level)
 {
-    switch(level) {
-        case Base::LogStyle::Error:
-            notificationArea->pushNotification(NotificationArea::NotificationType::Error, QString::fromLatin1(notifiername.c_str()), QString::fromLatin1(msg.c_str()));
-            break;
-        case Base::LogStyle::Warning:
-            notificationArea->pushNotification(NotificationArea::NotificationType::Warning, QString::fromLatin1(notifiername.c_str()), QString::fromLatin1(msg.c_str()));
-            break;
-        case Base::LogStyle::Message:
-            notificationArea->pushNotification(NotificationArea::NotificationType::Message, QString::fromLatin1(notifiername.c_str()), QString::fromLatin1(msg.c_str()));
-            break;
-        default:
-            break;
-    }
+    // 1. As notification system is shared with report view and others, the convention is that any individual message
+    // shall end in "\n".
+    // 2. Any QT_TRANSLATE_NOOT string does not comprise newlines.
+    auto simplifiedstring = QString::fromStdString(msg).simplified(); // remove any trailing '\n'
+
+    notificationArea->pushNotification(QString::fromStdString(notifiername),
+                                       QCoreApplication::translate("Notifications", simplifiedstring.toUtf8()),
+                                       level);
 }
 
 class NotificationsAction : public QWidgetAction
@@ -213,11 +226,20 @@ NotificationArea::NotificationArea(QWidget *parent):QPushButton(parent)
                              d->table->topLevelItem(i)->setSelected(true);
                          }
                      });
+
+    d->finishRestoreDocumentConnection = App::GetApplication().signalFinishRestoreDocument.connect(
+        boost::bind(&Gui::NotificationArea::slotRestoreFinished, this, bp::_1)
+    );
 }
 
-void NotificationArea::pushNotification(NotificationType notificationtype, const QString & notifiername, const QString & message)
+NotificationArea::~NotificationArea()
 {
-    auto * item = new NotificationItem(notificationtype, notifiername, message);
+    d->finishRestoreDocumentConnection.disconnect();
+}
+
+void NotificationArea::pushNotification(const QString & notifiername, const QString & message, Base::LogStyle level)
+{
+    auto * item = new NotificationItem(level, notifiername, message);
 
     std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification list and indices while creating the tooltip
 
@@ -225,6 +247,11 @@ void NotificationArea::pushNotification(NotificationType notificationtype, const
     d->currentlyNotifyingIndex++;
     d->unread++;
     setText(QString::number(d->unread));
+
+    bool confirmation = confirmationRequired(level);
+
+    if(confirmation)
+        showConfirmationDialog(notifiername, message);
 
     showInNotificationArea();
 
@@ -234,6 +261,23 @@ void NotificationArea::pushNotification(NotificationType notificationtype, const
             d->currentlyNotifyingIndex--;
     });
 
+}
+
+bool NotificationArea::confirmationRequired(Base::LogStyle level)
+{
+    auto userInitiatedRestore = Application::Instance->testStatus(Gui::Application::UserInitiatedOpenDocument);
+
+    return (level == Base::LogStyle::CriticalMessage && userInitiatedRestore && d->requireConfirmationCriticalMessageDuringRestoring);
+}
+
+void NotificationArea::showConfirmationDialog(const QString & notifiername, const QString & message)
+{
+    auto confirmMsg = QObject::tr("Notifier: ") + notifiername + QStringLiteral("\n\n") + message + QStringLiteral("\n\n") + QObject::tr("Do you want to skip confirmation of further critical message notifications while loading the file?");
+
+    auto button = QMessageBox::critical(getMainWindow()->activeWindow(), QObject::tr("Critical Message"), confirmMsg, QMessageBox::Yes | QMessageBox::No, QMessageBox::No );
+
+    if(button == QMessageBox::Yes)
+        d->requireConfirmationCriticalMessageDuringRestoring = false;
 }
 
 void NotificationArea::showInNotificationArea()
@@ -254,19 +298,27 @@ void NotificationArea::showInNotificationArea()
         NotificationItem* item = static_cast<NotificationItem*>(d->table->topLevelItem(i));
 
         QString iconstr;
-        if(item->notificationType == NotificationArea::NotificationType::Error) {
+        if(item->notificationType == Base::LogStyle::Error) {
             iconstr = QStringLiteral(":/icons/edit_Cancel.svg");
         }
         else
-        if(item->notificationType == NotificationArea::NotificationType::Warning) {
+        if(item->notificationType == Base::LogStyle::Warning) {
             iconstr = QStringLiteral(":/icons/Warning.svg");
+        }
+        else
+        if(item->notificationType == Base::LogStyle::Message) {
+            iconstr = QStringLiteral(":/icons/info.svg");
+        }
+        else
+        if(item->notificationType == Base::LogStyle::CriticalMessage) {
+            iconstr = QStringLiteral(":/icons/critical-info.svg");
         }
 
         msgw += QString::fromLatin1("                                                                                   \
         <tr>                                                                                                            \
-        <td align='left'><img width=\"16\" height=\"16\" src='%1'></td>                                               \
-        <td align='left'>%2</td>                                                                                      \
-        <td align='left'>%3</td>                                                                                      \
+        <td align='left'><img width=\"16\" height=\"16\" src='%1'></td>                                                 \
+        <td align='left'>%2</td>                                                                                        \
+        <td align='left'>%3</td>                                                                                        \
         </tr>")
             .arg(iconstr)
             .arg(item->notifierName)
@@ -277,4 +329,11 @@ void NotificationArea::showInNotificationArea()
 
 
     NotificationBox::showText( this->mapToGlobal( QPoint( ) ), msgw, d->notificationExpirationTime);
+}
+
+void NotificationArea::slotRestoreFinished(const App::Document&)
+{
+    // Re-arm on restore critical message modal notifications if another document is loaded
+    std::lock_guard<std::mutex> g(d->mutexNotification);
+    d->requireConfirmationCriticalMessageDuringRestoring = true;
 }
