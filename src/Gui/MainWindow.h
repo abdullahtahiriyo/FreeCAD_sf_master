@@ -201,7 +201,7 @@ public:
 
     void updateActions(bool delay = false);
 
-    enum StatusType {None, Err, Wrn, Pane, Msg, Log, Tmp};
+    enum StatusType {None, Err, Wrn, Pane, Msg, Log, Tmp, CriticalMsg};
     void showStatus(int type, const QString & message);
 
 
@@ -382,7 +382,7 @@ public:
 
     friend class MainWindow;
 private:
-    QString msg, wrn, err;
+    QString msg, wrn, err, criticalMsg;
 };
 
 // -------------------------------------------------------------
