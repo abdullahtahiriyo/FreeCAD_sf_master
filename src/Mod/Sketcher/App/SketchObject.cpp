@@ -299,11 +299,11 @@ int SketchObject::solve(bool updateGeoAfterSolving/*=true*/)
     }
 
     if(lastHasMalformedConstraints) {
-        Base::Console().ErrorS(this->getFullName(),"The Sketch has malformed constraints!\n");
+        Base::Console().ErrorS(this->getFullLabel(), QT_TRANSLATE_NOOP("Notifications","The Sketch has malformed constraints!") "\n");
     }
 
     if(lastHasPartialRedundancies) {
-        Base::Console().WarningS(this->getFullName(),"The Sketch has partially redundant constraints!\n");
+        Base::Console().WarningS(this->getFullLabel(),QT_TRANSLATE_NOOP("Notifications","The Sketch has partially redundant constraints!") "\n");
     }
 
     lastSolveTime=solvedSketch.getSolveTime();
@@ -8312,7 +8312,7 @@ void SketchObject::migrateSketch()
 
             Constraints.setValues(std::move(newconstraints));
 
-            this->getDocument()->signalUserMessage(*this, QString::fromLatin1(QT_TRANSLATE_NOOP("CriticalMessages","Parabolas were migrated. Migrated files won't open in previous versions of FreeCAD!!")), App::Document::NotificationType::Critical);
+            Base::Console().CriticalMessageS(this->getFullName(),QT_TRANSLATE_NOOP("CriticalMessages","Parabolas were migrated. Migrated files won't open in previous versions of FreeCAD!!\n"));
         }
     }
 }
