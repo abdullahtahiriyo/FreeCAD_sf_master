@@ -470,7 +470,8 @@ enum class LogStyle{
     Warning,
     Message,
     Error,
-    Log
+    Log,
+    CriticalMessage
 };
 
 /** The Logger Interface
@@ -484,7 +485,7 @@ class BaseExport ILogger
 {
 public:
     ILogger()
-        :bErr(true),bMsg(true),bLog(true),bWrn(true){}
+    :bErr(true),bMsg(true),bLog(true),bWrn(true),bCriticalMsg(true){}
     virtual ~ILogger() = 0;
 
     /** Used to send a Log message at the given level.
@@ -492,7 +493,7 @@ public:
     virtual void SendLog(const std::string& notifiername, const std::string& msg, LogStyle level) = 0;
 
     virtual const char *Name(){return nullptr;}
-    bool bErr,bMsg,bLog,bWrn;
+    bool bErr,bMsg,bLog,bWrn,bCriticalMsg;
 };
 
 
@@ -526,6 +527,8 @@ public:
     void Error   ( const char * pMsg, ... );
     /// Prints a log Message
     void Log     ( const char * pMsg, ... );
+    /// Prints a Critical Message
+    void CriticalMessage ( const char * pMsg, ... );
     
     /// Prints a Message with source indication
     void MessageS ( const std::string &, const char * pMsg, ... );
@@ -535,12 +538,15 @@ public:
     void ErrorS   ( const std::string &, const char * pMsg, ... );
     /// Prints a log Message with source indication
     void LogS     ( const std::string &, const char * pMsg, ... );
+    /// Prints a Critical Message
+    void CriticalMessageS ( const std::string &, const char * pMsg, ... );
 
     // observer processing
     void NotifyMessage(const char *sMsg, const std::string & notifiername = "");
     void NotifyWarning(const char *sMsg, const std::string & notifiername = "");
     void NotifyError  (const char *sMsg, const std::string & notifiername = "");
     void NotifyLog    (const char *sMsg, const std::string & notifiername = "");
+    void NotifyCriticalMessage(const char *sMsg, const std::string & notifiername = "");
 
     /// Attaches an Observer to FCConsole
     void AttachObserver(ILogger *pcObserver);
@@ -559,7 +565,8 @@ public:
         MsgType_Txt = 1,
         MsgType_Log = 2, // ConsoleObserverStd sends this and higher to stderr
         MsgType_Wrn = 4,
-        MsgType_Err = 8
+        MsgType_Err = 8,
+        MsgType_CriticalTxt = 16
     };
 
     /// Change mode
@@ -596,13 +603,14 @@ public:
 protected:
     // python exports goes here +++++++++++++++++++++++++++++++++++++++++++
     // static python wrapper of the exported functions
-    static PyObject *sPyLog      (PyObject *self,PyObject *args);
-    static PyObject *sPyMessage  (PyObject *self,PyObject *args);
-    static PyObject *sPyWarning  (PyObject *self,PyObject *args);
-    static PyObject *sPyError    (PyObject *self,PyObject *args);
-    static PyObject *sPySetStatus(PyObject *self,PyObject *args);
-    static PyObject *sPyGetStatus(PyObject *self,PyObject *args);
-    static PyObject *sPyGetObservers(PyObject *self, PyObject *args);
+    static PyObject *sPyLog             (PyObject *self,PyObject *args);
+    static PyObject *sPyMessage         (PyObject *self,PyObject *args);
+    static PyObject *sPyWarning         (PyObject *self,PyObject *args);
+    static PyObject *sPyError           (PyObject *self,PyObject *args);
+    static PyObject *sPyCriticalMessage (PyObject *self,PyObject *args);
+    static PyObject *sPySetStatus       (PyObject *self,PyObject *args);
+    static PyObject *sPyGetStatus       (PyObject *self,PyObject *args);
+    static PyObject *sPyGetObservers    (PyObject *self, PyObject *args);
 
     bool _bVerbose;
     bool _bCanRefresh;
@@ -620,6 +628,8 @@ protected:
     virtual void ErrorV   ( const std::string &, const char * pMsg, va_list args );
     /// Prints a log Message with source indication
     virtual void LogV     ( const std::string &, const char * pMsg, va_list args );
+    /// Prints a Critical Message with source indication
+    virtual void CriticalMessageV ( const std::string &, const char * pMsg, va_list args );
 
 private:
     // singleton

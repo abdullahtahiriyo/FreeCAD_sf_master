@@ -97,6 +97,9 @@ void GUIConsole::SendLog(const std::string& msg, Base::LogStyle level)
         case Base::LogStyle::Log:
             color = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
             break;
+        case Base::LogStyle::CriticalMessage:
+            color = FOREGROUND_RED | FOREGROUND_GREEN;
+            break;
     }
 
     ::SetConsoleTextAttribute(::GetStdHandle(STD_OUTPUT_HANDLE), color);
@@ -125,6 +128,9 @@ void GUIConsole::SendLog(const std::string& notifiername, const std::string& msg
             break;
         case Base::LogStyle::Log:
             std::clog << msg;
+            break;
+        case Base::LogStyle::CriticalMessage:
+            std::cout << "Critical Message: " << msg;
             break;
     }
 }
