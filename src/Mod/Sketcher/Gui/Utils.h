@@ -139,8 +139,17 @@ bool        useSystemDecimals();
 std::string lengthToDisplayFormat(double value, int digits);
 std::string angleToDisplayFormat(double value, int digits);
 
+template <Base::LogStyle type, typename TCaption, typename TMessage>
+void Notify(const App::DocumentObject *, TCaption && caption, TMessage && message);
+
 template <typename TCaption, typename TMessage>
-void NotifyWarning(const App::DocumentObject *, TCaption && caption, TMessage && message);
+inline void NotifyWarning(const App::DocumentObject *, TCaption && caption, TMessage && message);
+
+template <typename TCaption, typename TMessage>
+inline void NotifyError(const App::DocumentObject *, TCaption && caption, TMessage && message);
+
+template <typename TCaption, typename TMessage>
+inline void NotifyMessage(const App::DocumentObject *, TCaption && caption, TMessage && message);
 
 } // namespace SketcherGui
 
@@ -159,8 +168,8 @@ auto toPointerVector(const std::vector<std::unique_ptr<T>> & vector) {
     return vp;
 }
 
-template <typename TCaption, typename TMessage>
-void SketcherGui::NotifyWarning(const App::DocumentObject * obj, TCaption && caption, TMessage && message)
+template <Base::LogStyle type, typename TCaption, typename TMessage>
+void SketcherGui::Notify(const App::DocumentObject * obj, TCaption && caption, TMessage && message)
 {
     Base::Reference<ParameterGrp> hGrp = App::GetApplication().GetUserParameter().
     GetGroup("BaseApp")->GetGroup("Preferences")->
@@ -169,15 +178,64 @@ void SketcherGui::NotifyWarning(const App::DocumentObject * obj, TCaption && cap
     bool intrusive = hGrp->GetBool("IntrusiveNotifications", false);
 
     if(intrusive) {
-        QMessageBox::warning(Gui::getMainWindow(),
-                             QCoreApplication::translate("Notifications", caption),
-                             QCoreApplication::translate("Notifications", message));
+        if constexpr( type == Base::LogStyle::Warning) {
+            QMessageBox::warning(Gui::getMainWindow(),
+                                QCoreApplication::translate("Notifications", caption),
+                                QCoreApplication::translate("Notifications", message));
+        }
+        else
+        if constexpr( type == Base::LogStyle::Error) {
+            QMessageBox::critical(Gui::getMainWindow(),
+                                 QCoreApplication::translate("Notifications", caption),
+                                 QCoreApplication::translate("Notifications", message));
+        }
+        else
+        if constexpr( type == Base::LogStyle::Message) {
+            QMessageBox::information(Gui::getMainWindow(),
+                                QCoreApplication::translate("Notifications", caption),
+                                QCoreApplication::translate("Notifications", message));
+        }
     }
     else {
         // trailing newline is necessary as this will be shown too in the report window
         auto msg = std::string(message).append("\n");
-        Base::Console().WarningS(obj->getFullLabel(), msg.c_str());
+
+        if constexpr(type == Base::LogStyle::Warning) {
+            Base::Console().WarningS(obj->getFullLabel(), msg.c_str());
+        }
+        else
+        if constexpr(type == Base::LogStyle::Error) {
+            Base::Console().ErrorS(obj->getFullLabel(), msg.c_str());
+        }
+        else
+        if constexpr(type == Base::LogStyle::Message) {
+            Base::Console().MessageS(obj->getFullLabel(), msg.c_str());
+        }
     }
+}
+
+template <typename TCaption, typename TMessage>
+void SketcherGui::NotifyWarning(const App::DocumentObject * obj, TCaption && caption, TMessage && message)
+{
+    Notify<Base::LogStyle::Warning>(obj,
+                                    std::forward<TCaption &&>(caption),
+                                    std::forward<TMessage &&>(message));
+}
+
+template <typename TCaption, typename TMessage>
+void SketcherGui::NotifyError(const App::DocumentObject * obj, TCaption && caption, TMessage && message)
+{
+    Notify<Base::LogStyle::Error>(obj,
+                                    std::forward<TCaption &&>(caption),
+                                    std::forward<TMessage &&>(message));
+}
+
+template <typename TCaption, typename TMessage>
+void SketcherGui::NotifyMessage(const App::DocumentObject * obj, TCaption && caption, TMessage && message)
+{
+    Notify<Base::LogStyle::Message>(obj,
+                                    std::forward<TCaption &&>(caption),
+                                    std::forward<TMessage &&>(message));
 }
 
 #endif // SKETCHERGUI_Recompute_H
