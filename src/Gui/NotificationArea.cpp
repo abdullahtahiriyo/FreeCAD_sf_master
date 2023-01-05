@@ -120,17 +120,17 @@ struct NotificationAreaP
 {
     // Non-intrusive notifications
     int currentlyNotifyingIndex = 0;
-    const int maxOpenNotifications = 15;
-    const unsigned int notificationExpirationTime = 10000;
-    bool notificationsDisabled = false;
+    int maxOpenNotifications = 15; // Parameter controlled
+    unsigned int notificationExpirationTime = 10000; // Parameter controlled
+    bool notificationsDisabled = false; // Parameter controlled
 
     // Notification rate controller.
     // After a notification, further notifications within this time
     // are inhibited. If notifications reach inbetween they are shown
     // after this timeout.
     const unsigned int inhibitNotificationTime = 1000;
-    bool notificationsDuringInhibitTimer = false;
-    bool inhibiting = false;
+    bool notificationsDuringInhibitTimer = false; // did notifications arrive during inhibit timer
+    bool inhibiting = false; // are we currently inhibiting?
 
     // Control of confirmation mechanism
     bool requireConfirmationCriticalMessageDuringRestoring = true;
@@ -150,7 +150,11 @@ struct NotificationAreaP
     Connection finishRestoreDocumentConnection;
 };
 
+
+
 } // namespace Gui
+
+/***************************************** Console Messages Observer **************************************/
 
 NotificationAreaObserver::NotificationAreaObserver(NotificationArea * notificationarea): notificationArea(notificationarea)
 {
@@ -174,6 +178,8 @@ void NotificationAreaObserver::SendLog(const std::string& notifiername, const st
                                        QCoreApplication::translate("Notifications", simplifiedstring.toUtf8()),
                                        level);
 }
+
+/***************************************** Drop menu Action **************************************/
 
 class NotificationsAction : public QWidgetAction
 {
@@ -210,6 +216,55 @@ private:
     QTreeWidget * tableWidget;
     QWidget * parentWidget;
 };
+
+/***************************************** Parameter Observer **************************************/
+
+NotificationArea::ParameterObserver::ParameterObserver(NotificationArea * notificationarea): notificationArea(notificationarea)
+{
+    hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/NotificationArea");
+
+    parameterMap = {
+        {"NonIntrusiveNotificationsDisabled", [this](const std::string & string){
+            auto disabled = hGrp->GetBool(string.c_str(), false);
+            notificationArea->d->notificationsDisabled = disabled;}},
+        {"NotificationTime", [this](const std::string & string){
+            auto time = hGrp->GetUnsigned(string.c_str(), 10000);
+            notificationArea->d->notificationExpirationTime = time;}},
+        {"MaxOpenNotifications", [this](const std::string & string){
+            auto limit = hGrp->GetUnsigned(string.c_str(), 15);
+            notificationArea->d->maxOpenNotifications = limit;}},
+    };
+
+    for( auto & val : parameterMap ){
+        auto string     = val.first;
+        auto update     = val.second;
+
+        update(string);
+    }
+
+    hGrp->Attach(this);
+}
+
+NotificationArea::ParameterObserver::~ParameterObserver()
+{
+    hGrp->Detach(this);
+}
+
+void NotificationArea::ParameterObserver::OnChange(Base::Subject<const char*> &rCaller, const char * sReason)
+{
+    (void) rCaller;
+
+    auto key = parameterMap.find(sReason);
+
+    if( key != parameterMap.end()) {
+        auto string     = key->first;
+        auto update     = key->second;
+
+        update(string);
+    }
+}
+
+/***************************************** NotificationArea **************************************/
 
 NotificationArea::NotificationArea(QWidget *parent):QPushButton(parent)
 {
