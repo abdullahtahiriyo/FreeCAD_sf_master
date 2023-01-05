@@ -118,16 +118,35 @@ private:
 
 struct NotificationAreaP
 {
+    // Non-intrusive notifications
     int currentlyNotifyingIndex = 0;
-    unsigned int unread = 0;
-    std::mutex mutexNotification;
+    const int maxOpenNotifications = 15;
     const unsigned int notificationExpirationTime = 10000;
+    bool notificationsDisabled = false;
+
+    // Notification rate controller.
+    // After a notification, further notifications within this time
+    // are inhibited. If notifications reach inbetween they are shown
+    // after this timeout.
+    const unsigned int inhibitNotificationTime = 1000;
+    bool notificationsDuringInhibitTimer = false;
+    bool inhibiting = false;
+
+    // Control of confirmation mechanism
     bool requireConfirmationCriticalMessageDuringRestoring = true;
+
+    // NotificationArea control
+    unsigned int unread = 0;
+
+    // Access control
+    std::mutex mutexNotification;
+
+    // Pointers to widgets
     QMenu * menu;
     QTreeWidget * table;
 
+    // Message observer
     std::unique_ptr<NotificationAreaObserver> observer;
-
     Connection finishRestoreDocumentConnection;
 };
 
@@ -241,19 +260,42 @@ void NotificationArea::pushNotification(const QString & notifiername, const QStr
 {
     auto * item = new NotificationItem(level, notifiername, message);
 
+    bool confirmation = confirmationRequired(level);
+
+    if(confirmation) {
+        showConfirmationDialog(notifiername, message);
+    }
+
     std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification list and indices while creating the tooltip
 
     d->table->insertTopLevelItem(0,item);
-    d->currentlyNotifyingIndex++;
     d->unread++;
-    setText(QString::number(d->unread));
 
-    bool confirmation = confirmationRequired(level);
+    if(!d->inhibiting) { // rate control (deferred update of UI)
+        setText(QString::number(d->unread));
+    }
 
-    if(confirmation)
-        showConfirmationDialog(notifiername, message);
+    // If the non-intrusive notifications are disabled then stop here
+    if(d->notificationsDisabled)
+        return;
 
-    showInNotificationArea();
+    // This controls the maximum number of messages to be displayed (to restrict to a certain area of the screen)
+    if(d->currentlyNotifyingIndex > d->maxOpenNotifications) {
+        return;
+    }
+
+    d->currentlyNotifyingIndex++;
+
+    // rate control (flag controlled by timer)
+    // showing the tooltip is relatively expensive
+    // and it is useless to update it on each of
+    // a cluster of messages
+    if(!d->inhibiting) {
+        showInNotificationArea();
+    }
+    else { // mark that we had notifications during the
+        d->notificationsDuringInhibitTimer = true;
+    }
 
     QTimer::singleShot(d->notificationExpirationTime, [this](){
         std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification start index while creating the tooltip
@@ -294,6 +336,16 @@ void NotificationArea::showInNotificationArea()
         .arg(QObject::tr("Notifier"))
         .arg(QObject::tr("Message"));
 
+    if(d->currentlyNotifyingIndex == d->maxOpenNotifications) {
+        msgw += QString::fromLatin1("                                                                                   \
+        <tr>                                                                                                            \
+        <td align='left'><img width=\"16\" height=\"16\" src=':/icons/Warning.svg'></td>                                \
+        <td align='left'>FreeCAD</td>                                                                                   \
+        <td align='left'>%1</td>                                                                                        \
+        </tr>")
+        .arg(QObject::tr("Too many opened intrusive notifications. Notifications are being omitted!"));
+    }
+
     for(int i = 0 ; i < d->currentlyNotifyingIndex; i++) {
         NotificationItem* item = static_cast<NotificationItem*>(d->table->topLevelItem(i));
 
@@ -329,6 +381,16 @@ void NotificationArea::showInNotificationArea()
 
 
     NotificationBox::showText( this->mapToGlobal( QPoint( ) ), msgw, d->notificationExpirationTime);
+
+    d->inhibiting = true;
+
+    QTimer::singleShot(d->inhibitNotificationTime, [this](){
+        if(d->notificationsDuringInhibitTimer)
+            showInNotificationArea();
+
+        d->notificationsDuringInhibitTimer = false;
+        d->inhibiting = false;
+    });
 }
 
 void NotificationArea::slotRestoreFinished(const App::Document&)
