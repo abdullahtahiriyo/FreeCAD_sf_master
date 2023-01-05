@@ -32,11 +32,28 @@ struct NotificationAreaP;
 
 class NotificationArea : public QPushButton
 {
+    class ParameterObserver : public ParameterGrp::ObserverType
+    {
+    public:
+        explicit ParameterObserver(NotificationArea * notificationarea);
+        ~ParameterObserver();
+
+        void OnChange(Base::Subject<const char*> &rCaller, const char * sReason) override;
+
+    private:
+        NotificationArea * notificationArea;
+        ParameterGrp::handle hGrp;
+        std::map<std::string, std::function<void(const std::string & string)>> parameterMap;
+
+    };
+
 public:
     NotificationArea(QWidget *parent = nullptr);
     ~NotificationArea();
 
     void pushNotification(const QString & notifiername, const QString & message, Base::LogStyle level);
+
+    friend ParameterObserver;
 
 private:
     void showInNotificationArea();
