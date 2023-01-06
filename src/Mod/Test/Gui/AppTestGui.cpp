@@ -59,6 +59,8 @@ public:
             case Base::LogStyle::CriticalMessage:
                 buffer << "CMS";
                 break;
+            default:
+                break;
         }
     }
 

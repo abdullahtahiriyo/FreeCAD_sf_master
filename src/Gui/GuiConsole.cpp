@@ -132,6 +132,8 @@ void GUIConsole::SendLog(const std::string& notifiername, const std::string& msg
         case Base::LogStyle::CriticalMessage:
             std::cout << "Critical Message: " << msg;
             break;
+        default:
+            break;
     }
 }
 
