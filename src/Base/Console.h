@@ -361,7 +361,7 @@ using PyMethodDef = struct PyMethodDef;
         _instance.prefix(_str,_file,_line) << _msg;\
         if(_instance.add_eol) \
             _str<<std::endl;\
-        Base::Console()._func(_str.str().c_str());\
+        Base::Console()._func("",_str.str().c_str());\
         if(_instance.refresh) Base::Console().Refresh();\
     }\
 }while(0)
@@ -542,11 +542,11 @@ public:
     void CriticalMessageS ( const std::string &, const char * pMsg, ... );
 
     // observer processing
-    void NotifyMessage(const char *sMsg, const std::string & notifiername = "");
-    void NotifyWarning(const char *sMsg, const std::string & notifiername = "");
-    void NotifyError  (const char *sMsg, const std::string & notifiername = "");
-    void NotifyLog    (const char *sMsg, const std::string & notifiername = "");
-    void NotifyCriticalMessage(const char *sMsg, const std::string & notifiername = "");
+    void NotifyMessage(const std::string & notifiername, const char *sMsg);
+    void NotifyWarning(const std::string & notifiername, const char *sMsg);
+    void NotifyError  (const std::string & notifiername, const char *sMsg);
+    void NotifyLog    (const std::string & notifiername, const char *sMsg);
+    void NotifyCriticalMessage(const std::string & notifiername, const char *sMsg);
 
     /// Attaches an Observer to FCConsole
     void AttachObserver(ILogger *pcObserver);
