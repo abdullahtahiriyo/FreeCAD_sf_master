@@ -492,6 +492,8 @@ void ReportOutput::SendLog(const std::string& notifiername, const std::string& m
         case Base::LogStyle::CriticalMessage:
             style = ReportHighlighter::CriticalMessage;
             break;
+        default:
+            break;
     }
 
     QString qMsg = QString::fromUtf8(msg.c_str());
