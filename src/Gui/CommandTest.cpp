@@ -750,6 +750,8 @@ public:
             case Base::LogStyle::CriticalMessage:
                 matchMsg += strcmp(msg.c_str(), "Write a critical message to the console output.\n");
                 break;
+            default:
+                break;
         }
     }
 };

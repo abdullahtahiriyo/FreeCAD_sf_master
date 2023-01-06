@@ -79,6 +79,8 @@ void ConsoleObserverFile::SendLog(const std::string& notifiername, const std::st
         case LogStyle::CriticalMessage:
             prefix = "CriticalMsg: ";
             break;
+        default:
+            break;
     }
 
     cFileStream << prefix << msg;
@@ -118,6 +120,8 @@ void ConsoleObserverStd::SendLog(const std::string& notifiername, const std::str
             break;
         case LogStyle::CriticalMessage:
             this->CriticalMessage(msg.c_str());
+            break;
+        default:
             break;
     }
 }
