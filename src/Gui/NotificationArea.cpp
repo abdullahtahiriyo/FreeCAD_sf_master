@@ -160,6 +160,7 @@ NotificationAreaObserver::NotificationAreaObserver(NotificationArea * notificati
 {
     Base::Console().AttachObserver(this);
     bLog = false; // ignore log messages
+    bMsg = false; // ignore messages
 }
 
 NotificationAreaObserver::~NotificationAreaObserver()
