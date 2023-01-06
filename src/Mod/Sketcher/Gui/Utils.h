@@ -200,17 +200,7 @@ void SketcherGui::Notify(const App::DocumentObject * obj, TCaption && caption, T
         // trailing newline is necessary as this will be shown too in the report window
         auto msg = std::string(message).append("\n");
 
-        if constexpr(type == Base::LogStyle::Warning) {
-            Base::Console().WarningS(obj->getFullLabel(), msg.c_str());
-        }
-        else
-        if constexpr(type == Base::LogStyle::Error) {
-            Base::Console().ErrorS(obj->getFullLabel(), msg.c_str());
-        }
-        else
-        if constexpr(type == Base::LogStyle::Message) {
-            Base::Console().MessageS(obj->getFullLabel(), msg.c_str());
-        }
+        Base::Console().Send<type>(obj->getFullLabel(), msg.c_str());
     }
 }
 
