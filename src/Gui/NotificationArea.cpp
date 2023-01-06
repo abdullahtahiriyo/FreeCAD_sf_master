@@ -83,12 +83,11 @@ public:
                 return QVariant::fromValue(BitmapFactory().pixmapFromSvg(":/icons/Warning.svg",QSize(16, 16)));
             }
             else
-            if(notificationType == Base::LogStyle::Message) {
-                return QVariant::fromValue(BitmapFactory().pixmapFromSvg(":/icons/info.svg",QSize(16, 16)));
-            }
-            else
             if(notificationType == Base::LogStyle::CriticalMessage) {
                 return QVariant::fromValue(BitmapFactory().pixmapFromSvg(":/icons/critical-info.svg",QSize(16, 16)));
+            }
+            else {
+                return QVariant::fromValue(BitmapFactory().pixmapFromSvg(":/icons/info.svg",QSize(16, 16)));
             }
         }
 
@@ -160,8 +159,10 @@ struct NotificationAreaP
 NotificationAreaObserver::NotificationAreaObserver(NotificationArea * notificationarea): notificationArea(notificationarea)
 {
     Base::Console().AttachObserver(this);
-    bLog = false; // ignore log messages
-    bMsg = false; // ignore messages
+    bLog = false;                       // ignore log messages
+    bMsg = false;                       // ignore messages
+    bNotification = true;               // activate user notifications
+    bTranslatedNotification = true;     // activate translated user notifications
 }
 
 NotificationAreaObserver::~NotificationAreaObserver()
@@ -174,11 +175,19 @@ void NotificationAreaObserver::SendLog(const std::string& notifiername, const st
     // 1. As notification system is shared with report view and others, the convention is that any individual message
     // shall end in "\n".
     // 2. Any QT_TRANSLATE_NOOT string does not comprise newlines.
-    auto simplifiedstring = QString::fromStdString(msg).simplified(); // remove any trailing '\n'
 
-    notificationArea->pushNotification(QString::fromStdString(notifiername),
-                                       QCoreApplication::translate("Notifications", simplifiedstring.toUtf8()),
-                                       level);
+    auto simplifiedstring = QString::fromStdString(msg).trimmed(); // remove any leading and trailing whitespace character ('\n')
+
+    if(level == Base::LogStyle::TranslatedNotification) {
+        notificationArea->pushNotification(QString::fromStdString(notifiername),
+                                           simplifiedstring,
+                                           level);
+    }
+    else {
+        notificationArea->pushNotification(QString::fromStdString(notifiername),
+                                           QCoreApplication::translate("Notifications", simplifiedstring.toUtf8()),
+                                           level);
+    }
 }
 
 /***************************************** Drop menu Action **************************************/
@@ -415,12 +424,11 @@ void NotificationArea::showInNotificationArea()
             iconstr = QStringLiteral(":/icons/Warning.svg");
         }
         else
-        if(item->notificationType == Base::LogStyle::Message) {
-            iconstr = QStringLiteral(":/icons/info.svg");
-        }
-        else
         if(item->notificationType == Base::LogStyle::CriticalMessage) {
             iconstr = QStringLiteral(":/icons/critical-info.svg");
+        }
+        else {
+            iconstr = QStringLiteral(":/icons/info.svg");
         }
 
         msgw += QString::fromLatin1("                                                                                   \
