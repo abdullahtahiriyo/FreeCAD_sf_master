@@ -876,13 +876,6 @@ void Base::ConsoleSingleton::Send( const std::string & notifiername, const char 
 {
     std::string format = fmt::sprintf(pMsg, args...);
 
-    format.resize(BufferSize);
-    format[format.size()-5] = '.';
-    format[format.size()-4] = '.';
-    format[format.size()-3] = '.';
-    format[format.size()-2] = '\n';
-    format[format.size()-1] = 0;
-
     if (connectionMode == Direct) {
         Notify<category>(notifiername,format);
     }
