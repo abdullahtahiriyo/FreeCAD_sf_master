@@ -2170,6 +2170,8 @@ void StatusBarObserver::SendLog(const std::string& notifiername, const std::stri
         case Base::LogStyle::CriticalMessage:
             messageType = MainWindow::CriticalMsg;
             break;
+        default:
+            break;
     }
 
     // Send the event to the main window to allow thread-safety. Qt will delete it when done.

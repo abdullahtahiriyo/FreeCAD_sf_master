@@ -476,7 +476,9 @@ enum class LogStyle{
     Message,
     Error,
     Log,
-    CriticalMessage
+    CriticalMessage,        // Special message to mark critical notifications
+    Notification,           // Special message for notifications to the user (e.g. educational)
+    TranslatedNotification, // Special message for already translated notifications to the user (e.g. educational)
 };
 
 /** The Logger Interface
@@ -490,7 +492,7 @@ class BaseExport ILogger
 {
 public:
     ILogger()
-    :bErr(true),bMsg(true),bLog(true),bWrn(true),bCriticalMsg(true){}
+    :bErr(true),bMsg(true),bLog(true),bWrn(true),bCriticalMsg(true),bNotification(false),bTranslatedNotification(false){}
     virtual ~ILogger() = 0;
 
     /** Used to send a Log message at the given level.
@@ -517,11 +519,19 @@ public:
         if(category == Base::LogStyle::CriticalMessage) {
             return bCriticalMsg;
         }
+        else
+        if(category == Base::LogStyle::Notification) {
+            return bNotification;
+        }
+        else
+        if(category == Base::LogStyle::TranslatedNotification) {
+            return bTranslatedNotification;
+        }
         return false;
     }
 
     virtual const char *Name(){return nullptr;}
-    bool bErr,bMsg,bLog,bWrn,bCriticalMsg;
+    bool bErr,bMsg,bLog,bWrn,bCriticalMsg,bNotification,bTranslatedNotification;
 };
 
 
@@ -601,11 +611,13 @@ public:
     };
 
     enum FreeCAD_ConsoleMsgType {
-        MsgType_Txt = 1,
-        MsgType_Log = 2, // ConsoleObserverStd sends this and higher to stderr
-        MsgType_Wrn = 4,
-        MsgType_Err = 8,
-        MsgType_CriticalTxt = 16
+        MsgType_Txt                     = 1,
+        MsgType_Log                     = 2, // ConsoleObserverStd sends this and higher to stderr
+        MsgType_Wrn                     = 4,
+        MsgType_Err                     = 8,
+        MsgType_CriticalTxt             = 16,  // Special message to notify critical information
+        MsgType_Notification            = 32, // Special message to for notifications to the user
+        MsgType_TranslatedNotification  = 64, // Special message for already translated notifications to the user
     };
 
     /// Change mode
@@ -767,6 +779,12 @@ public:
                 case ConsoleSingleton::MsgType_CriticalTxt:
                     Console().Notify<LogStyle::CriticalMessage>(ce->notifier, ce->msg);
                     break;
+                case ConsoleSingleton::MsgType_Notification:
+                    Console().Notify<LogStyle::Notification>(ce->notifier, ce->msg);
+                    break;
+                case ConsoleSingleton::MsgType_TranslatedNotification:
+                    Console().Notify<LogStyle::TranslatedNotification>(ce->notifier, ce->msg);
+                    break;
             }
         }
     }
@@ -890,6 +908,14 @@ void Base::ConsoleSingleton::Send( const std::string & notifiername, const char 
         else
         if constexpr(category == Base::LogStyle::CriticalMessage) {
             type = FreeCAD_ConsoleMsgType::MsgType_CriticalTxt;
+        }
+        else
+        if constexpr(category == Base::LogStyle::Notification) {
+            type = FreeCAD_ConsoleMsgType::MsgType_Notification;
+        }
+        else
+        if constexpr(category == Base::LogStyle::TranslatedNotification) {
+            type = FreeCAD_ConsoleMsgType::MsgType_TranslatedNotification;
         }
 
         QCoreApplication::postEvent(ConsoleOutput::getInstance(), new ConsoleEvent(type, notifiername, format));
