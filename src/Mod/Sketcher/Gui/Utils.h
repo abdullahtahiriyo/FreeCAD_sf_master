@@ -151,6 +151,11 @@ inline void NotifyError(const App::DocumentObject *, TCaption && caption, TMessa
 template <typename TCaption, typename TMessage>
 inline void NotifyMessage(const App::DocumentObject *, TCaption && caption, TMessage && message);
 
+template <typename TCaption, typename TMessage>
+void TranslatedNotification(const App::DocumentObject *, TCaption && caption, TMessage && message);
+
+template <typename TCaption, typename TMessage>
+void Notification(const App::DocumentObject * obj, TCaption && caption, TMessage && message);
 } // namespace SketcherGui
 
 /// converts a 2D vector into a 3D vector in the XY plane
@@ -190,17 +195,30 @@ void SketcherGui::Notify(const App::DocumentObject * obj, TCaption && caption, T
                                  QCoreApplication::translate("Notifications", message));
         }
         else
-        if constexpr( type == Base::LogStyle::Message) {
+        if constexpr( type == Base::LogStyle::TranslatedNotification) {
+            QMessageBox::information(Gui::getMainWindow(),
+                                     caption,
+                                     message);
+        }
+        else {
             QMessageBox::information(Gui::getMainWindow(),
                                 QCoreApplication::translate("Notifications", caption),
                                 QCoreApplication::translate("Notifications", message));
         }
     }
     else {
-        // trailing newline is necessary as this will be shown too in the report window
-        auto msg = std::string(message).append("\n");
+        if constexpr( type == Base::LogStyle::TranslatedNotification) {
+            // trailing newline is necessary as this may be shown too in a console require them (depending on the configuration).
+            auto msg = message.append(QStringLiteral("\n")); // QString
 
-        Base::Console().Send<type>(obj->getFullLabel(), msg.c_str());
+            Base::Console().Send<type>(obj->getFullLabel(), msg.toUtf8());
+        }
+        else {
+            // trailing newline is necessary as this may be shown too in a console require them (depending on the configuration).
+            auto msg = std::string(message).append("\n");
+
+            Base::Console().Send<type>(obj->getFullLabel(), msg.c_str());
+        }
     }
 }
 
@@ -226,6 +244,22 @@ void SketcherGui::NotifyMessage(const App::DocumentObject * obj, TCaption && cap
     Notify<Base::LogStyle::Message>(obj,
                                     std::forward<TCaption &&>(caption),
                                     std::forward<TMessage &&>(message));
+}
+
+template <typename TCaption, typename TMessage>
+void SketcherGui::TranslatedNotification(const App::DocumentObject * obj, TCaption && caption, TMessage && message)
+{
+    Notify<Base::LogStyle::TranslatedNotification>(obj,
+                                                   std::forward<TCaption &&>(caption),
+                                                   std::forward<TMessage &&>(message));
+}
+
+template <typename TCaption, typename TMessage>
+void SketcherGui::Notification(const App::DocumentObject * obj, TCaption && caption, TMessage && message)
+{
+    Notify<Base::LogStyle::Notification>(obj,
+                                         std::forward<TCaption &&>(caption),
+                                         std::forward<TMessage &&>(message));
 }
 
 #endif // SKETCHERGUI_Recompute_H
