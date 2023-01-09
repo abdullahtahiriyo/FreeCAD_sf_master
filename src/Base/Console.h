@@ -34,6 +34,7 @@
 
 #include <QCoreApplication>
 
+#define FMT_HEADER_ONLY
 #include <fmt/printf.h>
 
 // Python stuff
@@ -565,7 +566,7 @@ public:
     /// Prints a Critical Message
     template <typename... Args>
     void CriticalMessage (const char * pMsg, Args&&... args);
-    
+
     /// Prints a Message with source indication
     template <typename... Args>
     void Message (const std::string &, const char * pMsg, Args&&... args);
