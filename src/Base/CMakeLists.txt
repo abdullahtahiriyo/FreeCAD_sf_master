@@ -53,7 +53,6 @@ else(MSVC)
         ${XercesC_LIBRARIES}
         ${Boost_LIBRARIES}
         ${ZLIB_LIBRARIES}
-	fmt::fmt
     )
 endif(MSVC)
 
