@@ -23,7 +23,8 @@
 #ifndef GUI_NOTIFICATIONBOX_H
 #define GUI_NOTIFICATIONBOX_H
 
-
+#include <memory>
+#include <QToolTip>
 
 namespace Gui {
 
@@ -36,7 +37,7 @@ namespace Gui {
      * This class interface and its implementation are based on QT's
      * QToolTip.
      */
-    class NotificationBox
+    class NotificationBox : private QToolTip
     {
         NotificationBox() = delete;
     public:
