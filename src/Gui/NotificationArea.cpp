@@ -122,6 +122,7 @@ struct NotificationAreaP
     int currentlyNotifyingIndex = 0;
     int maxOpenNotifications = 15; // Parameter controlled
     unsigned int notificationExpirationTime = 10000; // Parameter controlled
+    const int minimumOnScreenTime = 5000; // minimum time that the notification will remain unclosed
     bool notificationsDisabled = false; // Parameter controlled
 
     // Notification rate controller.
@@ -436,7 +437,7 @@ void NotificationArea::showInNotificationArea()
     msgw += QString::fromLatin1("</table></p>");
 
 
-    NotificationBox::showText( this->mapToGlobal( QPoint( ) ), msgw, d->notificationExpirationTime);
+    NotificationBox::showText( this->mapToGlobal( QPoint( ) ), msgw, d->notificationExpirationTime, d->minimumOnScreenTime);
 
     d->inhibiting = true;
 
