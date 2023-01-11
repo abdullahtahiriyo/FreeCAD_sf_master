@@ -121,7 +121,7 @@ struct NotificationAreaP
     int currentlyNotifyingIndex = 0;
     int maxOpenNotifications = 15; // Parameter controlled
     unsigned int notificationExpirationTime = 10000; // Parameter controlled
-    const int minimumOnScreenTime = 5000; // minimum time that the notification will remain unclosed
+    int minimumOnScreenTime = 5000; // minimum time that the notification will remain unclosed
     bool notificationsDisabled = false; // Parameter controlled
 
     // Notification rate controller.
@@ -241,6 +241,9 @@ NotificationArea::ParameterObserver::ParameterObserver(NotificationArea * notifi
         {"NotificationTime", [this](const std::string & string){
             auto time = hGrp->GetUnsigned(string.c_str(), 10000);
             notificationArea->d->notificationExpirationTime = time;}},
+        {"MinimumOnScreenTime", [this](const std::string & string){
+            auto time = hGrp->GetUnsigned(string.c_str(), 5000);
+            notificationArea->d->minimumOnScreenTime = time;}},
         {"MaxOpenNotifications", [this](const std::string & string){
             auto limit = hGrp->GetUnsigned(string.c_str(), 15);
             notificationArea->d->maxOpenNotifications = limit;}},
