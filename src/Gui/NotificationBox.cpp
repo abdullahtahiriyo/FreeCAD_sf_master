@@ -200,12 +200,15 @@ bool NotificationLabel::eventFilter(QObject *o, QEvent *e)
     switch (e->type()) {
         case QEvent::MouseButtonPress:
         {
+             // If minimum on screen time has already lapsed - hide the notification no matter where the click was done
             auto total = expireTimer.interval();
             auto remaining = expireTimer.remainingTime();
             auto lapsed = total - remaining;
-            if( lapsed > minShowTime) // Ensure the notification is shown the minimum time
+            // ... or if the click is inside the notification, hide it no matter if the minimum onscreen time has lapsed or not
+            if( lapsed > minShowTime || this->underMouse()) {
                 hideNotification();
-            break;
+                return false;
+            }
         }
         default:
             break;
@@ -218,7 +221,7 @@ void NotificationLabel::placeNotificationLabel(const QPoint &pos)
     QPoint p = pos;
     const QScreen *screen = QGuiApplication::screenAt(pos);
     // a QScreen's handle *should* never be null, so this is a bit paranoid
-    if (screen ? screen->handle() : nullptr) {
+    if (screen && screen->handle()) {
         const QSize cursorSize = QSize(16, 16);
 
         QPoint offset(2, cursorSize.height());
