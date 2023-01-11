@@ -40,7 +40,7 @@ namespace Gui {
     {
         NotificationBox() = delete;
     public:
-        static void showText(const QPoint &pos, const QString &text, int msecShowTime = -1);
+        static void showText(const QPoint &pos, const QString &text, int msecShowTime = -1, unsigned int minShowTime = 0);
         static inline void hideText() { showText(QPoint(), QString()); }
         static bool isVisible();
         static QString text();

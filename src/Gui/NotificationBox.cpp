@@ -54,13 +54,14 @@ public:
     // Windows implementation uses QWidget w to pass the screen (see NotificationBox::showText).
     // This screen is used as parent for QLabel.
     // Linux implementation does not rely on a parent (w = nullptr).
-    NotificationLabel(const QString &text, const QPoint &pos, QWidget *w, int msecDisplayTime);
+    NotificationLabel(const QString &text, const QPoint &pos, QWidget *w, int msecDisplayTime, int minShowTime = 0);
     ~NotificationLabel();
     static NotificationLabel *instance;
     void adjustToollabelScreen(const QPoint &pos);
     void updateSize(const QPoint &pos);
     bool eventFilter(QObject *, QEvent *) override;
-    QBasicTimer hideTimer, expireTimer;
+    QTimer hideTimer;
+    QTimer expireTimer;
     void reuseNotification(const QString &text, int msecDisplayTime, const QPoint &pos);
     void hideNotification();
     void hideNotificationImmediately();
@@ -68,15 +69,16 @@ public:
     bool notificationLabelChanged(const QString &text);
     void placeNotificationLabel(const QPoint &pos);
 protected:
-    void timerEvent(QTimerEvent *e) override;
     void paintEvent(QPaintEvent *e) override;
     void resizeEvent(QResizeEvent *e) override;
+private:
+    int minShowTime;
 };
 
 NotificationLabel *NotificationLabel::instance = nullptr;
 
-NotificationLabel::NotificationLabel(const QString &text, const QPoint &pos, QWidget *w, int msecDisplayTime)
-: QLabel(w, Qt::ToolTip | Qt::BypassGraphicsProxyWidget)
+NotificationLabel::NotificationLabel(const QString &text, const QPoint &pos, QWidget *w, int msecDisplayTime, int minShowTime)
+: QLabel(w, Qt::ToolTip | Qt::BypassGraphicsProxyWidget), minShowTime(minShowTime)
 {
     delete instance;
     instance = this;
@@ -91,6 +93,20 @@ NotificationLabel::NotificationLabel(const QString &text, const QPoint &pos, QWi
     qApp->installEventFilter(this);
     setWindowOpacity(style()->styleHint(QStyle::SH_ToolTipLabel_Opacity, nullptr, this) / 255.0);
     setMouseTracking(false);
+    hideTimer.setSingleShot(true);
+    expireTimer.setSingleShot(true);
+
+    expireTimer.callOnTimeout([this](){
+        hideTimer.stop();
+        expireTimer.stop();
+        hideNotificationImmediately();
+    });
+
+    hideTimer.callOnTimeout([this](){
+        expireTimer.stop();
+        hideNotificationImmediately();
+    });
+
     reuseNotification(text, msecDisplayTime, pos);
 }
 void NotificationLabel::restartExpireTimer(int msecDisplayTime)
@@ -99,7 +115,7 @@ void NotificationLabel::restartExpireTimer(int msecDisplayTime)
     if (msecDisplayTime > 0) {
         time = msecDisplayTime;
     }
-    expireTimer.start(time, this);
+    expireTimer.start(time);
     hideTimer.stop();
 }
 void NotificationLabel::reuseNotification(const QString &text, int msecDisplayTime, const QPoint &pos)
@@ -168,7 +184,7 @@ NotificationLabel::~NotificationLabel()
 void NotificationLabel::hideNotification()
 {
     if (!hideTimer.isActive()) {
-        hideTimer.start(300, this);
+        hideTimer.start(300);
     }
 }
 void NotificationLabel::hideNotificationImmediately()
@@ -177,25 +193,20 @@ void NotificationLabel::hideNotificationImmediately()
     deleteLater();
 }
 
-void NotificationLabel::timerEvent(QTimerEvent *e)
-{
-    if (e->timerId() == hideTimer.timerId() ||
-        e->timerId() == expireTimer.timerId()) {
-
-        hideTimer.stop();
-        expireTimer.stop();
-        hideNotificationImmediately();
-    }
-}
-
 bool NotificationLabel::eventFilter(QObject *o, QEvent *e)
 {
     Q_UNUSED(o)
 
     switch (e->type()) {
         case QEvent::MouseButtonPress:
-            hideNotification();
+        {
+            auto total = expireTimer.interval();
+            auto remaining = expireTimer.remainingTime();
+            auto lapsed = total - remaining;
+            if( lapsed > minShowTime) // Ensure the notification is shown the minimum time
+                hideNotification();
             break;
+        }
         default:
             break;
     }
@@ -246,7 +257,7 @@ bool NotificationLabel::notificationLabelChanged(const QString &text)
 
 /***************************** NotificationBox **********************************/
 
-void NotificationBox::showText(const QPoint &pos, const QString &text, int msecDisplayTime)
+void NotificationBox::showText(const QPoint &pos, const QString &text, int msecDisplayTime, unsigned int minShowTime)
 {
     // a label does already exist
     if (NotificationLabel::instance && NotificationLabel::instance->isVisible()){
@@ -271,10 +282,10 @@ void NotificationBox::showText(const QPoint &pos, const QString &text, int msecD
         // raised when the toollabel will be shown
         QT_WARNING_PUSH
         QT_WARNING_DISABLE_DEPRECATED
-        new NotificationLabel(text, pos, QGuiApplication::screenAt(pos), msecDisplayTime); // NotificationLabel manages its own lifetime.
+        new NotificationLabel(text, pos, QGuiApplication::screenAt(pos), msecDisplayTime, minShowTime); // NotificationLabel manages its own lifetime.
         QT_WARNING_POP
         #else
-        new NotificationLabel(text, pos, nullptr, msecDisplayTime); // sets NotificationLabel::instance to itself
+        new NotificationLabel(text, pos, nullptr, msecDisplayTime, minShowTime); // sets NotificationLabel::instance to itself
         #endif
         NotificationLabel::instance->placeNotificationLabel(pos);
         NotificationLabel::instance->setObjectName(QLatin1String("NotificationBox_label"));
