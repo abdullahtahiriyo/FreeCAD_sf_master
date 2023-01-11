@@ -218,7 +218,7 @@ void NotificationLabel::placeNotificationLabel(const QPoint &pos)
     QPoint p = pos;
     const QScreen *screen = QGuiApplication::screenAt(pos);
     // a QScreen's handle *should* never be null, so this is a bit paranoid
-    if (screen ? screen->handle() : nullptr) {
+    if (screen && screen->handle()) {
         const QSize cursorSize = QSize(16, 16);
 
         QPoint offset(2, cursorSize.height());
