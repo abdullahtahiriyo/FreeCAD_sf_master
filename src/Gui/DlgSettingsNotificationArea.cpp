@@ -22,6 +22,10 @@
 
 #include "PreCompiled.h"
 
+#ifndef _PreComp_
+# include <QMessageBox>
+#endif
+
 #include "DlgSettingsNotificationArea.h"
 #include "ui_DlgSettingsNotificationArea.h"
 
@@ -35,6 +39,14 @@ DlgSettingsNotificationArea::DlgSettingsNotificationArea(QWidget* parent)
   , ui(new Ui_DlgSettingsNotificationArea)
 {
     ui->setupUi(this);
+
+    connect(ui->NotificationAreaEnabled, &QCheckBox::stateChanged, [this](int state) {
+        if(state == Qt::CheckState::Checked) {
+            QMessageBox::information(this, tr("Notification Area"),
+            tr("Activation of the Notification Area only takes effect after an application restart."));
+        }
+        // N.B: Deactivation is handled by the Notification Area itself, as it listens to all its configuration parameters.
+    });
 }
 
 DlgSettingsNotificationArea::~DlgSettingsNotificationArea()
