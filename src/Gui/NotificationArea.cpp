@@ -238,6 +238,10 @@ NotificationArea::ParameterObserver::ParameterObserver(NotificationArea * notifi
     hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/NotificationArea");
 
     parameterMap = {
+        {"NotificationAreaEnabled", [this](const std::string & string){
+            auto enabled = hGrp->GetBool(string.c_str(), true);
+            if(!enabled)
+                notificationArea->deleteLater();}},
         {"NonIntrusiveNotificationsEnabled", [this](const std::string & string){
             auto enabled = hGrp->GetBool(string.c_str(), true);
             notificationArea->d->notificationsDisabled = !enabled;}},

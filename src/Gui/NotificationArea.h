@@ -54,8 +54,6 @@ public:
 
     void pushNotification(const QString & notifiername, const QString & message, Base::LogStyle level);
 
-    friend ParameterObserver;
-
 private:
     void showInNotificationArea();
     bool confirmationRequired(Base::LogStyle level);
