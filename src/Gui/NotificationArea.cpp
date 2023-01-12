@@ -148,6 +148,9 @@ struct NotificationAreaP
     // Message observer
     std::unique_ptr<NotificationAreaObserver> observer;
     Connection finishRestoreDocumentConnection;
+
+    // Parameter observer
+    std::unique_ptr<NotificationArea::ParameterObserver> parameterObserver;
 };
 
 
@@ -235,9 +238,9 @@ NotificationArea::ParameterObserver::ParameterObserver(NotificationArea * notifi
     hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/NotificationArea");
 
     parameterMap = {
-        {"NonIntrusiveNotificationsDisabled", [this](const std::string & string){
-            auto disabled = hGrp->GetBool(string.c_str(), false);
-            notificationArea->d->notificationsDisabled = disabled;}},
+        {"NonIntrusiveNotificationsEnabled", [this](const std::string & string){
+            auto enabled = hGrp->GetBool(string.c_str(), true);
+            notificationArea->d->notificationsDisabled = !enabled;}},
         {"NotificationTime", [this](const std::string & string){
             auto time = hGrp->GetUnsigned(string.c_str(), 10000);
             notificationArea->d->notificationExpirationTime = time;}},
@@ -288,6 +291,7 @@ NotificationArea::NotificationArea(QWidget *parent):QPushButton(parent)
     d = std::make_unique<NotificationAreaP>();
 
     d->observer = std::make_unique<NotificationAreaObserver>(this);
+    d->parameterObserver = std::make_unique<NotificationArea::ParameterObserver>(this);
 
     d->menu = new QMenu(parent);
     setMenu(d->menu);

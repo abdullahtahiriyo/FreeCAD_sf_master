@@ -32,6 +32,8 @@ struct NotificationAreaP;
 
 class NotificationArea : public QPushButton
 {
+public:
+
     class ParameterObserver : public ParameterGrp::ObserverType
     {
     public:
@@ -47,7 +49,6 @@ class NotificationArea : public QPushButton
 
     };
 
-public:
     NotificationArea(QWidget *parent = nullptr);
     ~NotificationArea();
 
