@@ -246,10 +246,10 @@ NotificationArea::ParameterObserver::ParameterObserver(NotificationArea * notifi
             auto enabled = hGrp->GetBool(string.c_str(), true);
             notificationArea->d->notificationsDisabled = !enabled;}},
         {"NotificationTime", [this](const std::string & string){
-            auto time = hGrp->GetUnsigned(string.c_str(), 10000);
+            auto time = hGrp->GetUnsigned(string.c_str(), 20)*1000;
             notificationArea->d->notificationExpirationTime = time;}},
         {"MinimumOnScreenTime", [this](const std::string & string){
-            auto time = hGrp->GetUnsigned(string.c_str(), 5000);
+            auto time = hGrp->GetUnsigned(string.c_str(), 5)*1000;
             notificationArea->d->minimumOnScreenTime = time;}},
         {"MaxOpenNotifications", [this](const std::string & string){
             auto limit = hGrp->GetUnsigned(string.c_str(), 15);
