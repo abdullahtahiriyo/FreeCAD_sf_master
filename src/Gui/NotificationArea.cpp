@@ -121,7 +121,7 @@ struct NotificationAreaP
     int currentlyNotifyingIndex = 0;
     int maxOpenNotifications = 15; // Parameter controlled
     unsigned int notificationExpirationTime = 10000; // Parameter controlled
-    int minimumOnScreenTime = 5000; // minimum time that the notification will remain unclosed
+    unsigned int minimumOnScreenTime = 5000; // minimum time that the notification will remain unclosed
     bool notificationsDisabled = false; // Parameter controlled
 
     // Notification rate controller.
