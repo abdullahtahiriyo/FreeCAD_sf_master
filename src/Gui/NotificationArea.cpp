@@ -246,14 +246,20 @@ NotificationArea::ParameterObserver::ParameterObserver(NotificationArea * notifi
             auto enabled = hGrp->GetBool(string.c_str(), true);
             notificationArea->d->notificationsDisabled = !enabled;}},
         {"NotificationTime", [this](const std::string & string){
-            auto time = hGrp->GetUnsigned(string.c_str(), 20)*1000;
-            notificationArea->d->notificationExpirationTime = time;}},
+            auto time = hGrp->GetInt(string.c_str(), 20)*1000;
+            if(time < 0)
+                time = 0;
+            notificationArea->d->notificationExpirationTime = static_cast<unsigned int>(time);}},
         {"MinimumOnScreenTime", [this](const std::string & string){
-            auto time = hGrp->GetUnsigned(string.c_str(), 5)*1000;
-            notificationArea->d->minimumOnScreenTime = time;}},
+            auto time = hGrp->GetInt(string.c_str(), 5)*1000;
+            if(time < 0)
+                time = 0;
+            notificationArea->d->minimumOnScreenTime = static_cast<unsigned int>(time);}},
         {"MaxOpenNotifications", [this](const std::string & string){
-            auto limit = hGrp->GetUnsigned(string.c_str(), 15);
-            notificationArea->d->maxOpenNotifications = limit;}},
+            auto limit = hGrp->GetInt(string.c_str(), 15);
+            if(limit < 0)
+                limit = 0;
+            notificationArea->d->maxOpenNotifications = static_cast<unsigned int>(limit);}},
     };
 
     for( auto & val : parameterMap ){
@@ -420,7 +426,7 @@ void NotificationArea::showInNotificationArea()
         <td align='left'>FreeCAD</td>                                                                                   \
         <td align='left'>%1</td>                                                                                        \
         </tr>")
-        .arg(QObject::tr("Too many opened intrusive notifications. Notifications are being omitted!"));
+        .arg(QObject::tr("Too many opened non-intrusive notifications. Notifications are being omitted!"));
     }
 
     for(int i = 0 ; i < d->currentlyNotifyingIndex; i++) {
