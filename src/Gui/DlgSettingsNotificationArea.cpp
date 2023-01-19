@@ -57,12 +57,18 @@ void DlgSettingsNotificationArea::saveSettings()
 {
     ui->NotificationAreaEnabled->onSave();
     ui->NonIntrusiveNotificationsEnabled->onSave();
+    ui->maxDuration->onSave();
+    ui->minDuration->onSave();
+    ui->maxNotifications->onSave();
 }
 
 void DlgSettingsNotificationArea::loadSettings()
 {
     ui->NotificationAreaEnabled->onRestore();
     ui->NonIntrusiveNotificationsEnabled->onRestore();
+    ui->maxDuration->onRestore();
+    ui->minDuration->onRestore();
+    ui->maxNotifications->onRestore();
 }
 
 void DlgSettingsNotificationArea::changeEvent(QEvent *e)
