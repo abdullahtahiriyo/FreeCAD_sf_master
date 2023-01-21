@@ -370,7 +370,7 @@ void NotificationArea::pushNotification(const QString & notifiername, const QStr
 
         if (toBeDeleted > 0) {
             for(auto i=0; i< toBeDeleted; i++) {
-                delete d->table->topLevelItem(0);
+                delete d->table->topLevelItem(d->table->topLevelItemCount()-1);
             }
         }
     }
@@ -488,11 +488,14 @@ void NotificationArea::showInNotificationArea()
 
     NotificationBox::showText( this->mapToGlobal( QPoint( ) ), msgw, d->notificationExpirationTime, d->minimumOnScreenTime);
 
+    // This performs rate control, new notifications will be inhibited until the inhibitNotificationTime lapses
     d->inhibiting = true;
 
     QTimer::singleShot(d->inhibitNotificationTime, [this](){
-        if(d->notificationsDuringInhibitTimer)
+        if(d->notificationsDuringInhibitTimer) {
             showInNotificationArea();
+            setText(QString::number(d->unread));
+        }
 
         d->notificationsDuringInhibitTimer = false;
         d->inhibiting = false;
