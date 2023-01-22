@@ -143,6 +143,17 @@ ConsoleMsgFlags ConsoleSingleton::SetEnabledMsgType(const char* sObs, ConsoleMsg
                 flags |= MsgType_CriticalTxt;
             pObs->bCriticalMsg = b;
         }
+        if ( type&MsgType_Notification ){
+            if ( pObs->bNotification != b )
+                flags |= MsgType_Notification;
+            pObs->bNotification = b;
+        }
+        if ( type&MsgType_TranslatedNotification ){
+            if ( pObs->bTranslatedNotification != b )
+                flags |= MsgType_TranslatedNotification;
+            pObs->bTranslatedNotification = b;
+        }
+
         return flags;
     }
     else {
@@ -165,6 +176,10 @@ bool ConsoleSingleton::IsMsgTypeEnabled(const char* sObs, FreeCAD_ConsoleMsgType
             return pObs->bErr;
         case MsgType_CriticalTxt:
             return pObs->bCriticalMsg;
+        case MsgType_Notification:
+            return pObs->bNotification;
+        case MsgType_TranslatedNotification:
+            return pObs->bTranslatedNotification;
         default:
             return false;
         }
@@ -285,6 +300,18 @@ PyMethodDef ConsoleSingleton::Methods[] = {
      "PrintWarning(obj) -> None\n\n"
      "Print a warning message to the output.\n\n"
      "obj : object\n    The string representation is printed."},
+     {"PrintCriticalMessage",ConsoleSingleton::sPyCriticalMessage, METH_VARARGS,
+     "PrintCriticalMessage(obj) -> None\n\n"
+     "Print a critical message to the output.\n\n"
+     "obj : object\n    The string representation is printed."},
+    {"PrintNotification",    ConsoleSingleton::sPyNotification, METH_VARARGS,
+     "PrintNotification(obj) -> None\n\n"
+     "Print a user notification to the output.\n\n"
+     "obj : object\n    The string representation is printed."},
+    {"PrintTranslatedNotification", ConsoleSingleton::sPyTranslatedNotification, METH_VARARGS,
+     "PrintTranslatedNotification(obj) -> None\n\n"
+     "Print an already translated notification to the output.\n\n"
+     "obj : object\n    The string representation is printed."},
     {"SetStatus",            ConsoleSingleton::sPySetStatus, METH_VARARGS,
      "SetStatus(observer, type, status) -> None\n\n"
      "Set the status for either 'Log', 'Msg', 'Wrn' or 'Error' for an observer.\n\n"
@@ -304,25 +331,53 @@ PyMethodDef ConsoleSingleton::Methods[] = {
 };
 
 namespace {
-PyObject* FC_PYCONSOLE_MSG(std::function<void(const char*)> func, PyObject* args)
+PyObject* FC_PYCONSOLE_MSG(std::function<void(const char*, const char *)> func, PyObject* args)
 {
     PyObject *output;
-    if (!PyArg_ParseTuple(args, "O", &output))
-        return nullptr;
-    PY_TRY {
-        const char* string = nullptr;
+    PyObject *notifier;
+
+    const char* notifierStr = "";
+
+    auto retrieveString = [] (PyObject* pystr) {
         PyObject* unicode = nullptr;
-        if (PyUnicode_Check(output)) {
-            string = PyUnicode_AsUTF8(output);
+
+        const char* outstr = nullptr;
+
+        if (PyUnicode_Check(pystr)) {
+            outstr = PyUnicode_AsUTF8(pystr);
         }
         else {
-            unicode = PyObject_Str(output);
+            unicode = PyObject_Str(pystr);
             if (unicode)
-                string = PyUnicode_AsUTF8(unicode);
+                outstr = PyUnicode_AsUTF8(unicode);
         }
-        if (string)
-            func(string);            /*process message*/
+
         Py_XDECREF(unicode);
+
+        return outstr;
+    };
+
+
+    if (!PyArg_ParseTuple(args, "OO", &notifier, &output)) {
+        PyErr_Clear();
+        if (!PyArg_ParseTuple(args, "O", &output)) {
+            return nullptr;
+        }
+
+    }
+    else { // retrieve notifier
+        PY_TRY {
+            notifierStr = retrieveString(notifier);
+        }
+        PY_CATCH
+    }
+
+    PY_TRY {
+        const char* string = retrieveString(output);
+
+        if (string)
+            func(notifierStr, string);            /*process message*/
+
     }
     PY_CATCH
     Py_Return;
@@ -331,36 +386,50 @@ PyObject* FC_PYCONSOLE_MSG(std::function<void(const char*)> func, PyObject* args
 
 PyObject *ConsoleSingleton::sPyMessage(PyObject * /*self*/, PyObject *args)
 {
-    return FC_PYCONSOLE_MSG([](const char* msg) {
-        Instance().Message("%s", msg);
+    return FC_PYCONSOLE_MSG([](const std::string & notifier, const char* msg) {
+        Instance().Message(notifier, "%s", msg);
     }, args);
 }
 
 PyObject *ConsoleSingleton::sPyWarning(PyObject * /*self*/, PyObject *args)
 {
-    return FC_PYCONSOLE_MSG([](const char* msg) {
-        Instance().Warning("%s", msg);
+    return FC_PYCONSOLE_MSG([](const std::string & notifier, const char* msg) {
+        Instance().Warning(notifier, "%s", msg);
     }, args);
 }
 
 PyObject *ConsoleSingleton::sPyError(PyObject * /*self*/, PyObject *args)
 {
-    return FC_PYCONSOLE_MSG([](const char* msg) {
-        Instance().Error("%s", msg);
+    return FC_PYCONSOLE_MSG([](const std::string & notifier, const char* msg) {
+        Instance().Error(notifier, "%s", msg);
     }, args);
 }
 
 PyObject *ConsoleSingleton::sPyLog(PyObject * /*self*/, PyObject *args)
 {
-    return FC_PYCONSOLE_MSG([](const char* msg) {
-        Instance().Log("%s", msg);
+    return FC_PYCONSOLE_MSG([](const std::string & notifier, const char* msg) {
+        Instance().Log(notifier, "%s", msg);
     }, args);
 }
 
 PyObject *ConsoleSingleton::sPyCriticalMessage(PyObject * /*self*/, PyObject *args)
 {
-    return FC_PYCONSOLE_MSG([](const char* msg) {
-        Instance().Message("%s", msg);
+    return FC_PYCONSOLE_MSG([](const std::string & notifier, const char* msg) {
+        Instance().CriticalMessage(notifier, "%s", msg);
+    }, args);
+}
+
+PyObject *ConsoleSingleton::sPyNotification(PyObject * /*self*/, PyObject *args)
+{
+    return FC_PYCONSOLE_MSG([](const std::string & notifier, const char* msg) {
+        Instance().UserNotification(notifier, "%s", msg);
+    }, args);
+}
+
+PyObject *ConsoleSingleton::sPyTranslatedNotification(PyObject * /*self*/, PyObject *args)
+{
+    return FC_PYCONSOLE_MSG([](const std::string & notifier, const char* msg) {
+        Instance().UserTranslatedNotification(notifier, "%s", msg);
     }, args);
 }
 
@@ -386,9 +455,13 @@ PyObject *ConsoleSingleton::sPyGetStatus(PyObject * /*self*/, PyObject *args)
         else if (strcmp(pstr2,"Err") == 0)
             b = pObs->bErr;
         else if (strcmp(pstr2,"CriticalMsg") == 0)
-            b = pObs->bErr;
+            b = pObs->bCriticalMsg;
+        else if (strcmp(pstr2,"Notification") == 0)
+            b = pObs->bNotification;
+        else if (strcmp(pstr2,"TranslatedNotification") == 0)
+            b = pObs->bTranslatedNotification;
         else
-            Py_Error(Base::PyExc_FC_GeneralError,"Unknown message type (use 'Log', 'Err', 'Msg', 'CriticalMsg' or 'Wrn')");
+            Py_Error(Base::PyExc_FC_GeneralError,"Unknown message type (use 'Log', 'Err', 'Wrn', 'Msg', 'CriticalMsg', 'Notification' or 'TranslatedNotification')");
 
         return PyBool_FromLong(b ? 1 : 0);
     }
@@ -417,8 +490,12 @@ PyObject *ConsoleSingleton::sPySetStatus(PyObject * /*self*/, PyObject *args)
                 pObs->bErr = status;
             else if (strcmp(pstr2,"CriticalMsg") == 0)
                 pObs->bCriticalMsg = status;
+            else if (strcmp(pstr2,"Notification") == 0)
+                pObs->bNotification = status;
+            else if (strcmp(pstr2,"TranslatedNotification") == 0)
+                pObs->bTranslatedNotification = status;
             else
-                Py_Error(Base::PyExc_FC_GeneralError,"Unknown message type (use 'Log', 'Err', 'Msg', 'CriticalMsg' or 'Wrn')");
+                Py_Error(Base::PyExc_FC_GeneralError,"Unknown message type (use 'Log', 'Err', 'Wrn', 'Msg', 'CriticalMsg', 'Notification' or 'TranslatedNotification')");
 
             Py_Return;
         }
