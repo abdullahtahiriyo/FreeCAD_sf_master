@@ -40,7 +40,7 @@
       <item row="0" column="1">
        <widget class="Gui::PrefSpinBox" name="maxDuration">
         <property name="toolTip">
-         <string>Maximum duration during which the notification will be shown</string>
+         <string>Duration during which the notification will be shown (unless mouse buttons are clicked)</string>
         </property>
         <property name="suffix">
          <string>s</string>
@@ -65,7 +65,7 @@
       <item row="1" column="1">
        <widget class="Gui::PrefSpinBox" name="minDuration">
         <property name="toolTip">
-         <string>Minimum duration during which the notification will be shown</string>
+         <string>Minimum duration during which the notification will be shown (unless notification clicked)</string>
         </property>
         <property name="suffix">
          <string>s</string>
@@ -90,6 +90,9 @@
       </item>
       <item row="2" column="1">
        <widget class="Gui::PrefSpinBox" name="maxNotifications">
+        <property name="toolTip">
+         <string>Maximum number of notifications that will be simultaneously present on the screen</string>
+        </property>
         <property name="value">
          <number>15</number>
         </property>
