@@ -576,6 +576,13 @@ public:
     /// Prints a Critical Message
     template <typename... Args>
     void CriticalMessage (const char * pMsg, Args&&... args);
+    /// Sends a User Notification
+    template <typename... Args>
+    void UserNotification( const char * pMsg, Args&&... args );
+    /// Sends an already translated User Notification
+    template <typename... Args>
+    void UserTranslatedNotification( const char * pMsg, Args&&... args );
+
 
     /// Prints a Message with source indication
     template <typename... Args>
@@ -592,6 +599,12 @@ public:
     /// Prints a Critical Message
     template <typename... Args>
     void CriticalMessage (const std::string &, const char * pMsg, Args&&... args);
+    /// Sends a User Notification
+    template <typename... Args>
+    void UserNotification( const std::string & notifier, const char * pMsg, Args&&... args );
+    /// Sends an already translated User Notification
+    template <typename... Args>
+    void UserTranslatedNotification( const std::string & notifier, const char * pMsg, Args&&... args );
 
     // observer processing
     template <LogStyle>
@@ -654,14 +667,16 @@ public:
 protected:
     // python exports goes here +++++++++++++++++++++++++++++++++++++++++++
     // static python wrapper of the exported functions
-    static PyObject *sPyLog             (PyObject *self,PyObject *args);
-    static PyObject *sPyMessage         (PyObject *self,PyObject *args);
-    static PyObject *sPyWarning         (PyObject *self,PyObject *args);
-    static PyObject *sPyError           (PyObject *self,PyObject *args);
-    static PyObject *sPyCriticalMessage (PyObject *self,PyObject *args);
-    static PyObject *sPySetStatus       (PyObject *self,PyObject *args);
-    static PyObject *sPyGetStatus       (PyObject *self,PyObject *args);
-    static PyObject *sPyGetObservers    (PyObject *self, PyObject *args);
+    static PyObject *sPyLog                     (PyObject *self,PyObject *args);
+    static PyObject *sPyMessage                 (PyObject *self,PyObject *args);
+    static PyObject *sPyWarning                 (PyObject *self,PyObject *args);
+    static PyObject *sPyError                   (PyObject *self,PyObject *args);
+    static PyObject *sPyCriticalMessage         (PyObject *self,PyObject *args);
+    static PyObject *sPyNotification            (PyObject *self,PyObject *args);
+    static PyObject *sPyTranslatedNotification  (PyObject *self,PyObject *args);
+    static PyObject *sPySetStatus               (PyObject *self,PyObject *args);
+    static PyObject *sPyGetStatus               (PyObject *self,PyObject *args);
+    static PyObject *sPyGetObservers            (PyObject *self,PyObject *args);
 
     bool _bVerbose;
     bool _bCanRefresh;
@@ -858,6 +873,30 @@ template <typename... Args>
 void Base::ConsoleSingleton::CriticalMessage( const std::string & notifier, const char * pMsg, Args&&... args )
 {
     Send<Base::LogStyle::CriticalMessage>(notifier, pMsg, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void Base::ConsoleSingleton::UserNotification( const char * pMsg, Args&&... args )
+{
+    UserNotification(std::string(""), pMsg, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void Base::ConsoleSingleton::UserNotification( const std::string & notifier, const char * pMsg, Args&&... args )
+{
+    Send<Base::LogStyle::Notification>(notifier, pMsg, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void Base::ConsoleSingleton::UserTranslatedNotification( const char * pMsg, Args&&... args )
+{
+    UserTranslatedNotification(std::string(""), pMsg, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void Base::ConsoleSingleton::UserTranslatedNotification( const std::string & notifier, const char * pMsg, Args&&... args )
+{
+    Send<Base::LogStyle::TranslatedNotification>(notifier, pMsg, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
