@@ -249,6 +249,18 @@ protected:
 
                             menu.addSeparator();
 
+                            QAction* delnotifications = menu.addAction(tr("Delete user notifications"), this, [&]() {
+                                for(int i = tableWidget->topLevelItemCount()-1; i>=0; i--) {
+                                    auto * item = static_cast<NotificationItem *>(tableWidget->topLevelItem(i));
+                                    if( item->notificationType == Base::LogStyle::Notification ||
+                                        item->notificationType == Base::LogStyle::TranslatedNotification) {
+                                        delete item;
+                                    }
+                                }
+                            });
+
+                            delnotifications->setEnabled(tableWidget->topLevelItemCount() > 0);
+
                             QAction* delall = menu.addAction(tr("Delete All"), this, [&]() {
                                 tableWidget->clear();
                             });
