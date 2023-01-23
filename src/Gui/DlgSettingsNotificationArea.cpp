@@ -60,6 +60,7 @@ void DlgSettingsNotificationArea::saveSettings()
     ui->maxDuration->onSave();
     ui->minDuration->onSave();
     ui->maxNotifications->onSave();
+    ui->maxWidgetMessages->onSave();
 }
 
 void DlgSettingsNotificationArea::loadSettings()
@@ -69,6 +70,7 @@ void DlgSettingsNotificationArea::loadSettings()
     ui->maxDuration->onRestore();
     ui->minDuration->onRestore();
     ui->maxNotifications->onRestore();
+    ui->maxWidgetMessages->onRestore();
 }
 
 void DlgSettingsNotificationArea::changeEvent(QEvent *e)

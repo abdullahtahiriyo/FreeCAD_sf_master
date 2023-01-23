@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>654</width>
-    <height>259</height>
+    <height>356</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -166,6 +166,41 @@
       </size>
      </property>
     </spacer>
+   </item>
+   <item row="2" column="0">
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>Message List</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_4">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Maximum Messages (0 = no limit):</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="Gui::PrefSpinBox" name="maxWidgetMessages">
+        <property name="toolTip">
+         <string>Limit the number of messages that will be kept in the list. If 0 there is no limit.</string>
+        </property>
+        <property name="maximum">
+         <number>10000</number>
+        </property>
+        <property name="value">
+         <number>1000</number>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>MaxWidgetMessages</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>NotificationArea</cstring>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
    </item>
   </layout>
  </widget>
