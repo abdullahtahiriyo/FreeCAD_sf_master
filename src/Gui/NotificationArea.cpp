@@ -139,6 +139,7 @@ struct NotificationAreaP
     unsigned int unread = 0;
 
     // Widget messages
+    bool widgetMessageLimit = true;
     int maxWidgetMessages = 1000; // maximum number of message allowed in the notification area widget
 
     // Access control
@@ -404,20 +405,9 @@ void NotificationArea::pushNotification(const QString & notifiername, const QStr
 
     std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification list and indices while creating the tooltip
 
-    if(d->table->topLevelItemCount() > d->maxWidgetMessages) {
-        // look into how many messages may be deleted
-        auto maximumDeletable = d->table->topLevelItemCount() - d->currentlyNotifyingIndex; // so as not to delete the message that are currently being notified
-        auto toBeDeleted = 0.2 * d->maxWidgetMessages; // tentative remove 20% of the maximum allowed
-
-        if(maximumDeletable < toBeDeleted) {
-            toBeDeleted = maximumDeletable;
-        }
-
-        if (toBeDeleted > 0) {
-            for(auto i=0; i< toBeDeleted; i++) {
-                delete d->table->topLevelItem(d->table->topLevelItemCount()-1);
-            }
-        }
+    // Limit the maximum number of messages stored in the widget
+    if(d->widgetMessageLimit && d->table->topLevelItemCount() > d->maxWidgetMessages) {
+        delete d->table->topLevelItem(d->table->topLevelItemCount()-1);
     }
 
     d->table->insertTopLevelItem(0,item);
