@@ -201,10 +201,11 @@ void NotificationAreaObserver::SendLog(const std::string& notifiername, const st
 class NotificationsAction : public QWidgetAction
 {
 public:
-    NotificationsAction(QWidget* parent) : QWidgetAction(parent), parentWidget(parent) {}
+    NotificationsAction(QWidget* parent) : QWidgetAction(parent) {}
 
     auto getTable(){return tableWidget;}
 protected:
+
     QWidget* createWidget(QWidget* parent) override
     {
         QWidget* notificationsWidget = new QWidget(parent);
@@ -226,12 +227,44 @@ protected:
         tableWidget->header()->setStretchLastSection(false);
         tableWidget->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
 
+        tableWidget->setSelectionMode(QAbstractItemView::ExtendedSelection);
+        tableWidget->setContextMenuPolicy(Qt::CustomContextMenu);
+
+        // context menu
+        QObject::connect(tableWidget, &QTreeWidget::customContextMenuRequested,
+                         [&](const QPoint & pos) {
+
+                            //auto item = tableWidget->itemAt(pos);
+                            auto selectedItems = tableWidget->selectedItems();
+
+                            QMenu menu;
+
+                            QAction* del = menu.addAction(tr("Delete"), this, [&]() {
+                                for(auto it : selectedItems) {
+                                    delete it;
+                                }
+                            });
+
+                            del->setEnabled(!selectedItems.isEmpty());
+
+                            menu.addSeparator();
+
+                            QAction* delall = menu.addAction(tr("Delete All"), this, [&]() {
+                                tableWidget->clear();
+                            });
+
+                            delall->setEnabled(tableWidget->topLevelItemCount() > 0);
+
+                            menu.setDefaultAction(del);
+
+                            menu.exec(tableWidget->mapToGlobal(pos));
+                         });
+
         return notificationsWidget;
     }
 
 private:
     QTreeWidget * tableWidget;
-    QWidget * parentWidget;
 };
 
 /***************************************** Parameter Observer **************************************/
