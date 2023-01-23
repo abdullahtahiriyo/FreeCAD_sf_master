@@ -139,8 +139,7 @@ struct NotificationAreaP
     unsigned int unread = 0;
 
     // Widget messages
-    bool widgetMessageLimit = true;
-    int maxWidgetMessages = 1000; // maximum number of message allowed in the notification area widget
+    int maxWidgetMessages = 1000; // Parameter controlled - maximum number of message allowed in the notification area widget (0 means no limit)
 
     // Access control
     std::mutex mutexNotification;
@@ -309,9 +308,6 @@ NotificationArea::ParameterObserver::ParameterObserver(NotificationArea * notifi
             if(limit < 0)
                 limit = 0;
             notificationArea->d->maxOpenNotifications = static_cast<unsigned int>(limit);}},
-        {"WidgetMessageLimit", [this](const std::string & string){
-            auto enabled = hGrp->GetBool(string.c_str(), true);
-            notificationArea->d->widgetMessageLimit = enabled;}},
         {"MaxWidgetMessages", [this](const std::string & string){
             auto limit = hGrp->GetInt(string.c_str(), 1000);
             if(limit < 0)
@@ -409,7 +405,7 @@ void NotificationArea::pushNotification(const QString & notifiername, const QStr
     std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification list and indices while creating the tooltip
 
     // Limit the maximum number of messages stored in the widget
-    if(d->widgetMessageLimit && d->table->topLevelItemCount() > d->maxWidgetMessages) {
+    if(d->maxWidgetMessages != 0 && d->table->topLevelItemCount() > d->maxWidgetMessages) {
         delete d->table->topLevelItem(d->table->topLevelItemCount()-1);
     }
 
