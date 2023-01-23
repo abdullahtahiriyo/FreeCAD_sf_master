@@ -309,6 +309,9 @@ NotificationArea::ParameterObserver::ParameterObserver(NotificationArea * notifi
             if(limit < 0)
                 limit = 0;
             notificationArea->d->maxOpenNotifications = static_cast<unsigned int>(limit);}},
+        {"WidgetMessageLimit", [this](const std::string & string){
+            auto enabled = hGrp->GetBool(string.c_str(), true);
+            notificationArea->d->widgetMessageLimit = enabled;}},
         {"MaxWidgetMessages", [this](const std::string & string){
             auto limit = hGrp->GetInt(string.c_str(), 1000);
             if(limit < 0)
