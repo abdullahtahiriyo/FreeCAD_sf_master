@@ -147,6 +147,7 @@ struct NotificationAreaP
     // Pointers to widgets
     QMenu * menu;
     QTreeWidget * table;
+    QWidgetAction * notificationaction;
 
     // Message observer
     std::unique_ptr<NotificationAreaObserver> observer;
@@ -204,6 +205,25 @@ public:
     NotificationsAction(QWidget* parent) : QWidgetAction(parent) {}
 
     auto getTable(){return tableWidget;}
+
+public:
+    void deleteNotifications() {
+        if(tableWidget) {
+            for(int i = tableWidget->topLevelItemCount()-1; i>=0; i--) {
+                auto * item = static_cast<NotificationItem *>(tableWidget->topLevelItem(i));
+                if( item->notificationType == Base::LogStyle::Notification ||
+                    item->notificationType == Base::LogStyle::TranslatedNotification) {
+                    delete item;
+                }
+            }
+        }
+    }
+
+    void deleteAll() {
+        if(tableWidget) {
+            tableWidget->clear();
+        }
+    }
 protected:
 
     QWidget* createWidget(QWidget* parent) override
@@ -249,21 +269,11 @@ protected:
 
                             menu.addSeparator();
 
-                            QAction* delnotifications = menu.addAction(tr("Delete user notifications"), this, [&]() {
-                                for(int i = tableWidget->topLevelItemCount()-1; i>=0; i--) {
-                                    auto * item = static_cast<NotificationItem *>(tableWidget->topLevelItem(i));
-                                    if( item->notificationType == Base::LogStyle::Notification ||
-                                        item->notificationType == Base::LogStyle::TranslatedNotification) {
-                                        delete item;
-                                    }
-                                }
-                            });
+                            QAction* delnotifications = menu.addAction(tr("Delete user notifications"), this, &NotificationsAction::deleteNotifications);
 
                             delnotifications->setEnabled(tableWidget->topLevelItemCount() > 0);
 
-                            QAction* delall = menu.addAction(tr("Delete All"), this, [&]() {
-                                tableWidget->clear();
-                            });
+                            QAction* delall = menu.addAction(tr("Delete All"), this, &NotificationsAction::deleteAll);
 
                             delall->setEnabled(tableWidget->topLevelItemCount() > 0);
 
@@ -363,6 +373,8 @@ NotificationArea::NotificationArea(QWidget *parent):QPushButton(parent)
 
     d->menu->addAction(na);
 
+    d->notificationaction = na;
+
     d->table = na->getTable();
 
     QObject::connect(d->menu, &QMenu::aboutToHide,
@@ -373,15 +385,6 @@ NotificationArea::NotificationArea(QWidget *parent):QPushButton(parent)
                          setText(QString::number(d->unread));
                      });
 
-    QObject::connect(d->menu, &QMenu::aboutToShow,
-                     [&]() {
-                         std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification list and indices while creating the tooltip
-
-                         for (unsigned int i=0; i < d->unread; i++) {
-                             d->table->topLevelItem(i)->setSelected(true);
-                         }
-                     });
-
     d->finishRestoreDocumentConnection = App::GetApplication().signalFinishRestoreDocument.connect(
         boost::bind(&Gui::NotificationArea::slotRestoreFinished, this, bp::_1)
     );
@@ -390,6 +393,29 @@ NotificationArea::NotificationArea(QWidget *parent):QPushButton(parent)
 NotificationArea::~NotificationArea()
 {
     d->finishRestoreDocumentConnection.disconnect();
+}
+
+void NotificationArea::mousePressEvent(QMouseEvent *e)
+{
+    if(e->button() == Qt::RightButton && hitButton(e->pos()))
+    {
+        QMenu menu;
+
+        NotificationsAction * na = static_cast<NotificationsAction *>(d->notificationaction);
+
+        QAction* delnotifications = menu.addAction(tr("Delete user notifications"), na, &NotificationsAction::deleteNotifications);
+
+        delnotifications->setEnabled(d->table->topLevelItemCount() > 0);
+
+        QAction* delall = menu.addAction(tr("Delete All"), na, &NotificationsAction::deleteAll);
+
+        delall->setEnabled(d->table->topLevelItemCount() > 0);
+
+        menu.setDefaultAction(delall);
+
+        menu.exec(this->mapToGlobal(e->pos()));
+    }
+    QPushButton::mousePressEvent(e);
 }
 
 void NotificationArea::pushNotification(const QString & notifiername, const QString & message, Base::LogStyle level)

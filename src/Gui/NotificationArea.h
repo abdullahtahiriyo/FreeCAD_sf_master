@@ -60,6 +60,8 @@ private:
     void showConfirmationDialog(const QString & notifiername, const QString & message);
     void slotRestoreFinished(const App::Document&);
 
+    void mousePressEvent(QMouseEvent *e) override;
+
 private:
     std::unique_ptr<NotificationAreaP> d;
 };
