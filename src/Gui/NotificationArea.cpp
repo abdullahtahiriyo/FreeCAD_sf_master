@@ -55,6 +55,11 @@ using Connection = boost::signals2::connection;
 namespace bp = boost::placeholders;
 
 namespace Gui {
+
+/* Specialised Item class for the Widget messages/notifications/errors/warnings
+   It holds all item specific data, including visualisation data and controls how
+   the item should appear in the widget.
+*/
 class NotificationItem : public QTreeWidgetItem
 {
 public:
@@ -62,7 +67,7 @@ public:
         notificationType(notificationtype), notifierName(std::move(notifiername)), msg(std::move(message)) {}
 
     QVariant data(int column, int role) const override {
-        // property name
+        // strings that will be displayed for each column of the widget
         if( role == Qt::DisplayRole ) {
             switch(column) {
                 case 1:
@@ -73,7 +78,7 @@ public:
                     break;
             }
         }
-        else
+        else // Icons to be displayed for the first row
         if(column == 0 && role == Qt::DecorationRole) {
             if(notificationType == Base::LogStyle::Error) {
                 return QVariant::fromValue(BitmapFactory().pixmapFromSvg(":/icons/edit_Cancel.svg",QSize(16, 16)));
@@ -90,6 +95,16 @@ public:
                 return QVariant::fromValue(BitmapFactory().pixmapFromSvg(":/icons/info.svg",QSize(16, 16)));
             }
         }
+        else // Visualisation control of unread messages
+        if (role == Qt::FontRole) {
+            QFont boldFont;
+
+            if(unread) {
+                boldFont.setBold(true);
+            }
+
+            return boldFont;
+        }
 
         return QVariant();
     }
@@ -97,24 +112,29 @@ public:
     Base::LogStyle notificationType;
     QString notifierName;
     QString msg;
+
+    bool unread = true;
 };
 
+/* This class listens to all messages sent via the console interface and
+   feeds the non-intrusive notification system and the notifications widget */
 class NotificationAreaObserver: public Base::ILogger
 {
 public:
     NotificationAreaObserver(NotificationArea * notificationarea);
     ~NotificationAreaObserver() override;
 
-
+    /// Function that is called by the console interface for this observer with the message information
     void SendLog(const std::string& notifiername, const std::string& msg, Base::LogStyle level) override;
 
-    /// name of the observer
+    /// Name of the observer
     const char *Name() override {return "NotificationAreaObserver";}
 
 private:
     NotificationArea * notificationArea;
 };
 
+// PImpl idiom structure having all data necessary for the notification area
 struct NotificationAreaP
 {
     // Non-intrusive notifications
@@ -161,7 +181,7 @@ struct NotificationAreaP
 
 } // namespace Gui
 
-/***************************************** Console Messages Observer **************************************/
+/***************************************** Console Messages Observer (Console Interface) **************************************/
 
 NotificationAreaObserver::NotificationAreaObserver(NotificationArea * notificationarea): notificationArea(notificationarea)
 {
@@ -179,9 +199,10 @@ NotificationAreaObserver::~NotificationAreaObserver()
 
 void NotificationAreaObserver::SendLog(const std::string& notifiername, const std::string& msg, Base::LogStyle level)
 {
-    // 1. As notification system is shared with report view and others, the convention is that any individual message
-    // shall end in "\n".
-    // 2. Any QT_TRANSLATE_NOOT string does not comprise newlines.
+    // 1. As notification system is shared with report view and others, the expectation is that any individual message
+    // will end in "\n". This means the string must be stripped of this character.
+    // 2. However, any message marked with the QT_TRANSLATE_NOOT macro with the "Notifications" context, shall not include
+    // "\n", as this generates problems with the translation system. Then the string must be stripped of "\n" before translation.
 
     auto simplifiedstring = QString::fromStdString(msg).trimmed(); // remove any leading and trailing whitespace character ('\n')
 
@@ -197,7 +218,7 @@ void NotificationAreaObserver::SendLog(const std::string& notifiername, const st
     }
 }
 
-/***************************************** Drop menu Action **************************************/
+/***************************************** Drop menu Action containing the notifications widget ************************************/
 
 class NotificationsAction : public QWidgetAction
 {
@@ -223,6 +244,17 @@ public:
         if(tableWidget) {
             tableWidget->clear();
         }
+    }
+
+    unsigned int getUnreadMessages() const {
+        unsigned int unread = 0;
+        for(auto i = 0; i < tableWidget->topLevelItemCount(); i++) {
+            auto * item = static_cast<NotificationItem *>(tableWidget->topLevelItem(i));
+            if(item->unread) {
+                unread++;
+            }
+        }
+        return unread;
     }
 protected:
 
@@ -250,7 +282,7 @@ protected:
         tableWidget->setSelectionMode(QAbstractItemView::ExtendedSelection);
         tableWidget->setContextMenuPolicy(Qt::CustomContextMenu);
 
-        // context menu
+        // context menu on any item (row) of the widget
         QObject::connect(tableWidget, &QTreeWidget::customContextMenuRequested,
                          [&](const QPoint & pos) {
 
@@ -289,7 +321,7 @@ private:
     QTreeWidget * tableWidget;
 };
 
-/***************************************** Parameter Observer **************************************/
+/***************************************** Parameter Observer (preferences) **************************************/
 
 NotificationArea::ParameterObserver::ParameterObserver(NotificationArea * notificationarea): notificationArea(notificationarea)
 {
@@ -379,11 +411,20 @@ NotificationArea::NotificationArea(QWidget *parent):QPushButton(parent)
 
     QObject::connect(d->menu, &QMenu::aboutToHide,
                      [&]() {
-                         std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification list and indices while creating the tooltip
-                         d->unread = 0;
-                         d->table->clearSelection();
-                         setText(QString::number(d->unread));
+                         for(auto i = 0; i < d->table->topLevelItemCount(); i++) { // all messages were read, so clear the unread flag
+                             auto * item = static_cast<NotificationItem *>(d->table->topLevelItem(i));
+                             item->unread = false;
+                         }
+
                      });
+
+    QObject::connect(d->menu, &QMenu::aboutToShow,
+                     [&]() {
+                        std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification list and indices while creating the tooltip
+                        d->unread = 0;
+                        setText(QString::number(d->unread));
+                     });
+
 
     d->finishRestoreDocumentConnection = App::GetApplication().signalFinishRestoreDocument.connect(
         boost::bind(&Gui::NotificationArea::slotRestoreFinished, this, bp::_1)
@@ -403,11 +444,21 @@ void NotificationArea::mousePressEvent(QMouseEvent *e)
 
         NotificationsAction * na = static_cast<NotificationsAction *>(d->notificationaction);
 
-        QAction* delnotifications = menu.addAction(tr("Delete user notifications"), na, &NotificationsAction::deleteNotifications);
+        QAction* delnotifications = menu.addAction(tr("Delete user notifications"), [&]() {
+            na->deleteNotifications();
+            std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification list and indices while creating the tooltip
+            d->unread = na->getUnreadMessages();
+            setText(QString::number(d->unread));
+        });
 
         delnotifications->setEnabled(d->table->topLevelItemCount() > 0);
 
-        QAction* delall = menu.addAction(tr("Delete All"), na, &NotificationsAction::deleteAll);
+        QAction* delall = menu.addAction(tr("Delete All"), [&]() {
+            na->deleteAll();
+            std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification list and indices while creating the tooltip
+            d->unread = 0;
+            setText(QString::number(d->unread));
+        });
 
         delall->setEnabled(d->table->topLevelItemCount() > 0);
 
