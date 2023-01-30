@@ -310,6 +310,7 @@ MainWindow::MainWindow(QWidget * parent, Qt::WindowFlags f)
         NotificationArea* notificationArea = new NotificationArea(statusBar());
         notificationArea->setObjectName(QString::fromLatin1("notificationArea"));
         notificationArea->setIcon(QIcon(QString::fromLatin1(":/icons/InTray.svg")));
+        notificationArea->setStyleSheet(QStringLiteral("text-align:left;"));
         statusBar()->addPermanentWidget(notificationArea);
     }
     // clears the action label
@@ -2152,7 +2153,7 @@ void StatusBarObserver::OnChange(Base::Subject<const char*> &rCaller, const char
 void StatusBarObserver::SendLog(const std::string& notifiername, const std::string& msg, Base::LogStyle level)
 {
     (void) notifiername;
-    
+
     int messageType = -1;
     switch(level){
         case Base::LogStyle::Warning:
