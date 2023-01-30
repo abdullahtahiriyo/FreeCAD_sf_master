@@ -54,6 +54,52 @@ using Connection = boost::signals2::connection;
 
 namespace bp = boost::placeholders;
 
+
+/* Simple class to manage Notification Area Resources*/
+class ResourceManager {
+
+private:
+    ResourceManager() {
+        error = BitmapFactory().pixmapFromSvg(":/icons/edit_Cancel.svg",QSize(16, 16));
+        warning = BitmapFactory().pixmapFromSvg(":/icons/Warning.svg",QSize(16, 16));
+        critical = BitmapFactory().pixmapFromSvg(":/icons/critical-info.svg",QSize(16, 16));
+        info = BitmapFactory().pixmapFromSvg(":/icons/info.svg",QSize(16, 16));
+    }
+
+    static auto & getResourceManager() {
+        static ResourceManager manager;
+
+        return manager;
+    }
+
+public:
+    static auto ErrorPixmap(){
+        auto rm = getResourceManager();
+        return rm.error;
+    }
+
+    static auto WarningPixmap(){
+        auto rm = getResourceManager();
+        return rm.warning;
+    }
+
+    static auto CriticalPixmap(){
+        auto rm = getResourceManager();
+        return rm.critical;
+    }
+
+    static auto InfoPixmap(){
+        auto rm = getResourceManager();
+        return rm.info;
+    }
+
+private:
+    QPixmap error;
+    QPixmap warning;
+    QPixmap critical;
+    QPixmap info;
+};
+
 namespace Gui {
 
 /* Specialised Item class for the Widget messages/notifications/errors/warnings
@@ -81,29 +127,30 @@ public:
         else // Icons to be displayed for the first row
         if(column == 0 && role == Qt::DecorationRole) {
             if(notificationType == Base::LogStyle::Error) {
-                return QVariant::fromValue(BitmapFactory().pixmapFromSvg(":/icons/edit_Cancel.svg",QSize(16, 16)));
+                return std::move(ResourceManager::ErrorPixmap());
             }
             else
             if(notificationType == Base::LogStyle::Warning) {
-                return QVariant::fromValue(BitmapFactory().pixmapFromSvg(":/icons/Warning.svg",QSize(16, 16)));
+                return std::move(ResourceManager::WarningPixmap());
             }
             else
             if(notificationType == Base::LogStyle::CriticalMessage) {
-                return QVariant::fromValue(BitmapFactory().pixmapFromSvg(":/icons/critical-info.svg",QSize(16, 16)));
+                return std::move(ResourceManager::CriticalPixmap());
             }
             else {
-                return QVariant::fromValue(BitmapFactory().pixmapFromSvg(":/icons/info.svg",QSize(16, 16)));
+                return std::move(ResourceManager::InfoPixmap());
             }
         }
         else // Visualisation control of unread messages
         if (role == Qt::FontRole) {
-            QFont boldFont;
+            static QFont font;
+            static QFont boldFont(font.family(),font.pointSize(), QFont::Bold);
 
             if(unread) {
-                boldFont.setBold(true);
+                return boldFont;
             }
 
-            return boldFont;
+            return font;
         }
 
         return QVariant();
@@ -113,7 +160,9 @@ public:
     QString notifierName;
     QString msg;
 
-    bool unread = true;
+    bool unread = true;     // item is unread in the Notification Area Widget
+    bool notifying = true;  // item is to be notified or being notified as non-intrusive message
+    bool shown = false;     // item is already being notified (it is onScreen)
 };
 
 /* This class listens to all messages sent via the console interface and
@@ -137,36 +186,27 @@ private:
 // PImpl idiom structure having all data necessary for the notification area
 struct NotificationAreaP
 {
-    // Non-intrusive notifications
-    int currentlyNotifyingIndex = 0;
+    // Non-intrusive notifications parameters
     int maxOpenNotifications = 15; // Parameter controlled
     unsigned int notificationExpirationTime = 10000; // Parameter controlled
     unsigned int minimumOnScreenTime = 5000; // minimum time that the notification will remain unclosed
     bool notificationsDisabled = false; // Parameter controlled
 
-    // Notification rate controller.
-    // After a notification, further notifications within this time
-    // are inhibited. If notifications reach inbetween they are shown
-    // after this timeout.
-    const unsigned int inhibitNotificationTime = 1000;
-    bool notificationsDuringInhibitTimer = false; // did notifications arrive during inhibit timer
-    bool inhibiting = false; // are we currently inhibiting?
-
     // Control of confirmation mechanism
     bool requireConfirmationCriticalMessageDuringRestoring = true;
 
-    // NotificationArea control
-    unsigned int unread = 0;
-
-    // Widget messages
+    // Widget parameters
     int maxWidgetMessages = 1000; // Parameter controlled - maximum number of message allowed in the notification area widget (0 means no limit)
 
     // Access control
     std::mutex mutexNotification;
 
+    // Control rate of updates of non-intrusive messages
+    QTimer inhibitTimer; // Timer to delay notification until a minimum time between two consecutive messages have lapsed
+    const unsigned int inhibitNotificationTime = 250; //
+
     // Pointers to widgets
     QMenu * menu;
-    QTreeWidget * table;
     QWidgetAction * notificationaction;
 
     // Message observer
@@ -225,7 +265,13 @@ class NotificationsAction : public QWidgetAction
 public:
     NotificationsAction(QWidget* parent) : QWidgetAction(parent) {}
 
-    auto getTable(){return tableWidget;}
+    ~NotificationsAction() {
+        for(auto * item : pushedItems) {
+            if(item) {
+                delete item;
+            }
+        }
+    }
 
 public:
     void deleteNotifications() {
@@ -238,24 +284,94 @@ public:
                 }
             }
         }
+        for (int i = pushedItems.size()-1; i >=0 ; i--) {
+            auto * item = static_cast<NotificationItem*>(pushedItems.at(i));
+            if( item->notificationType == Base::LogStyle::Notification ||
+                item->notificationType == Base::LogStyle::TranslatedNotification) {
+                delete pushedItems.takeAt(i);
+            }
+        }
     }
 
     void deleteAll() {
         if(tableWidget) {
-            tableWidget->clear();
+            tableWidget->clear(); // the parent will delete the items.
+        }
+        while (!pushedItems.isEmpty())
+            delete pushedItems.takeFirst();
+    }
+
+    inline int getUnreadCount() const {
+        return getCurrently([](auto * item){return item->unread;});
+    }
+
+    inline int getCurrentlyNotifyingCount() const {
+        return getCurrently([](auto * item){return item->notifying;});
+    }
+
+    inline int getShownCount() const {
+        return getCurrently([](auto * item){return item->shown;});
+    }
+
+
+    void clearUnreadFlag() {
+        for(auto i = 0; i < tableWidget->topLevelItemCount(); i++) { // all messages were read, so clear the unread flag
+            auto * item = static_cast<NotificationItem *>(tableWidget->topLevelItem(i));
+            item->unread = false;
         }
     }
 
-    unsigned int getUnreadMessages() const {
-        unsigned int unread = 0;
-        for(auto i = 0; i < tableWidget->topLevelItemCount(); i++) {
-            auto * item = static_cast<NotificationItem *>(tableWidget->topLevelItem(i));
-            if(item->unread) {
-                unread++;
-            }
-        }
-        return unread;
+    // pushes all Notification Items to the Widget, so that they can be shown
+    void synchroniseWidget() {
+        tableWidget->insertTopLevelItems(0, pushedItems);
+        pushedItems.clear();
     }
+
+    // pushes all Notification Items to the fast cache (this also prevents all unnecessary signaling from parent)
+    void shiftToCache() {
+        tableWidget->blockSignals(true);
+        tableWidget->clearSelection();
+        while(tableWidget->topLevelItemCount() > 0) {
+            auto * item = tableWidget->takeTopLevelItem(0);
+            pushedItems.push_back(item);
+        }
+        tableWidget->blockSignals(false);
+    }
+
+    bool isEmpty() const {
+        return tableWidget->topLevelItemCount() == 0 && pushedItems.isEmpty();
+    }
+
+    auto count() const {
+        return tableWidget->topLevelItemCount() + pushedItems.count();
+    }
+
+    auto getItem(int index) const {
+        if(index < pushedItems.count()) {
+            return pushedItems.at(index);
+        }
+        else {
+            return tableWidget->topLevelItem(index-pushedItems.count());
+        }
+    }
+
+    void deleteItem(int index) {
+        if(index < pushedItems.count()) {
+            delete pushedItems.takeAt(index);
+        }
+        else {
+            delete tableWidget->topLevelItem(index-pushedItems.count());
+        }
+    }
+
+    void deleteLastItem() {
+        deleteItem(count()-1);
+    }
+
+    void push_front(NotificationItem * item) {
+        pushedItems.push_front(item);
+    }
+
 protected:
 
     QWidget* createWidget(QWidget* parent) override
@@ -318,7 +434,29 @@ protected:
     }
 
 private:
+    int getCurrently(std::function<bool(const NotificationItem *)> F) const {
+        int instate = 0;
+        for(auto i = 0; i < tableWidget->topLevelItemCount(); i++) {
+            auto * item = static_cast<NotificationItem *>(tableWidget->topLevelItem(i));
+            if(F(item)) {
+                instate++;
+            }
+        }
+        for(auto i = 0; i < pushedItems.count(); i++) {
+            auto * item = static_cast<NotificationItem *>(pushedItems.at(i));
+            if(F(item)) {
+                instate++;
+            }
+        }
+        return instate;
+    }
+
+private:
     QTreeWidget * tableWidget;
+    // Intermediate storage
+    // Note: QTreeWidget is helplessly slow to single insertions, QTreeWidget is actually only necessary when showing the widget. A single QList insertion
+    // into a QTreeWidget is actually not that slow. The use of this intermediate storage substantially accelerates non-intrusive notifications.
+    QList<QTreeWidgetItem *> pushedItems;
 };
 
 /***************************************** Parameter Observer (preferences) **************************************/
@@ -407,28 +545,37 @@ NotificationArea::NotificationArea(QWidget *parent):QPushButton(parent)
 
     d->notificationaction = na;
 
-    d->table = na->getTable();
-
     QObject::connect(d->menu, &QMenu::aboutToHide,
                      [&]() {
-                         for(auto i = 0; i < d->table->topLevelItemCount(); i++) { // all messages were read, so clear the unread flag
-                             auto * item = static_cast<NotificationItem *>(d->table->topLevelItem(i));
-                             item->unread = false;
-                         }
-
+                         std::lock_guard<std::mutex> g(d->mutexNotification);
+                         static_cast<NotificationsAction *>(d->notificationaction)->clearUnreadFlag();
+                         static_cast<NotificationsAction *>(d->notificationaction)->shiftToCache();
                      });
 
     QObject::connect(d->menu, &QMenu::aboutToShow,
-                     [&]() {
+                     [this]() {
                         std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification list and indices while creating the tooltip
-                        d->unread = 0;
-                        setText(QString::number(d->unread));
+                        setText(QString::number(0)); // no unread notifications
+                        static_cast<NotificationsAction *>(d->notificationaction)->synchroniseWidget();
+
+                        // the position of the action has already been calculated (for a non-synchronised widget), the size could be recalculated here, but not the
+                        // position according to the previous size. This resize event forces this recalculation.
+                        QResizeEvent re(d->menu->size(), d->menu->size());
+                        qApp->sendEvent(d->menu, &re);
                      });
 
 
     d->finishRestoreDocumentConnection = App::GetApplication().signalFinishRestoreDocument.connect(
         boost::bind(&Gui::NotificationArea::slotRestoreFinished, this, bp::_1)
     );
+
+    d->inhibitTimer.setSingleShot(true);
+
+    d->inhibitTimer.callOnTimeout([this, na](){
+        d->inhibitTimer.stop();
+        setText(QString::number(na->getUnreadCount()));
+        showInNotificationArea();
+    });
 }
 
 NotificationArea::~NotificationArea()
@@ -445,22 +592,20 @@ void NotificationArea::mousePressEvent(QMouseEvent *e)
         NotificationsAction * na = static_cast<NotificationsAction *>(d->notificationaction);
 
         QAction* delnotifications = menu.addAction(tr("Delete user notifications"), [&]() {
-            na->deleteNotifications();
             std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification list and indices while creating the tooltip
-            d->unread = na->getUnreadMessages();
-            setText(QString::number(d->unread));
+            na->deleteNotifications();
+            setText(QString::number(na->getUnreadCount()));
         });
 
-        delnotifications->setEnabled(d->table->topLevelItemCount() > 0);
+        delnotifications->setEnabled(!na->isEmpty());
 
         QAction* delall = menu.addAction(tr("Delete All"), [&]() {
-            na->deleteAll();
             std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification list and indices while creating the tooltip
-            d->unread = 0;
-            setText(QString::number(d->unread));
+            na->deleteAll();
+            setText(QString::number(0));
         });
 
-        delall->setEnabled(d->table->topLevelItemCount() > 0);
+        delall->setEnabled(!na->isEmpty());
 
         menu.setDefaultAction(delall);
 
@@ -481,46 +626,24 @@ void NotificationArea::pushNotification(const QString & notifiername, const QStr
 
     std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification list and indices while creating the tooltip
 
+    NotificationsAction * na = static_cast<NotificationsAction *>(d->notificationaction);
+
     // Limit the maximum number of messages stored in the widget
-    if(d->maxWidgetMessages != 0 && d->table->topLevelItemCount() > d->maxWidgetMessages) {
-        delete d->table->topLevelItem(d->table->topLevelItemCount()-1);
+    if(d->maxWidgetMessages != 0 && na->count() > d->maxWidgetMessages) {
+        na->deleteLastItem();
     }
 
-    d->table->insertTopLevelItem(0,item);
-    d->unread++;
-
-    if(!d->inhibiting) { // rate control (deferred update of UI)
-        setText(QString::number(d->unread));
-    }
+    na->push_front(item);
 
     // If the non-intrusive notifications are disabled then stop here
-    if(d->notificationsDisabled)
-        return;
-
-    // This controls the maximum number of messages to be displayed (to restrict to a certain area of the screen)
-    if(d->currentlyNotifyingIndex > d->maxOpenNotifications) {
+    if(d->notificationsDisabled) {
+        item->notifying = false; // avoid mass of old notifications if feature is activated afterwards
+        setText(QString::number(static_cast<NotificationsAction *>(d->notificationaction)->getUnreadCount()));
         return;
     }
 
-    d->currentlyNotifyingIndex++;
-
-    // rate control (flag controlled by timer)
-    // showing the tooltip is relatively expensive
-    // and it is useless to update it on each of
-    // a cluster of messages
-    if(!d->inhibiting) {
-        showInNotificationArea();
-    }
-    else { // mark that we had notifications during the
-        d->notificationsDuringInhibitTimer = true;
-    }
-
-    QTimer::singleShot(d->notificationExpirationTime, [this](){
-        std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification start index while creating the tooltip
-        if(d->currentlyNotifyingIndex > 0)
-            d->currentlyNotifyingIndex--;
-    });
-
+    // start or restart rate control
+    d->inhibitTimer.start(d->inhibitNotificationTime);
 }
 
 bool NotificationArea::confirmationRequired(Base::LogStyle level)
@@ -542,80 +665,106 @@ void NotificationArea::showConfirmationDialog(const QString & notifiername, cons
 
 void NotificationArea::showInNotificationArea()
 {
-    QString msgw = QString::fromLatin1("<style>p { margin: 0 0 0 0 } td { padding: 0 15px }</style>                     \
-    <p style='white-space:nowrap'>                                                                                      \
-    <table>                                                                                                             \
-     <tr>                                                                                                               \
-      <th><small>%1</small></th>                                                                                        \
-      <th><small>%2</small></th>                                                                                        \
-      <th><small>%3</small></th>                                                                                        \
-     </tr>")
-        .arg(QObject::tr("Type"))
-        .arg(QObject::tr("Notifier"))
-        .arg(QObject::tr("Message"));
+    std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification list and indices while creating the tooltip
 
-    if(d->currentlyNotifyingIndex == d->maxOpenNotifications) {
-        msgw += QString::fromLatin1("                                                                                   \
-        <tr>                                                                                                            \
-        <td align='left'><img width=\"16\" height=\"16\" src=':/icons/Warning.svg'></td>                                \
-        <td align='left'>FreeCAD</td>                                                                                   \
-        <td align='left'>%1</td>                                                                                        \
+    NotificationsAction * na = static_cast<NotificationsAction *>(d->notificationaction);
+
+    auto currentlyshown = na->getShownCount();
+
+    // If we cannot show more messages, we do no need to update the non-intrusive notification
+    if(currentlyshown < d->maxOpenNotifications) {
+        // There is space for at least one more notification
+        // We update the message with the most recent up to maxOpenNotifications
+
+        QString msgw = QString::fromLatin1("<style>p { margin: 0 0 0 0 } td { padding: 0 15px }</style>                     \
+        <p style='white-space:nowrap'>                                                                                      \
+        <table>                                                                                                             \
+        <tr>                                                                                                               \
+        <th><small>%1</small></th>                                                                                        \
+        <th><small>%2</small></th>                                                                                        \
+        <th><small>%3</small></th>                                                                                        \
         </tr>")
-        .arg(QObject::tr("Too many opened non-intrusive notifications. Notifications are being omitted!"));
+            .arg(QObject::tr("Type"))
+            .arg(QObject::tr("Notifier"))
+            .arg(QObject::tr("Message"));
+
+        auto currentlynotifying = na->getCurrentlyNotifyingCount();
+
+        if(currentlynotifying > d->maxOpenNotifications) {
+            msgw += QString::fromLatin1("                                                                                   \
+            <tr>                                                                                                            \
+            <td align='left'><img width=\"16\" height=\"16\" src=':/icons/Warning.svg'></td>                                \
+            <td align='left'>FreeCAD</td>                                                                                   \
+            <td align='left'>%1</td>                                                                                        \
+            </tr>")
+            .arg(QObject::tr("Too many opened non-intrusive notifications. Notifications are being omitted!"));
+        }
+
+        int i = 0;
+
+        while(i < na->count() && static_cast<NotificationItem *>(na->getItem(i))->notifying) {
+
+            if(i < d->maxOpenNotifications) { // show the first up to maxOpenNotifications
+                NotificationItem* item = static_cast<NotificationItem*>(na->getItem(i));
+
+                QString iconstr;
+                if(item->notificationType == Base::LogStyle::Error) {
+                    iconstr = QStringLiteral(":/icons/edit_Cancel.svg");
+                }
+                else
+                if(item->notificationType == Base::LogStyle::Warning) {
+                    iconstr = QStringLiteral(":/icons/Warning.svg");
+                }
+                else
+                if(item->notificationType == Base::LogStyle::CriticalMessage) {
+                    iconstr = QStringLiteral(":/icons/critical-info.svg");
+                }
+                else {
+                    iconstr = QStringLiteral(":/icons/info.svg");
+                }
+
+                msgw += QString::fromLatin1("                                                                                   \
+                <tr>                                                                                                            \
+                <td align='left'><img width=\"16\" height=\"16\" src='%1'></td>                                                 \
+                <td align='left'>%2</td>                                                                                        \
+                <td align='left'>%3</td>                                                                                        \
+                </tr>")
+                    .arg(iconstr)
+                    .arg(item->notifierName)
+                    .arg(item->msg);
+
+                // start a timer for each of this notifications that was not previously shown
+                if(!item->shown) {
+                    QTimer::singleShot(d->notificationExpirationTime, [this, item](){
+                        std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification start index while creating the tooltip
+
+                        if(item) {
+                            item->shown = false;
+                            item->notifying = false;
+                        }
+                    });
+                }
+
+                // We update the status to shown
+                item->shown = true;
+            }
+            else { // We do not have more space and older notifications will be too old
+                static_cast<NotificationItem *>(na->getItem(i))->notifying = false;
+                static_cast<NotificationItem *>(na->getItem(i))->shown = false;
+            }
+
+            i++;
+        }
+
+        msgw += QString::fromLatin1("</table></p>");
+
+
+        NotificationBox::showText( this->mapToGlobal( QPoint( ) ), msgw, d->notificationExpirationTime, d->minimumOnScreenTime);
     }
-
-    for(int i = 0 ; i < d->currentlyNotifyingIndex; i++) {
-        NotificationItem* item = static_cast<NotificationItem*>(d->table->topLevelItem(i));
-
-        QString iconstr;
-        if(item->notificationType == Base::LogStyle::Error) {
-            iconstr = QStringLiteral(":/icons/edit_Cancel.svg");
-        }
-        else
-        if(item->notificationType == Base::LogStyle::Warning) {
-            iconstr = QStringLiteral(":/icons/Warning.svg");
-        }
-        else
-        if(item->notificationType == Base::LogStyle::CriticalMessage) {
-            iconstr = QStringLiteral(":/icons/critical-info.svg");
-        }
-        else {
-            iconstr = QStringLiteral(":/icons/info.svg");
-        }
-
-        msgw += QString::fromLatin1("                                                                                   \
-        <tr>                                                                                                            \
-        <td align='left'><img width=\"16\" height=\"16\" src='%1'></td>                                                 \
-        <td align='left'>%2</td>                                                                                        \
-        <td align='left'>%3</td>                                                                                        \
-        </tr>")
-            .arg(iconstr)
-            .arg(item->notifierName)
-            .arg(item->msg);
-    }
-
-    msgw += QString::fromLatin1("</table></p>");
-
-
-    NotificationBox::showText( this->mapToGlobal( QPoint( ) ), msgw, d->notificationExpirationTime, d->minimumOnScreenTime);
-
-    // This performs rate control, new notifications will be inhibited until the inhibitNotificationTime lapses
-    d->inhibiting = true;
-
-    QTimer::singleShot(d->inhibitNotificationTime, [this](){
-        if(d->notificationsDuringInhibitTimer) {
-            showInNotificationArea();
-            setText(QString::number(d->unread));
-        }
-
-        d->notificationsDuringInhibitTimer = false;
-        d->inhibiting = false;
-    });
 }
 
 void NotificationArea::slotRestoreFinished(const App::Document&)
 {
     // Re-arm on restore critical message modal notifications if another document is loaded
-    std::lock_guard<std::mutex> g(d->mutexNotification);
     d->requireConfirmationCriticalMessageDuringRestoring = true;
 }
