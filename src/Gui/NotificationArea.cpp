@@ -54,8 +54,49 @@ using Connection = boost::signals2::connection;
 
 namespace bp = boost::placeholders;
 
+class NotificationAreaObserver;
 
-/* Simple class to manage Notification Area Resources*/
+namespace Gui {
+/** PImpl idiom structure having all data necessary for the notification area */
+struct NotificationAreaP
+{
+    // Non-intrusive notifications parameters
+    int maxOpenNotifications = 15; // Parameter controlled
+    unsigned int notificationExpirationTime = 10000; // Parameter controlled
+    unsigned int minimumOnScreenTime = 5000; // minimum time that the notification will remain unclosed
+    bool notificationsDisabled = false; // Parameter controlled
+
+    // Control of confirmation mechanism
+    bool requireConfirmationCriticalMessageDuringRestoring = true;
+
+    // Widget parameters
+    int maxWidgetMessages = 1000; // Parameter controlled - maximum number of message allowed in the notification area widget (0 means no limit)
+
+    // Access control
+    std::mutex mutexNotification;
+
+    // Control rate of updates of non-intrusive messages
+    QTimer inhibitTimer; // Timer to delay notification until a minimum time between two consecutive messages have lapsed
+    const unsigned int inhibitNotificationTime = 250; // The time between two consecutive messages forced by the inhibitTimer
+
+    // Pointers to widgets
+    QMenu * menu;
+    QWidgetAction * notificationaction;
+
+    // Message observer
+    std::unique_ptr<NotificationAreaObserver> observer;
+    Connection finishRestoreDocumentConnection;
+
+    // Parameter observer
+    std::unique_ptr<NotificationArea::ParameterObserver> parameterObserver;
+};
+
+} // namespace Gui
+
+
+/********************************* Resource Management **********************************************************/
+
+/** Simple class to manage Notification Area Resources*/
 class ResourceManager {
 
 private:
@@ -100,9 +141,65 @@ private:
     QPixmap info;
 };
 
-namespace Gui {
+/***************************************** Console Messages Observer (Console Interface) ************************/
 
-/* Specialised Item class for the Widget messages/notifications/errors/warnings
+/** This class listens to all messages sent via the console interface and
+   feeds the non-intrusive notification system and the notifications widget */
+class NotificationAreaObserver: public Base::ILogger
+{
+public:
+    NotificationAreaObserver(NotificationArea * notificationarea);
+    ~NotificationAreaObserver() override;
+
+    /// Function that is called by the console interface for this observer with the message information
+    void SendLog(const std::string& notifiername, const std::string& msg, Base::LogStyle level) override;
+
+    /// Name of the observer
+    const char *Name() override {return "NotificationAreaObserver";}
+
+private:
+    NotificationArea * notificationArea;
+};
+
+NotificationAreaObserver::NotificationAreaObserver(NotificationArea * notificationarea): notificationArea(notificationarea)
+{
+    Base::Console().AttachObserver(this);
+    bLog = false;                       // ignore log messages
+    bMsg = false;                       // ignore messages
+    bNotification = true;               // activate user notifications
+    bTranslatedNotification = true;     // activate translated user notifications
+}
+
+NotificationAreaObserver::~NotificationAreaObserver()
+{
+    Base::Console().DetachObserver(this);
+}
+
+void NotificationAreaObserver::SendLog(const std::string& notifiername, const std::string& msg, Base::LogStyle level)
+{
+    // 1. As notification system is shared with report view and others, the expectation is that any individual message
+    // will end in "\n". This means the string must be stripped of this character.
+    // 2. However, any message marked with the QT_TRANSLATE_NOOT macro with the "Notifications" context, shall not include
+    // "\n", as this generates problems with the translation system. Then the string must be stripped of "\n" before translation.
+
+    auto simplifiedstring = QString::fromStdString(msg).trimmed(); // remove any leading and trailing whitespace character ('\n')
+
+    if(level == Base::LogStyle::TranslatedNotification) {
+        notificationArea->pushNotification(QString::fromStdString(notifiername),
+                                           simplifiedstring,
+                                           level);
+    }
+    else {
+        notificationArea->pushNotification(QString::fromStdString(notifiername),
+                                           QCoreApplication::translate("Notifications", simplifiedstring.toUtf8()),
+                                           level);
+    }
+}
+
+
+/********************************* Notification Widget ***********************************************************/
+
+/** Specialised Item class for the Widget messages/notifications/errors/warnings
    It holds all item specific data, including visualisation data and controls how
    the item should appear in the widget.
 */
@@ -165,101 +262,7 @@ public:
     bool shown = false;     // item is already being notified (it is onScreen)
 };
 
-/* This class listens to all messages sent via the console interface and
-   feeds the non-intrusive notification system and the notifications widget */
-class NotificationAreaObserver: public Base::ILogger
-{
-public:
-    NotificationAreaObserver(NotificationArea * notificationarea);
-    ~NotificationAreaObserver() override;
-
-    /// Function that is called by the console interface for this observer with the message information
-    void SendLog(const std::string& notifiername, const std::string& msg, Base::LogStyle level) override;
-
-    /// Name of the observer
-    const char *Name() override {return "NotificationAreaObserver";}
-
-private:
-    NotificationArea * notificationArea;
-};
-
-// PImpl idiom structure having all data necessary for the notification area
-struct NotificationAreaP
-{
-    // Non-intrusive notifications parameters
-    int maxOpenNotifications = 15; // Parameter controlled
-    unsigned int notificationExpirationTime = 10000; // Parameter controlled
-    unsigned int minimumOnScreenTime = 5000; // minimum time that the notification will remain unclosed
-    bool notificationsDisabled = false; // Parameter controlled
-
-    // Control of confirmation mechanism
-    bool requireConfirmationCriticalMessageDuringRestoring = true;
-
-    // Widget parameters
-    int maxWidgetMessages = 1000; // Parameter controlled - maximum number of message allowed in the notification area widget (0 means no limit)
-
-    // Access control
-    std::mutex mutexNotification;
-
-    // Control rate of updates of non-intrusive messages
-    QTimer inhibitTimer; // Timer to delay notification until a minimum time between two consecutive messages have lapsed
-    const unsigned int inhibitNotificationTime = 250; //
-
-    // Pointers to widgets
-    QMenu * menu;
-    QWidgetAction * notificationaction;
-
-    // Message observer
-    std::unique_ptr<NotificationAreaObserver> observer;
-    Connection finishRestoreDocumentConnection;
-
-    // Parameter observer
-    std::unique_ptr<NotificationArea::ParameterObserver> parameterObserver;
-};
-
-
-
-} // namespace Gui
-
-/***************************************** Console Messages Observer (Console Interface) **************************************/
-
-NotificationAreaObserver::NotificationAreaObserver(NotificationArea * notificationarea): notificationArea(notificationarea)
-{
-    Base::Console().AttachObserver(this);
-    bLog = false;                       // ignore log messages
-    bMsg = false;                       // ignore messages
-    bNotification = true;               // activate user notifications
-    bTranslatedNotification = true;     // activate translated user notifications
-}
-
-NotificationAreaObserver::~NotificationAreaObserver()
-{
-    Base::Console().DetachObserver(this);
-}
-
-void NotificationAreaObserver::SendLog(const std::string& notifiername, const std::string& msg, Base::LogStyle level)
-{
-    // 1. As notification system is shared with report view and others, the expectation is that any individual message
-    // will end in "\n". This means the string must be stripped of this character.
-    // 2. However, any message marked with the QT_TRANSLATE_NOOT macro with the "Notifications" context, shall not include
-    // "\n", as this generates problems with the translation system. Then the string must be stripped of "\n" before translation.
-
-    auto simplifiedstring = QString::fromStdString(msg).trimmed(); // remove any leading and trailing whitespace character ('\n')
-
-    if(level == Base::LogStyle::TranslatedNotification) {
-        notificationArea->pushNotification(QString::fromStdString(notifiername),
-                                           simplifiedstring,
-                                           level);
-    }
-    else {
-        notificationArea->pushNotification(QString::fromStdString(notifiername),
-                                           QCoreApplication::translate("Notifications", simplifiedstring.toUtf8()),
-                                           level);
-    }
-}
-
-/***************************************** Drop menu Action containing the notifications widget ************************************/
-
+/**  Drop menu Action containing the notifications widget */
 class NotificationsAction : public QWidgetAction
 {
 public:
@@ -524,7 +527,7 @@ void NotificationArea::ParameterObserver::OnChange(Base::Subject<const char*> &r
     }
 }
 
-/***************************************** NotificationArea **************************************/
+/***************************************** Notification Area *****************************************************/
 
 NotificationArea::NotificationArea(QWidget *parent):QPushButton(parent)
 {
