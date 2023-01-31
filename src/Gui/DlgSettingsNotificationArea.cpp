@@ -42,10 +42,24 @@ DlgSettingsNotificationArea::DlgSettingsNotificationArea(QWidget* parent)
 
     connect(ui->NotificationAreaEnabled, &QCheckBox::stateChanged, [this](int state) {
         if(state == Qt::CheckState::Checked) {
+            ui->NonIntrusiveNotificationsEnabled->setEnabled(true);
+            ui->maxDuration->setEnabled(true);
+            ui->maxDuration->setEnabled(true);
+            ui->minDuration->setEnabled(true);
+            ui->maxNotifications->setEnabled(true);
+            ui->maxWidgetMessages->setEnabled(true);
             QMessageBox::information(this, tr("Notification Area"),
             tr("Activation of the Notification Area only takes effect after an application restart."));
         }
+        else {
+            ui->NonIntrusiveNotificationsEnabled->setEnabled(false);
+            ui->maxDuration->setEnabled(false);
+            ui->maxDuration->setEnabled(false);
+            ui->minDuration->setEnabled(false);
+            ui->maxNotifications->setEnabled(false);
+            ui->maxWidgetMessages->setEnabled(false);
         // N.B: Deactivation is handled by the Notification Area itself, as it listens to all its configuration parameters.
+        }
     });
 }
 
