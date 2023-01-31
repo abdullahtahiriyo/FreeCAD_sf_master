@@ -71,6 +71,7 @@ struct NotificationAreaP
 
     // Widget parameters
     int maxWidgetMessages = 1000; // Parameter controlled - maximum number of message allowed in the notification area widget (0 means no limit)
+    bool autoRemoveUserNotifications; // User notifications get automatically removed from the Widget after the non-intrusive notification expiration time
 
     // Access control
     std::mutex mutexNotification;
@@ -367,6 +368,15 @@ public:
         }
     }
 
+    void deleteItem(NotificationItem * item) {
+        for(int i=0; i<count(); i++) {
+            if(getItem(i) == item) {
+                deleteItem(i);
+                return;
+            }
+        }
+    }
+
     void deleteLastItem() {
         deleteItem(count()-1);
     }
@@ -496,6 +506,9 @@ NotificationArea::ParameterObserver::ParameterObserver(NotificationArea * notifi
             if(limit < 0)
                 limit = 0;
             notificationArea->d->maxWidgetMessages = static_cast<unsigned int>(limit);}},
+        {"AutoRemoveUserNotifications", [this](const std::string & string){
+            auto enabled = hGrp->GetBool(string.c_str(), true);
+            notificationArea->d->autoRemoveUserNotifications = enabled;}},
     };
 
     for( auto & val : parameterMap ){
@@ -760,6 +773,14 @@ void NotificationArea::showInNotificationArea()
                         if(item) {
                             item->shown = false;
                             item->notifying = false;
+
+                            if(d->autoRemoveUserNotifications) {
+                                if(item->notificationType == Base::LogStyle::Notification ||
+                                   item->notificationType == Base::LogStyle::TranslatedNotification) {
+
+                                    static_cast<NotificationsAction *>(d->notificationaction)->deleteItem(item);
+                                }
+                            }
                         }
                     });
                 }
