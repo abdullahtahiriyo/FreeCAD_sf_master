@@ -173,13 +173,6 @@
       <string>Message List</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_4">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>Maximum Messages (0 = no limit):</string>
-        </property>
-       </widget>
-      </item>
       <item row="0" column="1">
        <widget class="Gui::PrefSpinBox" name="maxWidgetMessages">
         <property name="toolTip">
@@ -193,6 +186,32 @@
         </property>
         <property name="prefEntry" stdset="0">
          <cstring>MaxWidgetMessages</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>NotificationArea</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Maximum Messages (0 = no limit):</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="Gui::PrefCheckBox" name="autoRemoveUserNotifications">
+        <property name="toolTip">
+         <string>Removes the user notifications from the message list after the non-intrusive maximum duration has lapsed.</string>
+        </property>
+        <property name="text">
+         <string>Auto-remove User Notifications</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>AutoRemoveUserNotifications</cstring>
         </property>
         <property name="prefPath" stdset="0">
          <cstring>NotificationArea</cstring>

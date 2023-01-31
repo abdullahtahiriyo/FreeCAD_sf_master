@@ -48,6 +48,7 @@ DlgSettingsNotificationArea::DlgSettingsNotificationArea(QWidget* parent)
             ui->minDuration->setEnabled(true);
             ui->maxNotifications->setEnabled(true);
             ui->maxWidgetMessages->setEnabled(true);
+            ui->autoRemoveUserNotifications->setEnabled(true);
             QMessageBox::information(this, tr("Notification Area"),
             tr("Activation of the Notification Area only takes effect after an application restart."));
         }
@@ -58,6 +59,7 @@ DlgSettingsNotificationArea::DlgSettingsNotificationArea(QWidget* parent)
             ui->minDuration->setEnabled(false);
             ui->maxNotifications->setEnabled(false);
             ui->maxWidgetMessages->setEnabled(false);
+            ui->autoRemoveUserNotifications->setEnabled(false);
         // N.B: Deactivation is handled by the Notification Area itself, as it listens to all its configuration parameters.
         }
     });
@@ -75,6 +77,7 @@ void DlgSettingsNotificationArea::saveSettings()
     ui->minDuration->onSave();
     ui->maxNotifications->onSave();
     ui->maxWidgetMessages->onSave();
+    ui->autoRemoveUserNotifications->onSave();
 }
 
 void DlgSettingsNotificationArea::loadSettings()
@@ -85,6 +88,7 @@ void DlgSettingsNotificationArea::loadSettings()
     ui->minDuration->onRestore();
     ui->maxNotifications->onRestore();
     ui->maxWidgetMessages->onRestore();
+    ui->autoRemoveUserNotifications->onRestore();
 }
 
 void DlgSettingsNotificationArea::changeEvent(QEvent *e)
