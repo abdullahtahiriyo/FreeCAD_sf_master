@@ -672,6 +672,22 @@ void NotificationArea::showInNotificationArea()
 
     NotificationsAction * na = static_cast<NotificationsAction *>(d->notificationaction);
 
+    if(!NotificationBox::isVisible()) {
+        // The Notification Box may have been closed (by the user by popping it out or by left mouse button) ensure
+        // that old notifications are not shown again, even if the timer has not lapsed
+        int i = 0;
+        while(i < na->count() && static_cast<NotificationItem *>(na->getItem(i))->notifying) {
+            NotificationItem* item = static_cast<NotificationItem*>(na->getItem(i));
+
+            if(item->shown) {
+                item->notifying = false;
+                item->shown = false;
+            }
+
+            i++;
+        }
+    }
+
     auto currentlyshown = na->getShownCount();
 
     // If we cannot show more messages, we do no need to update the non-intrusive notification
@@ -736,7 +752,7 @@ void NotificationArea::showInNotificationArea()
                     .arg(item->notifierName)
                     .arg(item->msg);
 
-                // start a timer for each of this notifications that was not previously shown
+                // start a timer for each of these notifications that was not previously shown
                 if(!item->shown) {
                     QTimer::singleShot(d->notificationExpirationTime, [this, item](){
                         std::lock_guard<std::mutex> g(d->mutexNotification); // guard to avoid modifying the notification start index while creating the tooltip
