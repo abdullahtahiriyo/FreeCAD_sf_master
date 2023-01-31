@@ -107,29 +107,29 @@ private:
         info = BitmapFactory().pixmapFromSvg(":/icons/info.svg",QSize(16, 16));
     }
 
-    static auto & getResourceManager() {
+    inline static const auto & getResourceManager() {
         static ResourceManager manager;
 
         return manager;
     }
 
 public:
-    static auto ErrorPixmap(){
+    inline static auto ErrorPixmap(){
         auto rm = getResourceManager();
         return rm.error;
     }
 
-    static auto WarningPixmap(){
+    inline static auto WarningPixmap(){
         auto rm = getResourceManager();
         return rm.warning;
     }
 
-    static auto CriticalPixmap(){
+    inline static auto CriticalPixmap(){
         auto rm = getResourceManager();
         return rm.critical;
     }
 
-    static auto InfoPixmap(){
+    inline static auto InfoPixmap(){
         auto rm = getResourceManager();
         return rm.info;
     }
