@@ -1169,6 +1169,7 @@ SET(FreeCADGui_SRCS
     Macro.h
     MergeDocuments.h
     MetaTypes.h
+    Notifications.h
     PreCompiled.cpp
     PreCompiled.h
     QtAll.h
