@@ -36,11 +36,25 @@ namespace Gui {
  * messages, translated notifications, or untranslated notifications originating in a given
  * document object.
  *
- * The notifier field is obtained from DocumentObject.
+ * They are intended for easy substitution of currently blocking modal dialogs in which the user
+ * may only click 'ok'.
+ *
+ * It produces a blocking modal notification or a non-intrusive non-modal notification depending on
+ * the preference parameter NotificationArea/NonIntrusiveNotificationsEnabled.
+ *
+ * The notifier field advisable for the NotificationArea is obtained from DocumentObject directly.
+ *
+ * Translations:
  *
  * An attempt is made by NotificationArea to translate the message using the "Notifications" context,
  * except for TranslatedNotification.
+ *
  * For the former, this may be marked using QT_TRANSLATE_NOOP("Notifications","My message")
+ *
+ * For TranslatedNotification, many modules using blocking notifications have their translations stored
+ * in other contexts, and the translations available at the callee function. This kind of notification
+ * provides a very low entry point to move existing blocking notifications into non-intrusive respecting
+ * the user choice (given by NotificationArea/NonIntrusiveNotificationsEnabled).
  */
 
 // generic function to send any message provided by Base::LogStyle
