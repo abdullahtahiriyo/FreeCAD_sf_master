@@ -245,6 +245,11 @@ protected:
   static const  PropertyData * getPropertyDataPtr();
   virtual const PropertyData& getPropertyData() const;
 
+  /// Enables inheriting classes to modify the rules for handling changed property name
+  virtual void changedPropertyName(Base::XMLReader &reader, const char * TypeName, const char *PropName);
+  /// Enables inheriting classes to modify the rules for handling changed property type
+  virtual void changedPropertyType(Base::XMLReader &reader, const char * TypeName, Property * prop);
+
   virtual void handleChangedPropertyName(Base::XMLReader &reader, const char * TypeName, const char *PropName);
   virtual void handleChangedPropertyType(Base::XMLReader &reader, const char * TypeName, Property * prop);
 
