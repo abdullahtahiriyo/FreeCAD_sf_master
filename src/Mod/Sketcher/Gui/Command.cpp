@@ -42,6 +42,7 @@
 #include <Gui/Control.h>
 #include <Gui/Document.h>
 #include <Gui/MainWindow.h>
+#include <Gui/PrefWidgets.h>
 #include <Gui/QuantitySpinBox.h>
 #include <Gui/SelectionFilter.h>
 #include <Gui/SelectionObject.h>
@@ -978,18 +979,24 @@ public:
 
         if(sketchView) {
 
-            auto updateCheckBox = [](QCheckBox * checkbox, App::PropertyBool & property) {
+            auto updateCheckBox = [](QCheckBox * checkbox, bool value) {
                 auto checked = checkbox->checkState() == Qt::Checked;
-                auto propvalue = property.getValue();
 
-                if( propvalue != checked ) {
+                if( value != checked ) {
                     const QSignalBlocker blocker(checkbox);
-                    checkbox->setChecked(propvalue);
+                    checkbox->setChecked(value);
                 }
             };
 
-            updateCheckBox(gridSnap, sketchView->GridSnap);
-            updateCheckBox(gridAutoSpacing, sketchView->GridAuto);
+            auto updateCheckBoxFromProperty = [updateCheckBox](QCheckBox * checkbox, App::PropertyBool & property) {
+                auto propvalue = property.getValue();
+
+                updateCheckBox(checkbox, propvalue);
+            };
+
+            updateCheckBox(gridSnap, sketchView->getSnapMode() == SnapMode::SnapToGrid);
+
+            updateCheckBoxFromProperty(gridAutoSpacing, sketchView->GridAuto);
 
             auto autospacing = gridAutoSpacing->checkState() == Qt::Checked;
 
@@ -1039,14 +1046,21 @@ protected:
         layout->addWidget(sizeLabel, 2, 0);
         layout->addWidget(gridSizeBox, 2, 1);
 
-        QObject::connect(gridSnap,&QCheckBox::stateChanged, [this](int state) {
+        QObject::connect(gridSnap, &QCheckBox::stateChanged, [this](int state) {
             auto* sketchView = getView();
+
             if(sketchView) {
-                sketchView->GridSnap.setValue(state == Qt::Checked);
+                if(state == Qt::Checked) {
+                    sketchView->setSnapMode(SnapMode::SnapToGrid);
+                }
+                else {
+                    sketchView->setSnapMode(SnapMode::None);
+                }
             }
         });
 
-        QObject::connect(gridAutoSpacing,&QCheckBox::stateChanged, [this](int state) {
+
+        QObject::connect(gridAutoSpacing, &QCheckBox::stateChanged, [this](int state) {
             auto* sketchView = getView();
 
             if(sketchView) {
