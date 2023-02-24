@@ -207,7 +207,7 @@ void GridExtensionP::computeGridSize(const Gui::View3DInventorViewer* viewer)
 
     double unitMultiplier = (unitsUserSchema == 2 || unitsUserSchema == 3) ? 25.4 : (unitsUserSchema == 5 || unitsUserSchema == 7) ? 304.8 : 1;
 
-    computedGridValue = vp->GridSize.getValue() * unitMultiplier * pow(GridNumberSubdivision, floor(log(camMaxDimension / unitMultiplier / numberOfLines) / log(GridNumberSubdivision)));
+    computedGridValue = vp->GridSize.getValue() * GridNumberSubdivision * unitMultiplier * pow(GridNumberSubdivision, floor(log(camMaxDimension / unitMultiplier / numberOfLines / vp->GridSize.getValue()) / log(GridNumberSubdivision)));
 
     //cap the grid size
     computedGridValue = std::max(computedGridValue, 0.000001);
