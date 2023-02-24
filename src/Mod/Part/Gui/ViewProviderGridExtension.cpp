@@ -449,41 +449,49 @@ void ViewProviderGridExtension::extensionOnChanged(const App::Property* prop)
 void ViewProviderGridExtension::setGridSizePixelThreshold(int value)
 {
     pImpl->GridSizePixelThreshold = value;
+    drawGrid(false);
 }
 
 void ViewProviderGridExtension::setGridNumberSubdivision(int value)
 {
     pImpl->GridNumberSubdivision = value;
+    drawGrid(false);
 }
 
 void ViewProviderGridExtension::setGridLinePattern(int pattern)
 {
     pImpl->GridLinePattern = pattern;
+    drawGrid(false);
 }
 
 void ViewProviderGridExtension::setGridDivLinePattern(int pattern)
 {
     pImpl->GridDivLinePattern = pattern;
+    drawGrid(false);
 }
 
 void ViewProviderGridExtension::setGridLineWidth(int width)
 {
     pImpl->GridLineWidth = width;
+    drawGrid(false);
 }
 
 void ViewProviderGridExtension::setGridDivLineWidth(int width)
 {
     pImpl->GridDivLineWidth = width;
+    drawGrid(false);
 }
 
 void ViewProviderGridExtension::setGridLineColor(const App::Color & color)
 {
     pImpl->GridLineColor = color.getPackedValue();
+    drawGrid(false);
 }
 
 void ViewProviderGridExtension::setGridDivLineColor(const App::Color & color)
 {
     pImpl->GridDivLineColor = color.getPackedValue();
+    drawGrid(false);
 }
 
 bool ViewProviderGridExtension::extensionHandleChangedPropertyType(Base::XMLReader& reader,
