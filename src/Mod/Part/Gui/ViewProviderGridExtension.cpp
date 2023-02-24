@@ -207,7 +207,11 @@ void GridExtensionP::computeGridSize(const Gui::View3DInventorViewer* viewer)
 
     double unitMultiplier = (unitsUserSchema == 2 || unitsUserSchema == 3) ? 25.4 : (unitsUserSchema == 5 || unitsUserSchema == 7) ? 304.8 : 1;
 
-    computedGridValue = vp->GridSize.getValue() * GridNumberSubdivision * unitMultiplier * pow(GridNumberSubdivision, floor(log(camMaxDimension / unitMultiplier / numberOfLines / vp->GridSize.getValue()) / log(GridNumberSubdivision)));
+    // If number of subdivision is 1, grid auto spacing can't work as it uses it as a factor
+    // In such case, we apply a default factor of 10
+    auto safeGridNumberSubdivision = GridNumberSubdivision <= 1 ? 10 : GridNumberSubdivision;
+
+    computedGridValue = vp->GridSize.getValue() * safeGridNumberSubdivision * unitMultiplier * pow(safeGridNumberSubdivision, floor(log(camMaxDimension / unitMultiplier / numberOfLines / vp->GridSize.getValue()) / log(safeGridNumberSubdivision)));
 
     //cap the grid size
     computedGridValue = std::max(computedGridValue, 0.000001);
