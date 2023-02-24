@@ -1078,7 +1078,22 @@ protected:
             }
         });
 
+        gridSizeW->installEventFilter(this);
+
         return gridSizeW;
+    }
+
+    bool eventFilter(QObject *object, QEvent *event) override {
+        Q_UNUSED(object)
+
+        switch(event->type()) {
+            case QEvent::MouseButtonPress:
+            case QEvent::MouseButtonRelease:
+                return true;
+            default:
+                break;
+        }
+        return false;
     }
 
 private:
