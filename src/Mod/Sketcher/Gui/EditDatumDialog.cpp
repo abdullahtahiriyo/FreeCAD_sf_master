@@ -36,6 +36,7 @@
 #include <Gui/CommandT.h>
 #include <Gui/Document.h>
 #include <Gui/MainWindow.h>
+#include <Gui/Notifications.h>
 #include <Gui/View3DInventor.h>
 #include <Gui/View3DInventorViewer.h>
 #include <Mod/Sketcher/App/SketchObject.h>
@@ -219,7 +220,9 @@ void EditDatumDialog::accepted()
             tryAutoRecompute(sketch);
         }
         catch (const Base::Exception& e) {
-            QMessageBox::critical(Gui::getMainWindow(), QObject::tr("Dimensional constraint"), QString::fromUtf8(e.what()));
+            Gui::NotifyError(sketch,
+                        QT_TRANSLATE_NOOP("Notifications", "Error"),
+                        e.what());
             Gui::Command::abortCommand();
 
             if(sketch->noRecomputes) // if setdatum failed, it is highly likely that solver information is invalid.

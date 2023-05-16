@@ -686,19 +686,19 @@ PyObject* SketchObjectPy::setDatum(PyObject *args)
     if (err) {
         std::stringstream str;
         if (err == -1)
-            str << "Invalid constraint index: " << Index;
+            str << QT_TRANSLATE_NOOP("Notifications", "Invalid constraint index");
         else if (err == -3)
-            str << "Cannot set the datum because the sketch contains conflicting constraints";
+            str << QT_TRANSLATE_NOOP("Notifications", "Cannot set the datum because the sketch contains conflicting constraints");
         else if (err == -2)
-            str << "Datum " << (const char*)Quantity.getUserString().toUtf8() << " for the constraint with index " << Index << " is invalid";
+            str << QT_TRANSLATE_NOOP("Notifications", "Datum is invalid");
         else if (err == -4)
-            str << "Negative datum values are not valid for the constraint with index " << Index;
+            str << QT_TRANSLATE_NOOP("Notifications", "Negative datum values are not valid for the constraint");
         else if (err == -5)
-            str << "Zero is not a valid datum for the constraint with index " << Index;
+            str << QT_TRANSLATE_NOOP("Notifications", "Zero is not a valid datum for the constraint");
         else if (err == -6)
-            str << "Cannot set the datum because of invalid geometry";
+            str << QT_TRANSLATE_NOOP("Notifications", "Cannot set the datum because of invalid geometry");
         else
-            str << "Unexpected problem at setting datum " << (const char*)Quantity.getUserString().toUtf8() << " for the constraint with index " << Index;
+            str << QT_TRANSLATE_NOOP("Notifications", "Unexpected problem at setting datum");
         PyErr_SetString(PyExc_ValueError, str.str().c_str());
         return nullptr;
     }
