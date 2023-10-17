@@ -153,8 +153,9 @@ CONSTRUCTION_UPDATE_ACTION(CmdSketcherCreateRectangle, "Sketcher_CreateRectangle
 void CmdSketcherCreateRectangle::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
-    ActivateHandler(getActiveGuiDocument(),
-                    new DrawSketchHandlerBox(DrawSketchHandlerBox::Diagonal));
+    ActivateHandler(
+        getActiveGuiDocument(),
+        new DrawSketchHandlerRectangle(ConstructionMethods::RectangleConstructionMethod::Diagonal));
 }
 
 bool CmdSketcherCreateRectangle::isActive()
@@ -184,7 +185,8 @@ void CmdSketcherCreateRectangleCenter::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
     ActivateHandler(getActiveGuiDocument(),
-                    new DrawSketchHandlerBox(DrawSketchHandlerBox::CenterAndCorner));
+                    new DrawSketchHandlerRectangle(
+                        ConstructionMethods::RectangleConstructionMethod::CenterAndCorner));
 }
 
 bool CmdSketcherCreateRectangleCenter::isActive()
@@ -216,7 +218,9 @@ CONSTRUCTION_UPDATE_ACTION(CmdSketcherCreateOblong, "Sketcher_CreateOblong")
 void CmdSketcherCreateOblong::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
-    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerOblong());
+    ActivateHandler(
+        getActiveGuiDocument(),
+        new DrawSketchHandlerRectangle(ConstructionMethods::RectangleConstructionMethod::Diagonal));
 }
 
 bool CmdSketcherCreateOblong::isActive()
@@ -244,14 +248,18 @@ void CmdSketcherCompCreateRectangles::activated(int iMsg)
 {
     if (iMsg == 0) {
         ActivateHandler(getActiveGuiDocument(),
-                        new DrawSketchHandlerBox(DrawSketchHandlerBox::Diagonal));
+                        new DrawSketchHandlerRectangle(
+                            ConstructionMethods::RectangleConstructionMethod::Diagonal));
     }
     else if (iMsg == 1) {
         ActivateHandler(getActiveGuiDocument(),
-                        new DrawSketchHandlerBox(DrawSketchHandlerBox::CenterAndCorner));
+                        new DrawSketchHandlerRectangle(
+                            ConstructionMethods::RectangleConstructionMethod::CenterAndCorner));
     }
     else if (iMsg == 2) {
-        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerOblong());
+        ActivateHandler(getActiveGuiDocument(),
+                        new DrawSketchHandlerRectangle(
+                            ConstructionMethods::RectangleConstructionMethod::Diagonal));
     }
     else {
         return;
