@@ -594,8 +594,8 @@ protected:
      * command is finished. */
     virtual void onModeChanged() override
     {
-        finish();  // internally checks that state is SelectMode::End, and only finishes then.
         angleSnappingControl();
+        finish();  // internally checks that state is SelectMode::End, and only finishes then.
     };
     //@}
 
