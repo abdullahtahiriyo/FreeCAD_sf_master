@@ -91,6 +91,8 @@ public:
 
     bool eventFilter(QObject* object, QEvent* event)
     {
+        Q_UNUSED(object);
+
         if (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease) {
             /*If a key shortcut is required to work on sketcher when a tool using Tool Setting
             widget is being used, then you have to add this key to the below section such that the
@@ -563,7 +565,7 @@ public:
 
                 onViewParameters[i]->activate();
 
-                // points/value will be overriden by the mouseMove triggered by the mode change.
+                // points/value will be overridden by the mouseMove triggered by the mode change.
                 onViewParameters[i]->setPoints(Base::Vector3d(), Base::Vector3d());
                 onViewParameters[i]->startEdit(0.0, keymanager);
             }
@@ -616,7 +618,7 @@ public:
     /** function that is called by the handler with a mouse position, enabling the
      * widget to override it having regard to the widget information.
      *
-     * It MUST be specialised if you want to overide mouse position based on parameters.
+     * It MUST be specialised if you want to override mouse position based on parameters.
      */
     void doEnforceControlParameters(Base::Vector2d& onSketchPos)
     {
