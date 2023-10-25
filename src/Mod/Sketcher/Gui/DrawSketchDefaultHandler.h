@@ -28,8 +28,10 @@
 
 #include <Base/Exception.h>
 #include <Base/Console.h>
+#include <Gui/Command.h>
 
 #include <Mod/Sketcher/App/GeoEnum.h>
+#include <Mod/Sketcher/App/GeometryFacade.h>
 #include <Mod/Sketcher/App/PythonConverter.h>
 #include <Mod/Sketcher/App/SolverGeometryExtension.h>
 
@@ -885,7 +887,7 @@ protected:
         }
 
         // This is an awful situation. It should not be possible if the DSH works properly. It is
-        // just a saveguard.
+        // just a safeguard.
         if (sketchobject->getLastHasConflicts()) {
             THROWM(Base::RuntimeError,
                    QT_TRANSLATE_NOOP(
