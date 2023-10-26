@@ -27,7 +27,7 @@
 #include "GeometryCreationMode.h"
 #include "Utils.h"
 
-#include "DrawSketchController.h"
+#include "DrawSketchDefaultWidgetController.h"
 #include "DrawSketchControllableHandler.h"
 
 #include "SketcherRegularPolygonDialog.h"
@@ -40,13 +40,13 @@ extern GeometryCreationMode geometryCreationMode;  // defined in CommandCreateGe
 class DrawSketchHandlerPolygon;
 
 using DrawSketchHandlerPolygonController =
-    DrawSketchController<DrawSketchHandlerPolygon,
-                         StateMachines::TwoSeekEnd,
-                         /*PAutoConstraintSize =*/2,
-                         /*OnViewParametersT =*/OnViewParameters<4>,
-                         /*WidgetParametersT =*/WidgetParameters<1>,
-                         /*WidgetCheckboxesT =*/WidgetCheckboxes<0>,
-                         /*WidgetComboboxesT =*/WidgetComboboxes<0>>;
+    DrawSketchDefaultWidgetController<DrawSketchHandlerPolygon,
+                                      StateMachines::TwoSeekEnd,
+                                      /*PAutoConstraintSize =*/2,
+                                      /*OnViewParametersT =*/OnViewParameters<4>,
+                                      /*WidgetParametersT =*/WidgetParameters<1>,
+                                      /*WidgetCheckboxesT =*/WidgetCheckboxes<0>,
+                                      /*WidgetComboboxesT =*/WidgetComboboxes<0>>;
 
 
 using DrawSketchHandlerPolygonBase =
