@@ -78,13 +78,14 @@ namespace sp = std::placeholders;
  * This class is intended as a parent for controller classes, which control a handler based on
  * additional input provided by the user (beyond the typical mouse-click driven behaviour).
  */
-template<typename HandlerT,
-         typename SelectModeT,
+template<typename HandlerT,           // The name of the actual handler of the tool
+         typename SelectModeT,        // The state machine defining the working of the tool
          int PAutoConstraintSize,     // The initial size of the AutoConstraint vector
-         typename OnViewParametersT,  // The number of parameter spinboxes in the 3D view
+         typename OnViewParametersT,  // The number of parameter spinboxes in the 3D view (one
+                                      // value per construction mode)
          typename ConstructionMethodT =
-             ConstructionMethods::DefaultConstructionMethod>  // The handler template or class
-                                                              // having this as inner class
+             ConstructionMethods::DefaultConstructionMethod>  // The enum comprising all the
+                                                              // supported construction methods
 class DrawSketchController
 {
 public:
@@ -378,7 +379,7 @@ public:
     void onConstructionMethodChanged()
     {
 
-        nOnViewParameter = OnViewParametersT::size(this->handler->constructionMethod());
+        nOnViewParameter = OnViewParametersT::size(handler->constructionMethod());
 
         doConstructionMethodChanged();  // NVI
 
@@ -486,7 +487,7 @@ private:
         configureOnViewParameters();
     }
 
-private:
+protected:
     /** @name helper functions */
     //@{
     /// function to assist in adaptDrawingToComboboxChange specialisation
@@ -524,6 +525,7 @@ private:
         }
     }
 
+private:
     bool isOnViewParameterOfCurrentMode(unsigned int onviewparameterindex) const
     {
         return onviewparameterindex < onViewParameters.size()

@@ -124,7 +124,7 @@ public:
     {
         adaptDrawingToParameterChange(parameterindex, value);
 
-        ControllerBase::finishWidgetChanged();
+        ControllerBase::finishControlsChanged();
     }
 
     /** boost slot triggering when a checkbox has changed in the widget
@@ -134,7 +134,7 @@ public:
     {
         adaptDrawingToCheckboxChange(checkboxindex, value);
 
-        ControllerBase::finishWidgetChanged();
+        ControllerBase::finishControlsChanged();
     }
 
     /** boost slot triggering when a combobox has changed in the widget
@@ -144,7 +144,7 @@ public:
     {
         adaptDrawingToComboboxChange(comboboxindex, value);
 
-        ControllerBase::finishWidgetChanged();
+        ControllerBase::finishControlsChanged();
     }
 
     //@}
@@ -244,6 +244,7 @@ protected:
     //@{
     virtual void doInitControls(QWidget* widget) override
     {
+        initDefaultWidget(widget);
         ControllerBase::doInitControls(widget);
     }
 
