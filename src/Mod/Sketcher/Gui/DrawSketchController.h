@@ -23,127 +23,16 @@
 #ifndef SKETCHERGUI_DrawSketchController_H
 #define SKETCHERGUI_DrawSketchController_H
 
-#include <QApplication>
-#include <QEvent>
-#include <QKeyEvent>
-#include <QRegularExpression>
-#include <QRegularExpressionMatch>
-
 #include <Base/Tools2D.h>
-#include <Gui/Application.h>
-#include <Gui/Document.h>
 #include <Gui/EditableDatumLabel.h>
-#include <Gui/View3DInventor.h>
-#include <Gui/View3DInventorViewer.h>
 
 #include "DrawSketchDefaultHandler.h"
 #include "SketcherToolDefaultWidget.h"
 
+#include "DrawSketchKeyboardManager.h"
+
 namespace SketcherGui
 {
-
-/** Class to decide which control is responsible of handling an key event
- *using timers, type of entered event, ...
- */
-class KeyboardManager: public QObject
-{
-    Q_OBJECT
-
-public:
-    KeyboardManager()
-        : QObject(nullptr)
-        , keyMode(KeyboardEventHandlingMode::Widget)
-    {
-        // get the active viewer, so that we can send it key events
-        auto doc = Gui::Application::Instance->activeDocument();
-
-        if (doc) {
-            auto temp = dynamic_cast<Gui::View3DInventor*>(doc->getActiveView());
-            if (temp) {
-                vpViewer = temp->getViewer();
-                keyMode = KeyboardEventHandlingMode::ViewProvider;
-            }
-        }
-
-        timer.setSingleShot(true);
-
-        QObject::connect(&timer, &QTimer::timeout, [this]() {
-            onTimeOut();
-        });
-    }
-
-    /// Indicates whether the widget should handle keyboard input or should signal it via boost
-    enum class KeyboardEventHandlingMode
-    {
-        Widget,
-        ViewProvider
-    };
-
-    bool isMode(KeyboardEventHandlingMode mode)
-    {
-        return mode == keyMode;
-    }
-
-    KeyboardEventHandlingMode getMode()
-    {
-        return keyMode;
-    }
-
-    bool eventFilter(QObject* object, QEvent* event)
-    {
-        Q_UNUSED(object);
-
-        if (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease) {
-            /*If a key shortcut is required to work on sketcher when a tool using Tool Setting
-            widget is being used, then you have to add this key to the below section such that the
-            spinbox doesn't keep the keypress event for itself. Note if you want the event to be
-            handled by the spinbox too, you can return false.*/
-
-            auto keyEvent = static_cast<QKeyEvent*>(event);
-
-            detectKeyboardEventHandlingMode(keyEvent);  // determine the handler
-
-            if (vpViewer && isMode(KeyboardEventHandlingMode::ViewProvider)) {
-                return QApplication::sendEvent(vpViewer, keyEvent);
-            }
-
-            return false;  // do not intercept the event and feed it to the widget
-        }
-
-        return false;
-    }
-
-private:
-    /// This function decides whether events should be send to the ViewProvider
-    /// or to the UI control of the Default widget.
-    void detectKeyboardEventHandlingMode(QKeyEvent* keyEvent)
-    {
-        QRegularExpression rx(QStringLiteral("^[0-9]$"));
-        auto match = rx.match(keyEvent->text());
-        if (keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Return
-            || keyEvent->key() == Qt::Key_Tab || keyEvent->key() == Qt::Key_Backtab
-            || keyEvent->key() == Qt::Key_Backspace || keyEvent->key() == Qt::Key_Delete
-            || keyEvent->key() == Qt::Key_Minus || keyEvent->key() == Qt::Key_Period
-            || keyEvent->key() == Qt::Key_Comma || match.hasMatch()) {
-            keyMode = KeyboardEventHandlingMode::Widget;
-            timer.start(timeOut);
-        }
-    }
-
-    void onTimeOut()
-    {
-        keyMode = KeyboardEventHandlingMode::ViewProvider;
-    }
-
-private:
-    /// Viewer responsible for the active document
-    Gui::View3DInventorViewer* vpViewer = nullptr;
-    KeyboardEventHandlingMode keyMode;
-
-    QTimer timer;
-
-    const int timeOut = 1000;
-};
 
 /** @brief template class for creating a type encapsulating an int value associated to each of
     the possible construction modes supported by the tool.
@@ -289,13 +178,11 @@ protected:
 public:
     DrawSketchController(HandlerT* dshandler)
         : handler(dshandler)
-        , keymanager(new KeyboardManager())
+        , keymanager(std::make_unique<DrawSketchKeyboardManager>())
     {}
 
     ~DrawSketchController()
     {
-        delete keymanager;
-
         connectionParameterValueChanged.disconnect();
         connectionCheckboxCheckedChanged.disconnect();
         connectionComboboxSelectionChanged.disconnect();
@@ -363,7 +250,7 @@ public:
         }
     }
 
-    void unsetOnViewParameter(std::unique_ptr<Gui::EditableDatumLabel>& onViewParameter)
+    void unsetOnViewParameter(Gui::EditableDatumLabel* onViewParameter)
     {
         onViewParameter->isSet = false;
         onViewParameter->setColor(dimConstrDeactivatedColor);
@@ -567,7 +454,7 @@ public:
 
                 // points/value will be overridden by the mouseMove triggered by the mode change.
                 onViewParameters[i]->setPoints(Base::Vector3d(), Base::Vector3d());
-                onViewParameters[i]->startEdit(0.0, keymanager);
+                onViewParameters[i]->startEdit(0.0, keymanager.get());
             }
         }
     }
@@ -838,7 +725,7 @@ private:
     }
     //@}
 
-    KeyboardManager* keymanager;
+    std::unique_ptr<DrawSketchKeyboardManager> keymanager;
 };
 
 
