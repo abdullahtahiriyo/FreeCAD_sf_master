@@ -173,7 +173,35 @@ protected:
 
     std::vector<std::unique_ptr<Gui::EditableDatumLabel>> onViewParameters;
 
-    SbColor dimConstrColor, dimConstrDeactivatedColor;
+    class ColorManager
+    {
+    public:
+        SbColor dimConstrColor, dimConstrDeactivatedColor;
+
+        ColorManager()
+        {
+            init();
+        }
+
+    private:
+        void init()
+        {
+            ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath(
+                "User parameter:BaseApp/Preferences/View");
+
+            dimConstrColor = SbColor(1.0f, 0.149f, 0.0f);
+            dimConstrDeactivatedColor = SbColor(0.8f, 0.8f, 0.8f);
+
+            float transparency = 0.f;
+            unsigned long color = (unsigned long)(dimConstrColor.getPackedValue());
+            color = hGrp->GetUnsigned("ConstrainedDimColor", color);
+            dimConstrColor.setPackedValue((uint32_t)color, transparency);
+
+            color = (unsigned long)(dimConstrDeactivatedColor.getPackedValue());
+            color = hGrp->GetUnsigned("DeactivatedConstrDimColor", color);
+            dimConstrDeactivatedColor.setPackedValue((uint32_t)color, transparency);
+        }
+    };
 
 public:
     DrawSketchController(HandlerT* dshandler)
@@ -194,22 +222,6 @@ public:
     /** @brief Initialises controls, such as the widget and the on-view parameters via NVI. */
     void initControls(QWidget* widget)
     {
-        ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath(
-            "User parameter:BaseApp/Preferences/View");
-
-        dimConstrColor = SbColor(1.0f, 0.149f, 0.0f);
-        dimConstrDeactivatedColor = SbColor(0.8f, 0.8f, 0.8f);
-
-        float transparency = 0.f;
-        unsigned long color = (unsigned long)(dimConstrColor.getPackedValue());
-        color = hGrp->GetUnsigned("ConstrainedDimColor", color);
-        dimConstrColor.setPackedValue((uint32_t)color, transparency);
-
-        color = (unsigned long)(dimConstrDeactivatedColor.getPackedValue());
-        color = hGrp->GetUnsigned("DeactivatedConstrDimColor", color);
-        dimConstrDeactivatedColor.setPackedValue((uint32_t)color, transparency);
-
-
         doInitControls(widget);  // NVI
 
         resetControls();
@@ -239,12 +251,12 @@ public:
                                  .emplace_back(std::make_unique<Gui::EditableDatumLabel>(
                                      viewer,
                                      placement,
-                                     dimConstrDeactivatedColor,
+                                     colorManager.dimConstrDeactivatedColor,
                                      /*autoDistance = */ true))
                                  .get();
 
             QObject::connect(parameter, &Gui::EditableDatumLabel::valueChanged, [=](double value) {
-                parameter->setColor(dimConstrColor);
+                parameter->setColor(colorManager.dimConstrColor);
                 onViewValueChanged(i, value);
             });
         }
@@ -253,7 +265,7 @@ public:
     void unsetOnViewParameter(Gui::EditableDatumLabel* onViewParameter)
     {
         onViewParameter->isSet = false;
-        onViewParameter->setColor(dimConstrDeactivatedColor);
+        onViewParameter->setColor(colorManager.dimConstrDeactivatedColor);
     }
 
     /** @brief function triggered by the handler when the mouse has been moved */
@@ -725,6 +737,7 @@ private:
     }
     //@}
 
+    ColorManager colorManager;
     std::unique_ptr<DrawSketchKeyboardManager> keymanager;
 };
 
