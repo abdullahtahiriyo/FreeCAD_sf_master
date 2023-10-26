@@ -36,7 +36,7 @@
 #include <BRepExtrema_DistShapeShape.hxx>
 #include <TopoDS.hxx>
 
-#include "DrawSketchController.h"
+#include "DrawSketchDefaultWidgetController.h"
 #include "DrawSketchControllableHandler.h"
 
 #include "GeometryCreationMode.h"
@@ -77,15 +77,15 @@ enum class ModeEnums {
 }  // namespace ConstructionMethods
 
 using DrawSketchHandlerOffsetController =
-    DrawSketchController<DrawSketchHandlerOffset,
-                         StateMachines::OneSeekEnd,
-                         /*PAutoConstraintSize =*/0,
-                         /*OnViewParametersT =*/OnViewParameters<1, 1>,
-                         /*WidgetParametersT =*/WidgetParameters<0, 0>,
-                         /*WidgetCheckboxesT =*/WidgetCheckboxes<2, 2>,
-                         /*WidgetComboboxesT =*/WidgetComboboxes<1, 1>,
-                         ConstructionMethods::OffsetConstructionMethod,
-                         /*bool PFirstComboboxIsConstructionMethod =*/true>;
+    DrawSketchDefaultWidgetController<DrawSketchHandlerOffset,
+                                      StateMachines::OneSeekEnd,
+                                      /*PAutoConstraintSize =*/0,
+                                      /*OnViewParametersT =*/OnViewParameters<1, 1>,
+                                      /*WidgetParametersT =*/WidgetParameters<0, 0>,
+                                      /*WidgetCheckboxesT =*/WidgetCheckboxes<2, 2>,
+                                      /*WidgetComboboxesT =*/WidgetComboboxes<1, 1>,
+                                      ConstructionMethods::OffsetConstructionMethod,
+                                      /*bool PFirstComboboxIsConstructionMethod =*/true>;
 
 
 using DrawSketchHandlerOffsetBase =
