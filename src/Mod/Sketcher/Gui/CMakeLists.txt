@@ -135,7 +135,7 @@ SET(SketcherGui_SRCS
     DrawSketchHandler.h
     DrawSketchDefaultHandler.h
     DrawSketchController.h
-    DrawSketchOnViewController.h
+    DrawSketchDefaultWidgetController.h
     DrawSketchControllableHandler.h
     DrawSketchKeyboardManager.h
     DrawSketchKeyboardManager.cpp

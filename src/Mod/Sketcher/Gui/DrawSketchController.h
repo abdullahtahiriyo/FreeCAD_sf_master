@@ -70,25 +70,6 @@ class OnViewParameters: public ControlAmount<sizes...>
 {
 };
 
-/** @brief Type encapsulating the number of parameters in the widget*/
-template<int... sizes>  // Initial sizes for each mode
-class WidgetParameters: public ControlAmount<sizes...>
-{
-};
-
-/** @brief Type encapsulating the number of checkboxes in the widget*/
-template<int... sizes>  // Initial sizes for each mode
-class WidgetCheckboxes: public ControlAmount<sizes...>
-{
-};
-
-/** @brief Type encapsulating the number of comboboxes in the widget*/
-template<int... sizes>  // Initial sizes for each mode
-class WidgetComboboxes: public ControlAmount<sizes...>
-{
-};
-
-
 namespace sp = std::placeholders;
 
 /** @brief Class defining a generic handler controller operable with a DrawSketchControllableHandler
@@ -101,15 +82,14 @@ template<typename HandlerT,
          typename SelectModeT,
          int PAutoConstraintSize,     // The initial size of the AutoConstraint vector
          typename OnViewParametersT,  // The number of parameter spinboxes in the 3D view
-         typename WidgetParametersT,  // The number of parameter spinboxes in the default widget
-         typename WidgetCheckboxesT,  // The number of checkboxes in the default widget
-         typename WidgetComboboxesT,  // The number of comboboxes in the default widget
-         typename ConstructionMethodT = ConstructionMethods::DefaultConstructionMethod,
-         bool PFirstComboboxIsConstructionMethod =
-             false>  // The handler template or class having this as inner class
+         typename ConstructionMethodT =
+             ConstructionMethods::DefaultConstructionMethod>  // The handler template or class
+                                                              // having this as inner class
 class DrawSketchController
 {
 public:
+    using ControllerBase = void;  // No base controller for parent class.
+
     using HandlerType = HandlerT;
     using SelectModeType = SelectModeT;
     using ContructionMethodType = ConstructionMethodT;
@@ -120,6 +100,7 @@ public:
     using ConstructionMachine = ConstructionMethodMachine<ConstructionMethodT>;
 
     using ConstructionMethod = ConstructionMethodT;
+    using SelectMode = SelectModeT;
 
 protected:
     HandlerT* handler;           // real derived type
@@ -132,26 +113,7 @@ protected:
     int onViewIndexWithFocus = 0;  // track the index of the on-view parameter having the focus
 
     int nOnViewParameter = OnViewParametersT::defaultMethodSize();
-    int nParameter = WidgetParametersT::defaultMethodSize();
-    int nCheckbox = WidgetCheckboxesT::defaultMethodSize();
-    int nCombobox = WidgetComboboxesT::defaultMethodSize();
 
-    SketcherToolDefaultWidget* toolWidget;
-
-    using Connection = boost::signals2::connection;
-
-    Connection connectionParameterValueChanged;
-    Connection connectionCheckboxCheckedChanged;
-    Connection connectionComboboxSelectionChanged;
-
-    /** @name Named indices for controls of the default widget (SketcherToolDefaultWidget) */
-    //@{
-    using WParameter = SketcherToolDefaultWidget::Parameter;
-    using WCheckbox = SketcherToolDefaultWidget::Checkbox;
-    using WCombobox = SketcherToolDefaultWidget::Combobox;
-
-    using SelectMode = SelectModeT;
-    //@}
 
     /** @name Named indices for controls of the on-view controls (SketcherToolDefaultWidget) */
     //@{
@@ -210,11 +172,7 @@ public:
     {}
 
     ~DrawSketchController()
-    {
-        connectionParameterValueChanged.disconnect();
-        connectionCheckboxCheckedChanged.disconnect();
-        connectionComboboxSelectionChanged.disconnect();
-    }
+    {}
 
     /** @name functions NOT intended for specialisation */
     //@{
@@ -318,37 +276,7 @@ public:
 
         adaptDrawingToOnViewParameterChange(onviewparameterindex, value);
 
-        finishWidgetChanged();
-    }
-
-    /** boost slot triggering when a parameter has changed in the widget
-     * It is intended to remote control the DrawSketchDefaultWidgetHandler
-     */
-    void parameterValueChanged(int parameterindex, double value)
-    {
-        adaptDrawingToParameterChange(parameterindex, value);
-
-        finishWidgetChanged();
-    }
-
-    /** boost slot triggering when a checkbox has changed in the widget
-     * It is intended to remote control the DrawSketchDefaultWidgetHandler
-     */
-    void checkboxCheckedChanged(int checkboxindex, bool value)
-    {
-        adaptDrawingToCheckboxChange(checkboxindex, value);
-
-        finishWidgetChanged();
-    }
-
-    /** boost slot triggering when a combobox has changed in the widget
-     * It is intended to remote control the DrawSketchDefaultWidgetHandler
-     */
-    void comboboxSelectionChanged(int comboboxindex, int value)
-    {
-        adaptDrawingToComboboxChange(comboboxindex, value);
-
-        finishWidgetChanged();
+        finishControlsChanged();
     }
 
     void adaptParameters()
@@ -367,33 +295,6 @@ public:
         Q_UNUSED(value);
     }
 
-    /// Change DSH to reflect a value entered in the widget
-    void adaptDrawingToParameterChange(int parameterindex, double value)
-    {
-        Q_UNUSED(parameterindex);
-        Q_UNUSED(value);
-    }
-
-    /// Change DSH to reflect a checkbox changed in the widget
-    void adaptDrawingToCheckboxChange(int checkboxindex, bool value)
-    {
-        Q_UNUSED(checkboxindex);
-        Q_UNUSED(value);
-    }
-
-    /// Change DSH to reflect a comboBox changed in the widget
-    void adaptDrawingToComboboxChange(int comboboxindex, int value)
-    {
-        Q_UNUSED(comboboxindex);
-
-        if constexpr (PFirstComboboxIsConstructionMethod == true) {
-
-            if (comboboxindex == WCombobox::FirstCombo && handler->ConstructionMethodsCount() > 1) {
-                handler->setConstructionMethod(static_cast<ConstructionMethodT>(value));
-            }
-        }
-    }
-
     /** Returns the state to which the widget parameter corresponds in the current construction
      * method
      */
@@ -410,10 +311,6 @@ public:
 
     /** @name functions which need to be specialised */
     //@{
-    /// Function to specialise to set the correct widget strings and commands
-    void configureToolWidget()
-    {}
-
     void configureOnViewParameters()
     {}
 
@@ -481,24 +378,9 @@ public:
     void onConstructionMethodChanged()
     {
 
-        nOnViewParameter = OnViewParametersT::size(handler->constructionMethod());
-        nParameter = WidgetParametersT::size(handler->constructionMethod());
-        nCheckbox = WidgetCheckboxesT::size(handler->constructionMethod());
-        nCombobox = WidgetComboboxesT::size(handler->constructionMethod());
+        nOnViewParameter = OnViewParametersT::size(this->handler->constructionMethod());
 
-        // update the combobox only if necessary (if the change was not triggered by the
-        // combobox)
-        if constexpr (PFirstComboboxIsConstructionMethod == true) {
-            auto currentindex = toolWidget->getComboboxIndex(WCombobox::FirstCombo);
-            auto methodint = static_cast<int>(handler->constructionMethod());
-
-            if (currentindex != methodint) {
-                // avoid triggering of method change
-                boost::signals2::shared_connection_block combobox_block(
-                    connectionComboboxSelectionChanged);
-                toolWidget->setComboboxIndex(WCombobox::FirstCombo, methodint);
-            }
-        }
+        doConstructionMethodChanged();  // NVI
 
         handler->updateCursor();
 
@@ -526,21 +408,11 @@ public:
 
     /** on first shortcut, it toggles the first checkbox if there is go. Must be specialised if
      * this is not intended */
-    void firstKeyShortcut()
-    {
-        if (nCheckbox >= 1) {
-            auto firstchecked = toolWidget->getCheckboxChecked(WCheckbox::FirstBox);
-            toolWidget->setCheckboxChecked(WCheckbox::FirstBox, !firstchecked);
-        }
-    }
+    virtual void firstKeyShortcut()
+    {}
 
-    void secondKeyShortcut()
-    {
-        if (nCheckbox >= 2) {
-            auto secondchecked = toolWidget->getCheckboxChecked(WCheckbox::SecondBox);
-            toolWidget->setCheckboxChecked(WCheckbox::SecondBox, !secondchecked);
-        }
-    }
+    virtual void secondKeyShortcut()
+    {}
 
     virtual void tabShortcut()
     {
@@ -579,13 +451,12 @@ protected:
     //@{
     virtual void doInitControls(QWidget* widget)
     {
-        initDefaultWidget(widget);
+        Q_UNUSED(widget)
     }
 
     virtual void doResetControls()
     {
         resetOnViewParameters();
-        resetDefaultWidget();
     }
     virtual void onMouseMoved(Base::Vector2d originalSketchPosition)
     {
@@ -601,36 +472,12 @@ protected:
         // Give focus to current on-view parameter. In case user interacted outside of 3dview.
         setFocusToOnViewParameter(onViewIndexWithFocus);
     }
+
+    virtual void doConstructionMethodChanged()
+    {}
     //@}
 
 private:
-    void initDefaultWidget(QWidget* widget)
-    {
-        toolWidget = static_cast<SketcherToolDefaultWidget*>(widget);
-
-        connectionParameterValueChanged = toolWidget->registerParameterValueChanged(
-            std::bind(&DrawSketchController::parameterValueChanged, this, sp::_1, sp::_2));
-
-        connectionCheckboxCheckedChanged = toolWidget->registerCheckboxCheckedChanged(
-            std::bind(&DrawSketchController::checkboxCheckedChanged, this, sp::_1, sp::_2));
-
-        connectionComboboxSelectionChanged = toolWidget->registerComboboxSelectionChanged(
-            std::bind(&DrawSketchController::comboboxSelectionChanged, this, sp::_1, sp::_2));
-    }
-
-    void resetDefaultWidget()
-    {
-        boost::signals2::shared_connection_block parameter_block(connectionParameterValueChanged);
-        boost::signals2::shared_connection_block checkbox_block(connectionCheckboxCheckedChanged);
-        boost::signals2::shared_connection_block combobox_block(connectionComboboxSelectionChanged);
-
-        toolWidget->initNParameters(nParameter);
-        toolWidget->initNCheckboxes(nCheckbox);
-        toolWidget->initNComboboxes(nCombobox);
-
-        configureToolWidget();
-    }
-
     void resetOnViewParameters()
     {
         initNOnViewParameters(nOnViewParameter);
@@ -659,11 +506,8 @@ private:
 
     /// function to redraw before and after any eventual mode change in reaction to a widget
     /// change
-    void finishWidgetChanged()
+    void finishControlsChanged()
     {
-
-        // handler->moveCursorToSketchPoint(lastControlEnforcedPosition);
-
         handler->mouseMove(prevCursorPosition);
 
         auto currentstate = handler->state();
@@ -677,50 +521,6 @@ private:
         if (!handler->isLastState() && handler->state() != currentstate && firstMoveInit) {
             // mode has changed, so reprocess the previous position to the new widget state
             handler->mouseMove(prevCursorPosition);
-        }
-    }
-
-    /// returns the status to which the handler was updated
-    bool syncHandlerToCheckbox(int checkboxindex, bool& handlerboolean)
-    {
-        bool status = toolWidget->getCheckboxChecked(checkboxindex);
-        handlerboolean = status;
-
-        return status;
-    }
-
-    /// returns true if checkbox was changed, and false if no sync was necessary
-    bool syncCheckboxToHandler(int checkboxindex, bool handlerboolean)
-    {
-        bool status = toolWidget->getCheckboxChecked(checkboxindex);
-        if (handlerboolean != status) {
-            toolWidget->setCheckboxChecked(checkboxindex, handlerboolean);
-            return true;
-        }
-
-        return false;
-    }
-
-    void syncHandlerToConstructionMethodCombobox()
-    {
-
-        if constexpr (PFirstComboboxIsConstructionMethod == true) {
-            auto constructionmethod = toolWidget->getComboboxIndex(WCombobox::FirstCombo);
-
-            handler->initConstructionMethod(static_cast<ConstructionMethodT>(constructionmethod));
-        }
-    }
-    void syncConstructionMethodComboboxToHandler()
-    {
-
-        if constexpr (PFirstComboboxIsConstructionMethod == true) {
-            auto constructionmethod = toolWidget->getComboboxIndex(WCombobox::FirstCombo);
-
-            auto actualconstructionmethod = static_cast<int>(handler->constructionMethod());
-
-            if (constructionmethod != actualconstructionmethod) {
-                toolWidget->setComboboxIndex(WCombobox::FirstCombo, actualconstructionmethod);
-            }
         }
     }
 

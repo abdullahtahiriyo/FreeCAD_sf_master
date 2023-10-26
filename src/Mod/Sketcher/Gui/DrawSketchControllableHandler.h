@@ -24,8 +24,9 @@
 #ifndef SKETCHERGUI_DrawSketchControllableHandler_H
 #define SKETCHERGUI_DrawSketchControllableHandler_H
 
-#include "DrawSketchDefaultHandler.h"
+#include <type_traits>
 
+#include "DrawSketchDefaultHandler.h"
 
 namespace SketcherGui
 {
@@ -55,7 +56,10 @@ class DrawSketchControllableHandler
 
     using ConstructionMachine = ConstructionMethodMachine<ConstructionMethodType>;
 
+    // This is the actual controller provided
     friend ControllerT;
+    // This is the parent controller (parent controllers shall define it as void)
+    friend typename ControllerT::ControllerBase;
 
 public:
     DrawSketchControllableHandler(
