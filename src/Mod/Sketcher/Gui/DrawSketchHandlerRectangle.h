@@ -25,6 +25,9 @@
 #define SKETCHERGUI_DrawSketchHandlerRectangle_H
 
 
+#include "DrawSketchDefaultWidgetController.h"
+#include "DrawSketchControllableHandler.h"
+
 #include "GeometryCreationMode.h"
 #include "Utils.h"
 
@@ -50,15 +53,15 @@ enum class RectangleConstructionMethod
 }
 
 using DrawSketchHandlerRectangleController =
-    DrawSketchController<DrawSketchHandlerRectangle,
-                         StateMachines::FiveSeekEnd,
-                         /*PAutoConstraintSize =*/3,
-                         /*OnViewParametersT =*/OnViewParameters<6, 6, 8, 8>,
-                         /*WidgetParametersT =*/WidgetParameters<0, 0, 0, 0>,
-                         /*WidgetCheckboxesT =*/WidgetCheckboxes<2, 2, 2, 2>,
-                         /*WidgetComboboxesT =*/WidgetComboboxes<1, 1, 1, 1>,
-                         ConstructionMethods::RectangleConstructionMethod,
-                         /*bool PFirstComboboxIsConstructionMethod =*/true>;
+    DrawSketchDefaultWidgetController<DrawSketchHandlerRectangle,
+                                      StateMachines::FiveSeekEnd,
+                                      /*PAutoConstraintSize =*/3,
+                                      /*OnViewParametersT =*/OnViewParameters<6, 6, 8, 8>,
+                                      /*WidgetParametersT =*/WidgetParameters<0, 0, 0, 0>,
+                                      /*WidgetCheckboxesT =*/WidgetCheckboxes<2, 2, 2, 2>,
+                                      /*WidgetComboboxesT =*/WidgetComboboxes<1, 1, 1, 1>,
+                                      ConstructionMethods::RectangleConstructionMethod,
+                                      /*bool PFirstComboboxIsConstructionMethod =*/true>;
 
 
 using DrawSketchHandlerRectangleBase =
