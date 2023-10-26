@@ -27,7 +27,7 @@
 
 #include "GeometryCreationMode.h"
 
-#include "DrawSketchController.h"
+#include "DrawSketchDefaultWidgetController.h"
 #include "DrawSketchControllableHandler.h"
 
 namespace SketcherGui
@@ -38,13 +38,13 @@ extern GeometryCreationMode geometryCreationMode;  // defined in CommandCreateGe
 class DrawSketchHandlerPoint;
 
 using DrawSketchHandlerPointController =
-    DrawSketchController<DrawSketchHandlerPoint,
-                         StateMachines::OneSeekEnd,
-                         /*PAutoConstraintSize =*/1,
-                         /*OnViewParametersT =*/OnViewParameters<2>,
-                         /*WidgetParametersT =*/WidgetParameters<0>,
-                         /*WidgetCheckboxesT =*/WidgetCheckboxes<0>,
-                         /*WidgetComboboxesT =*/WidgetComboboxes<0>>;
+    DrawSketchDefaultWidgetController<DrawSketchHandlerPoint,
+                                      StateMachines::OneSeekEnd,
+                                      /*PAutoConstraintSize =*/1,
+                                      /*OnViewParametersT =*/OnViewParameters<2>,
+                                      /*WidgetParametersT =*/WidgetParameters<0>,
+                                      /*WidgetCheckboxesT =*/WidgetCheckboxes<0>,
+                                      /*WidgetComboboxesT =*/WidgetComboboxes<0>>;
 
 
 using DrawSketchHandlerPointBase = DrawSketchControllableHandler<DrawSketchHandlerPointController>;
