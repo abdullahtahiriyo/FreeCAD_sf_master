@@ -319,7 +319,7 @@ void DrawSketchHandlerPolygonController::doEnforceControlParameters(Base::Vector
             if (onViewParameters[OnViewParameter::Third]->isSet) {
                 length = onViewParameters[OnViewParameter::Third]->getValue();
                 if (length < Precision::Confusion()) {
-                    unsetOnViewParameter(onViewParameters[OnViewParameter::Third]);
+                    unsetOnViewParameter(onViewParameters[OnViewParameter::Third].get());
                 }
                 else {
                     Base::Vector2d v = onSketchPos - handler->centerPoint;
