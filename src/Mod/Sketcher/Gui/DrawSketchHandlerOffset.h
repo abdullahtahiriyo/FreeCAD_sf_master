@@ -1070,7 +1070,7 @@ void DrawSketchHandlerOffsetController::adaptDrawingToOnViewParameterChange(int 
         case OnViewParameter::First: {
             if (value == 0.) {
                 // Do not accept 0.
-                unsetOnViewParameter(onViewParameters[OnViewParameter::First]);
+                unsetOnViewParameter(onViewParameters[OnViewParameter::First].get());
 
                 Gui::NotifyUserError(
                     handler->sketchgui->getSketchObject(),
