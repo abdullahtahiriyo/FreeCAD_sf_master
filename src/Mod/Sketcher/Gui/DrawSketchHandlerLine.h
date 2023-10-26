@@ -24,7 +24,7 @@
 #ifndef SKETCHERGUI_DrawSketchHandlerLine_H
 #define SKETCHERGUI_DrawSketchHandlerLine_H
 
-#include "DrawSketchController.h"
+#include "DrawSketchDefaultWidgetController.h"
 #include "DrawSketchControllableHandler.h"
 
 #include "GeometryCreationMode.h"
@@ -51,15 +51,15 @@ enum class LineConstructionMethod
 }
 
 using DrawSketchHandlerLineController =
-    DrawSketchController<DrawSketchHandlerLine,
-                         /*SelectModeT*/ StateMachines::TwoSeekEnd,
-                         /*PAutoConstraintSize =*/2,
-                         /*OnViewParametersT =*/OnViewParameters<4, 4, 4>,
-                         /*WidgetParametersT =*/WidgetParameters<0, 0, 0>,
-                         /*WidgetCheckboxesT =*/WidgetCheckboxes<0, 0, 0>,
-                         /*WidgetComboboxesT =*/WidgetComboboxes<1, 1, 1>,
-                         ConstructionMethods::LineConstructionMethod,
-                         /*bool PFirstComboboxIsConstructionMethod =*/true>;
+    DrawSketchDefaultWidgetController<DrawSketchHandlerLine,
+                                      /*SelectModeT*/ StateMachines::TwoSeekEnd,
+                                      /*PAutoConstraintSize =*/2,
+                                      /*OnViewParametersT =*/OnViewParameters<4, 4, 4>,
+                                      /*WidgetParametersT =*/WidgetParameters<0, 0, 0>,
+                                      /*WidgetCheckboxesT =*/WidgetCheckboxes<0, 0, 0>,
+                                      /*WidgetComboboxesT =*/WidgetComboboxes<1, 1, 1>,
+                                      ConstructionMethods::LineConstructionMethod,
+                                      /*bool PFirstComboboxIsConstructionMethod =*/true>;
 
 
 using DrawSketchHandlerLineBase = DrawSketchControllableHandler<DrawSketchHandlerLineController>;
