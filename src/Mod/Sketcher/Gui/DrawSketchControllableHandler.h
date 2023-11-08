@@ -25,6 +25,7 @@
 #define SKETCHERGUI_DrawSketchControllableHandler_H
 
 #include <type_traits>
+#include <chrono>
 
 #include "DrawSketchDefaultHandler.h"
 
@@ -68,6 +69,29 @@ class DrawSketchControllableHandler
     // Non-derived controllers shall define ControllerBase as void to interoperate with this class.
     friend typename ControllerT::ControllerBase;
 
+    class MouseManager
+    {
+        std::chrono::time_point<std::chrono::system_clock> startTime;
+
+        const unsigned int longpressThreshold = 1000;
+
+    public:
+        void rightButtonPressed()
+        {
+            startTime = std::chrono::system_clock::now();
+        }
+
+        bool rightButtonReleased()
+        {
+            auto endTime = std::chrono::system_clock::now();
+
+            auto millis =
+                std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+
+            return (millis > longpressThreshold);
+        }
+    };
+
 public:
     DrawSketchControllableHandler(
         ConstructionMethodType constructionmethod = static_cast<ConstructionMethodType>(0))
@@ -101,6 +125,23 @@ public:
         Q_UNUSED(onSketchPos);
         DSDefaultHandler::finish();
         return true;
+    }
+
+    void pressRightButton(Base::Vector2d onSketchPos, bool pressed) override
+    {
+        if (pressed) {
+            mouseManager.rightButtonPressed();
+        }
+        else {
+            bool longpress = mouseManager.rightButtonReleased();
+
+            if (longpress) {
+                toolWidgetManager.longPressMouseRightButton(onSketchPos);
+            }
+            else {
+                DSDefaultHandler::pressRightButton(onSketchPos, pressed);
+            }
+        }
     }
     //@}
 
@@ -190,6 +231,7 @@ private:
 
 protected:
     ControllerT toolWidgetManager;
+    MouseManager mouseManager;
 };
 
 }  // namespace SketcherGui

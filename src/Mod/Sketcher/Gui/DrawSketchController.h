@@ -23,6 +23,9 @@
 #ifndef SKETCHERGUI_DrawSketchController_H
 #define SKETCHERGUI_DrawSketchController_H
 
+#include <QMenu>
+#include <QEvent>
+
 #include <Base/Tools2D.h>
 #include <Gui/EditableDatumLabel.h>
 
@@ -319,6 +322,19 @@ public:
         handler->reset();  // reset of handler to restart.
 
         handler->mouseMove(prevCursorPosition);
+    }
+
+    void longPressMouseRightButton(Base::Vector2d onSketchPos)
+    {
+        Q_UNUSED(onSketchPos)
+
+        /*QMenu menu;
+
+        menu.addAction(QString::fromLatin1("Trial Option"));
+
+        menu.menuAction()->setIconVisibleInMenu(true);
+
+        menu.exec(QCursor::pos());*/
     }
     //@}
 

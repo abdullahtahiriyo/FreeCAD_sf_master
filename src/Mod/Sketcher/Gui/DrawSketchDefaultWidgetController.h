@@ -231,9 +231,7 @@ public:
             toolWidget->setCheckboxChecked(WCheckbox::SecondBox, !secondchecked);
         }
     }
-
     //@}
-
 protected:
     /** @name DrawSketchController NVI */
     //@{

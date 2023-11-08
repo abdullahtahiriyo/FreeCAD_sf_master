@@ -438,15 +438,17 @@ public:
         }
     }
 
-    void pressRightButton(Base::Vector2d onSketchPos) override
+    void pressRightButton(Base::Vector2d onSketchPos, bool pressed) override
     {
         Q_UNUSED(onSketchPos);
 
-        if (this->isFirstState()) {
-            quit();
-        }
-        else {
-            handleContinuousMode();
+        if (!pressed) {
+            if (this->isFirstState()) {
+                quit();
+            }
+            else {
+                handleContinuousMode();
+            }
         }
     }
 
