@@ -24,6 +24,7 @@
 #ifndef SKETCHERGUI_DrawSketchHandlerArc_H
 #define SKETCHERGUI_DrawSketchHandlerArc_H
 
+#include <Gui/BitmapFactory.h>
 #include <Gui/Notifications.h>
 #include <Gui/CommandT.h>
 
@@ -69,7 +70,7 @@ class DrawSketchHandlerArc: public DrawSketchHandlerArcBase
     friend DSHArcControllerBase;
 
 public:
-    DrawSketchHandlerArc(ConstructionMethod constrMethod = ConstructionMethod::Center)
+    explicit DrawSketchHandlerArc(ConstructionMethod constrMethod = ConstructionMethod::Center)
         : DrawSketchHandlerArcBase(constrMethod)
         , startAngle(0.0)
         , endAngle(0.0)
@@ -79,7 +80,7 @@ public:
     virtual ~DrawSketchHandlerArc() = default;
 
 private:
-    virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override
+    void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override
     {
         switch (state()) {
             case SelectMode::SeekFirst: {
@@ -205,7 +206,7 @@ private:
         }
     }
 
-    virtual void executeCommands() override
+    void executeCommands() override
     {
 
         if (constructionMethod() == ConstructionMethod::Center) {
@@ -241,7 +242,7 @@ private:
         }
     }
 
-    virtual void generateAutoConstraints() override
+    void generateAutoConstraints() override
     {
         int ArcGeoId = getHighestCurveIndex();
 
@@ -284,7 +285,7 @@ private:
         removeRedundantAutoConstraints();
     }
 
-    virtual void createAutoConstraints() override
+    void createAutoConstraints() override
     {
         // execute python command to create autoconstraints
         createGeneratedAutoConstraints(true);
@@ -294,12 +295,12 @@ private:
         sugConstraints[2].clear();
     }
 
-    virtual std::string getToolName() const override
+    std::string getToolName() const override
     {
         return "DSH_Arc";
     }
 
-    virtual QString getCrosshairCursorSVGName() const override
+    QString getCrosshairCursorSVGName() const override
     {
         if (constructionMethod() == DrawSketchHandlerArc::ConstructionMethod::Center) {
             return QString::fromLatin1("Sketcher_Pointer_Create_Arc");
@@ -351,7 +352,7 @@ private:
         }
     }
 
-    virtual void createShape(bool onlyeditoutline) override
+    void createShape(bool onlyeditoutline) override
     {
 
         ShapeGeometry.clear();

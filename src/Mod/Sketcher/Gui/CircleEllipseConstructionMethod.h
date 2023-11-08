@@ -24,10 +24,7 @@
 #ifndef SKETCHERGUI_CircleEllipseConstructionMethod_H
 #define SKETCHERGUI_CircleEllipseConstructionMethod_H
 
-namespace SketcherGui
-{
-
-namespace ConstructionMethods
+namespace SketcherGui::ConstructionMethods
 {
 
 enum class CircleEllipseConstructionMethod
@@ -37,9 +34,7 @@ enum class CircleEllipseConstructionMethod
     End  // Must be the last one
 };
 
-}  // namespace ConstructionMethods
-
-}  // namespace SketcherGui
+}  // namespace SketcherGui::ConstructionMethods
 
 
 #endif  // SKETCHERGUI_CircleEllipseConstructionMethod_H

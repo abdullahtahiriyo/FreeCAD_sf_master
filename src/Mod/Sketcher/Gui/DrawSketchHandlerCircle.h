@@ -24,6 +24,7 @@
 #ifndef SKETCHERGUI_DrawSketchHandlerCircle_H
 #define SKETCHERGUI_DrawSketchHandlerCircle_H
 
+#include <Gui/BitmapFactory.h>
 #include <Gui/Notifications.h>
 #include <Gui/Command.h>
 #include <Gui/CommandT.h>
@@ -72,7 +73,7 @@ class DrawSketchHandlerCircle: public DrawSketchHandlerCircleBase
     friend DSHCircleControllerBase;
 
 public:
-    DrawSketchHandlerCircle(ConstructionMethod constrMethod = ConstructionMethod::Center)
+    explicit DrawSketchHandlerCircle(ConstructionMethod constrMethod = ConstructionMethod::Center)
         : DrawSketchHandlerCircleBase(constrMethod)
     {}
     ~DrawSketchHandlerCircle() override = default;
@@ -148,7 +149,7 @@ private:
         }
     }
 
-    virtual void executeCommands() override
+    void executeCommands() override
     {
         try {
             createShape(false);
@@ -173,7 +174,7 @@ private:
         }
     }
 
-    virtual void generateAutoConstraints() override
+    void generateAutoConstraints() override
     {
         int CircleGeoId = getHighestCurveIndex();
 
@@ -216,7 +217,7 @@ private:
         removeRedundantAutoConstraints();
     }
 
-    virtual void createAutoConstraints() override
+    void createAutoConstraints() override
     {
         // execute python command to create autoconstraints
         createGeneratedAutoConstraints(true);
@@ -226,12 +227,12 @@ private:
         sugConstraints[2].clear();
     }
 
-    virtual std::string getToolName() const override
+    std::string getToolName() const override
     {
         return "DSH_Circle";
     }
 
-    virtual QString getCrosshairCursorSVGName() const override
+    QString getCrosshairCursorSVGName() const override
     {
         if (constructionMethod() == DrawSketchHandlerCircle::ConstructionMethod::Center) {
             return QString::fromLatin1("Sketcher_Pointer_Create_Circle");
@@ -272,7 +273,7 @@ private:
     }
 
     // reimplement because circle is 2 steps while 3rims is 3 steps
-    virtual void onButtonPressed(Base::Vector2d onSketchPos) override
+    void onButtonPressed(Base::Vector2d onSketchPos) override
     {
         this->updateDataAndDrawToPosition(onSketchPos);
         if (canGoToNextMode()) {

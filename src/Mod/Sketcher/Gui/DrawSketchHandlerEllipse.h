@@ -26,6 +26,9 @@
 
 #include <cmath>
 
+#include <QApplication>
+
+#include <Gui/BitmapFactory.h>
 #include <Gui/Notifications.h>
 #include <Gui/Command.h>
 #include <Gui/CommandT.h>
@@ -69,7 +72,7 @@ class DrawSketchHandlerEllipse: public DrawSketchHandlerEllipseBase
     friend DSHEllipseControllerBase;
 
 public:
-    DrawSketchHandlerEllipse(ConstructionMethod constrMethod = ConstructionMethod::Center)
+    explicit DrawSketchHandlerEllipse(ConstructionMethod constrMethod = ConstructionMethod::Center)
         : DrawSketchHandlerEllipseBase(constrMethod)
         , showInternal(true)
         , firstRadius(0.0)
@@ -739,7 +742,7 @@ void DSHEllipseController::addConstraints()
             int secondLine = firstCurve + 2;  // this is always the minor axis
 
             if (handler->firstRadius < handler->secondRadius) {
-                swap(firstLine, secondLine);
+                std::swap(firstLine, secondLine);
             }
 
             // NOTE: Because mouse positions are enforced by the widget, it is not possible to use
