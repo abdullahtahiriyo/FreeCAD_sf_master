@@ -225,15 +225,6 @@ private:  // NVI
     virtual void onWidgetChanged()
     {}
 
-    virtual bool shouldDrawPositionAtCursor() const
-    {
-        return true;
-    }
-    virtual bool shouldDrawDimensionsAtCursor() const
-    {
-        return true;
-    }
-
 protected:  // NVI requiring base implementation
     virtual std::string getToolName() const;
     virtual QString getCrosshairCursorSVGName() const;
@@ -289,11 +280,12 @@ protected:
     void ensureFocus();
     void preselectAtPoint(Base::Vector2d point);
 
-    void drawPositionAtCursor(const Base::Vector2d& position);
-    void drawDirectionAtCursor(const Base::Vector2d& position, const Base::Vector2d& origin);
-    void
+    virtual void drawPositionAtCursor(const Base::Vector2d& position);
+    virtual void drawDirectionAtCursor(const Base::Vector2d& position,
+                                       const Base::Vector2d& origin);
+    virtual void
     drawWidthHeightAtCursor(const Base::Vector2d& position, const double val1, const double val2);
-    void drawDoubleAtCursor(const Base::Vector2d& position, const double radius);
+    virtual void drawDoubleAtCursor(const Base::Vector2d& position, const double radius);
 
     int getPreselectPoint() const;
     int getPreselectCurve() const;

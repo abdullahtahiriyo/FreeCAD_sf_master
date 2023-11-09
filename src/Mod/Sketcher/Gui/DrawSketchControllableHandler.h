@@ -103,16 +103,35 @@ public:
         return true;
     }
 
-    bool shouldDrawPositionAtCursor() const override
+
+    void drawPositionAtCursor(const Base::Vector2d& position) override
     {
-        return toolWidgetManager.shouldDrawPositionAtCursor();
+        if (toolWidgetManager.shouldDrawPositionAtCursor()) {
+            DrawSketchHandler::drawPositionAtCursor(position);
+        }
     }
 
-    bool shouldDrawDimensionsAtCursor() const override
+    void drawDirectionAtCursor(const Base::Vector2d& position, const Base::Vector2d& origin)
     {
-        return toolWidgetManager.shouldDrawDimensionsAtCursor();
+        if (toolWidgetManager.shouldDrawDimensionsAtCursor()) {
+            DrawSketchHandler::drawDirectionAtCursor(position, origin);
+        }
     }
 
+    void
+    drawWidthHeightAtCursor(const Base::Vector2d& position, const double val1, const double val2)
+    {
+        if (toolWidgetManager.shouldDrawDimensionsAtCursor()) {
+            DrawSketchHandler::drawWidthHeightAtCursor(position, val1, val2);
+        }
+    }
+
+    void drawDoubleAtCursor(const Base::Vector2d& position, const double radius)
+    {
+        if (toolWidgetManager.shouldDrawDimensionsAtCursor()) {
+            DrawSketchHandler::drawDoubleAtCursor(position, radius);
+        }
+    }
     //@}
 
 
@@ -170,7 +189,7 @@ private:
 
     void onModeChanged() override
     {
-        resetPositionText();
+        DrawSketchHandler::resetPositionText();
         toolWidgetManager.onHandlerModeChanged();
         DSDefaultHandler::onModeChanged();
 

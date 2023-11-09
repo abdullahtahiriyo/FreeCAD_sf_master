@@ -195,12 +195,17 @@ protected:
             init();
         }
 
-        OnViewParameterVisibility visibility()
+        OnViewParameterVisibility visibility() const
         {
             return onViewParameterVisibility;
         }
 
-        bool isVisible(Gui::EditableDatumLabel* ovp)
+        bool isVisibility(OnViewParameterVisibility visibility) const
+        {
+            return onViewParameterVisibility == visibility;
+        }
+
+        bool isVisible(Gui::EditableDatumLabel* ovp) const
         {
             switch (onViewParameterVisibility) {
 
@@ -229,7 +234,6 @@ protected:
             dynamicOverride = false;
         }
 
-        OnViewParameterVisibility onViewParameterVisibility;
 
     private:
         void init()
@@ -241,6 +245,7 @@ protected:
                 static_cast<OnViewParameterVisibility>(hGrp->GetInt("OnViewParameterVisibility"));
         }
 
+        OnViewParameterVisibility onViewParameterVisibility;
         bool dynamicOverride = false;
     };
 
@@ -455,14 +460,14 @@ public:
 
     bool shouldDrawPositionAtCursor() const
     {
-        return !(ovpVisibilityManager.onViewParameterVisibility
-                 == OnViewParameterVisibilityManager::OnViewParameterVisibility::ShowAll);
+        return !(ovpVisibilityManager.isVisibility(
+            OnViewParameterVisibilityManager::OnViewParameterVisibility::ShowAll));
     }
 
     bool shouldDrawDimensionsAtCursor() const
     {
-        return (ovpVisibilityManager.onViewParameterVisibility
-                == OnViewParameterVisibilityManager::OnViewParameterVisibility::Hidden);
+        return (ovpVisibilityManager.isVisibility(
+            OnViewParameterVisibilityManager::OnViewParameterVisibility::Hidden));
     }
 
 protected:
