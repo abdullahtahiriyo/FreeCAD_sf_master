@@ -195,12 +195,17 @@ protected:
             init();
         }
 
-        OnViewParameterVisibility visibility()
+        OnViewParameterVisibility visibility() const
         {
             return onViewParameterVisibility;
         }
 
-        bool isVisible(Gui::EditableDatumLabel* ovp)
+        bool isVisibility(OnViewParameterVisibility visibility) const
+        {
+            return onViewParameterVisibility == visibility;
+        }
+
+        bool isVisible(Gui::EditableDatumLabel* ovp) const
         {
             switch (onViewParameterVisibility) {
 
@@ -229,7 +234,6 @@ protected:
             dynamicOverride = false;
         }
 
-        OnViewParameterVisibility onViewParameterVisibility;
 
     private:
         void init()
@@ -241,6 +245,7 @@ protected:
                 static_cast<OnViewParameterVisibility>(hGrp->GetInt("OnViewParameterVisibility"));
         }
 
+        OnViewParameterVisibility onViewParameterVisibility;
         bool dynamicOverride = false;
     };
 
@@ -453,16 +458,33 @@ public:
         }
     }
 
-    bool shouldDrawPositionAtCursor() const
+    void drawPositionAtCursor(const Base::Vector2d& position)
     {
-        return !(ovpVisibilityManager.onViewParameterVisibility
-                 == OnViewParameterVisibilityManager::OnViewParameterVisibility::ShowAll);
+        if (shouldDrawPositionAtCursor()) {
+            handler->drawPositionAtCursor(position);
+        }
     }
 
-    bool shouldDrawDimensionsAtCursor() const
+    void drawDirectionAtCursor(const Base::Vector2d& position, const Base::Vector2d& origin)
     {
-        return (ovpVisibilityManager.onViewParameterVisibility
-                == OnViewParameterVisibilityManager::OnViewParameterVisibility::Hidden);
+        if (shouldDrawDimensionsAtCursor()) {
+            handler->drawDirectionAtCursor(position, origin);
+        }
+    }
+
+    void
+    drawWidthHeightAtCursor(const Base::Vector2d& position, const double val1, const double val2)
+    {
+        if (shouldDrawDimensionsAtCursor()) {
+            handler->drawWidthHeightAtCursor(position, val1, val2);
+        }
+    }
+
+    void drawDoubleAtCursor(const Base::Vector2d& position, const double radius)
+    {
+        if (shouldDrawDimensionsAtCursor()) {
+            handler->drawDoubleAtCursor(position, radius);
+        }
     }
 
 protected:
@@ -699,6 +721,21 @@ protected:
     }
     //@}
 
+private:
+    /** @name helper functions */
+    //@{
+    bool shouldDrawPositionAtCursor() const
+    {
+        return !(ovpVisibilityManager.isVisibility(
+            OnViewParameterVisibilityManager::OnViewParameterVisibility::ShowAll));
+    }
+
+    bool shouldDrawDimensionsAtCursor() const
+    {
+        return (ovpVisibilityManager.isVisibility(
+            OnViewParameterVisibilityManager::OnViewParameterVisibility::Hidden));
+    }
+    //@}
 
 private:
     OnViewParameterVisibilityManager ovpVisibilityManager;

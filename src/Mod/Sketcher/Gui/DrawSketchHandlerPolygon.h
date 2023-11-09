@@ -78,7 +78,7 @@ private:
     {
         switch (state()) {
             case SelectMode::SeekFirst: {
-                drawPositionAtCursor(onSketchPos);
+                toolWidgetManager.drawPositionAtCursor(onSketchPos);
 
                 centerPoint = onSketchPos;
 
@@ -88,7 +88,7 @@ private:
                 }
             } break;
             case SelectMode::SeekSecond: {
-                drawDirectionAtCursor(onSketchPos, centerPoint);
+                toolWidgetManager.drawDirectionAtCursor(onSketchPos, centerPoint);
 
                 firstCorner = onSketchPos;
 

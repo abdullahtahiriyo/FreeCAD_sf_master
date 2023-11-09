@@ -1138,15 +1138,13 @@ void DrawSketchHandler::clearEditMarkers() const
 
 void DrawSketchHandler::drawPositionAtCursor(const Base::Vector2d& position)
 {
-    if (shouldDrawPositionAtCursor()) {
-        setPositionText(position);
-    }
+    setPositionText(position);
 }
 
 void DrawSketchHandler::drawDirectionAtCursor(const Base::Vector2d& position,
                                               const Base::Vector2d& origin)
 {
-    if (!shouldDrawDimensionsAtCursor() || !showCursorCoords()) {
+    if (!showCursorCoords()) {
         return;
     }
 
@@ -1164,7 +1162,7 @@ void DrawSketchHandler::drawWidthHeightAtCursor(const Base::Vector2d& position,
                                                 const double val1,
                                                 const double val2)
 {
-    if (!shouldDrawDimensionsAtCursor() || !showCursorCoords()) {
+    if (!showCursorCoords()) {
         return;
     }
 
@@ -1177,7 +1175,7 @@ void DrawSketchHandler::drawWidthHeightAtCursor(const Base::Vector2d& position,
 
 void DrawSketchHandler::drawDoubleAtCursor(const Base::Vector2d& position, const double val)
 {
-    if (!shouldDrawDimensionsAtCursor() || !showCursorCoords()) {
+    if (!showCursorCoords()) {
         return;
     }
 

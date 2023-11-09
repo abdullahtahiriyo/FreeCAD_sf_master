@@ -225,15 +225,6 @@ private:  // NVI
     virtual void onWidgetChanged()
     {}
 
-    virtual bool shouldDrawPositionAtCursor() const
-    {
-        return true;
-    }
-    virtual bool shouldDrawDimensionsAtCursor() const
-    {
-        return true;
-    }
-
 protected:  // NVI requiring base implementation
     virtual std::string getToolName() const;
     virtual QString getCrosshairCursorSVGName() const;

@@ -89,7 +89,7 @@ private:
     {
         switch (state()) {
             case SelectMode::SeekFirst: {
-                drawPositionAtCursor(onSketchPos);
+                toolWidgetManager.drawPositionAtCursor(onSketchPos);
 
                 startPoint = onSketchPos;
 
