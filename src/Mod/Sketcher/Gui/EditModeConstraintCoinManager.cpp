@@ -813,8 +813,12 @@ Restart:
                 case DistanceX:
                 case DistanceY: {
                     assert(Constr->First >= -extGeoCount && Constr->First < intGeoCount);
-                    Base::Vector3d pnt1(0., 0., 0.), pnt2(0., 0., 0.);
-                    pnt1 = geolistfacade.getPoint(Constr->First, Constr->FirstPos);
+
+                    // pnt1 will be initialized to (0,0,0) if First is an edge
+                    auto pnt1 = geolistfacade.getPoint(Constr->First, Constr->FirstPos);
+
+                    Base::Vector3d pnt2(0., 0., 0.);
+
                     if (Constr->SecondPos != Sketcher::PointPos::none) {  // point to point distance
                         pnt2 = geolistfacade.getPoint(Constr->Second, Constr->SecondPos);
                     }
@@ -824,6 +828,7 @@ Restart:
                         if (isLineSegment(*geo)) {
                             if (Constr->SecondPos != Sketcher::PointPos::none) {
                                 // point to line distance
+                                // NOLINTNEXTLINE
                                 auto lineSeg = static_cast<const Part::GeomLineSegment*>(geo);
                                 Base::Vector3d l2p1 = lineSeg->getStartPoint();
                                 Base::Vector3d l2p2 = lineSeg->getEndPoint();
@@ -832,22 +837,12 @@ Restart:
                                 pnt2 += pnt1;
                             }
                             else {
-                                if (isCircle(*geo1) || isArcOfCircle(*geo1)) {
+                                if (isCircleOrArc(*geo1)) {
                                     // circular to line distance
                                     auto lineSeg = static_cast<const Part::GeomLineSegment*>(geo);
-                                    Base::Vector3d ct;
-                                    double radius;
-                                    if (isCircle(*geo1)) {
-                                        auto circleSeg = static_cast<const Part::GeomCircle*>(geo1);
-                                        ct = circleSeg->getCenter();
-                                        radius = circleSeg->getRadius();
-                                    }
-                                    else {
-                                        auto circleSeg =
-                                            static_cast<const Part::GeomArcOfCircle*>(geo1);
-                                        ct = circleSeg->getCenter();
-                                        radius = circleSeg->getRadius();
-                                    }
+
+                                    auto [radius, ct] = getRadiusCenterCircleArc(geo1);
+
                                     Base::Vector3d l2p1 = lineSeg->getStartPoint();
                                     Base::Vector3d l2p2 = lineSeg->getEndPoint();
                                     // project on the line translated to origin
@@ -859,28 +854,17 @@ Restart:
                                 }
                             }
                         }
-                        else if (isCircle(*geo) || isArcOfCircle(*geo)) {
+                        else if (isCircleOrArc(*geo)) {
                             if (Constr->FirstPos != Sketcher::PointPos::none) {
                                 // point to circular distance
-                                Base::Vector3d ct;
-                                double rad;
-                                if (isCircle(*geo)) {
-                                    auto circleSeg2 = static_cast<const Part::GeomCircle*>(geo);
-                                    ct = circleSeg2->getCenter();
-                                    rad = circleSeg2->getRadius();
-                                }
-                                else {
-                                    auto circleSeg2 =
-                                        static_cast<const Part::GeomArcOfCircle*>(geo);
-                                    ct = circleSeg2->getCenter();
-                                    rad = circleSeg2->getRadius();
-                                }
+                                auto [rad, ct] = getRadiusCenterCircleArc(geo1);
+
                                 pnt1 = geolistfacade.getPoint(Constr->First, Constr->FirstPos);
                                 Base::Vector3d v = pnt1 - ct;
                                 v = v.Normalize();
                                 pnt2 = ct + rad * v;
                             }
-                            else if (isCircle(*geo1) || isArcOfCircle(*geo1)) {
+                            else if (isCircleOrArc(*geo1)) {
                                 // circular to circular distance
                                 GetCirclesMinimalDistance(geo1, geo, pnt1, pnt2);
                             }
@@ -907,8 +891,10 @@ Restart:
                         break;
                     }
 
+                    // NOLINTBEGIN
                     SoDatumLabel* asciiText = static_cast<SoDatumLabel*>(
                         sep->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex)));
+                    // NOLINTEND
 
                     // Get presentation string (w/o units if option is set)
                     asciiText->string =
